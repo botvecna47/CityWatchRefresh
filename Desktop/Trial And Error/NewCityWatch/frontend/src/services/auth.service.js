@@ -27,6 +27,11 @@ export const authService = {
     return api.get('/auth/me');
   },
 
+  // Alias for getMe
+  getCurrentUser: async () => {
+    return api.get('/auth/me');
+  },
+
   // Send OTP
   sendOtp: async (phone, purpose = 'REGISTRATION') => {
     return api.post('/auth/send-otp', { phone, purpose });

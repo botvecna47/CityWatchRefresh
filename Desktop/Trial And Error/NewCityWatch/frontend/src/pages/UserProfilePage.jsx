@@ -18,25 +18,23 @@ const UserProfilePage = () => {
     useEffect(() => {
         const fetchProfileData = async () => {
              try {
-                 // Fetch User Profile
+                 // Fetch User Profile (interceptor already unwraps)
                  const userRes = await authService.getCurrentUser();
-                 if (userRes.data.success) {
-                     setUser(userRes.data.data.user);
+                 if (userRes.success) {
+                     setUser(userRes.data.user);
                  }
 
-                 // Fetch My Issues
+                 // Fetch My Issues (interceptor already unwraps)
                  const issuesRes = await issuesService.getMyIssues();
-                 if (issuesRes.data.success) {
-                     const issues = issuesRes.data.data;
-                     setMyIssues(issues);
-                     
-                     // Calculate simple stats
-                     const resolvedCount = issues.filter(i => i.status === 'RESOLVED' || i.status === 'CLOSED').length;
-                     setStats({
-                         reported: issues.length,
-                         resolved: resolvedCount
-                     });
-                 }
+                 const issues = issuesRes.data || [];
+                 setMyIssues(issues);
+                 
+                 // Calculate simple stats
+                 const resolvedCount = issues.filter(i => i.status === 'RESOLVED' || i.status === 'CLOSED').length;
+                 setStats({
+                     reported: issues.length,
+                     resolved: resolvedCount
+                 });
              } catch (error) {
                  console.error(error);
                  toast.error('Failed to load profile data');

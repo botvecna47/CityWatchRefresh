@@ -37,13 +37,13 @@ const IssueDetailPage = () => {
         const fetchIssue = async () => {
             try {
                 const response = await issuesService.getIssue(id);
-                if (response.data.success) {
-                    setIssue(response.data.data);
+                // Axios interceptor already unwraps response.data
+                if (response.success) {
+                    setIssue(response.data);
                 }
             } catch (error) {
                 console.error(error);
                 toast.error('Failed to load issue details');
-                // navigate(-1); // Go back if failed? Maybe just show error state
             } finally {
                 setLoading(false);
             }
