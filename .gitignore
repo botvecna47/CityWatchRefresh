@@ -1,13 +1,5 @@
-# === CityWatch .gitignore ===
-
-# Local documentation (implementation plans, research notes)
-docs/
-
-# Development diary (daily logs)
-Diary/
-
-# Final project report
-Report/
+# === CityWatch .gitignore (demo-branch) ===
+# docs/, Diary/, Report/ are INCLUDED on this branch
 
 # Node / React
 node_modules/
