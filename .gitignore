@@ -18,6 +18,11 @@ target/
 .gradle/
 !gradle-wrapper.jar
 
+# Custom Downloads
+maven.zip
+apache-maven-*/
+compile.log
+
 # IDE
 .idea/
 *.iml

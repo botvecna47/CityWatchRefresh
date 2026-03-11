@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 20% 96%;
+    --foreground: 152 42% 18%;
+
+    --card: 60 25% 98%;
+    --card-foreground: 152 42% 18%;
+
+    --popover: 60 25% 98%;
+    --popover-foreground: 152 42% 18%;
+
+    --primary: 152 42% 18%;
+    --primary-foreground: 60 20% 96%;
+
+    --secondary: 145 20% 90%;
+    --secondary-foreground: 152 42% 18%;
+
+    --muted: 60 10% 92%;
+    --muted-foreground: 150 10% 40%;
+
+    --accent: 153 50% 35%;
+    --accent-foreground: 60 20% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 60 10% 88%;
+    --input: 60 10% 88%;
+    --ring: 153 50% 35%;
+
+    --radius: 0.75rem;
+
+    --emerald: 153 50% 35%;
+    --emerald-foreground: 60 20% 96%;
+    --emerald-light: 145 30% 92%;
+    --forest: 152 42% 18%;
+    --cream: 60 20% 96%;
+    --cream-dark: 60 10% 92%;
+    --amber: 38 92% 50%;
+    --amber-foreground: 38 90% 15%;
+
+    --sidebar-background: 60 25% 98%;
+    --sidebar-foreground: 152 42% 18%;
+    --sidebar-primary: 152 42% 18%;
+    --sidebar-primary-foreground: 60 20% 96%;
+    --sidebar-accent: 145 20% 90%;
+    --sidebar-accent-foreground: 152 42% 18%;
+    --sidebar-border: 60 10% 88%;
+    --sidebar-ring: 153 50% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/70 backdrop-blur-xl border border-border/50 shadow-lg;
+  }
+
+  .glass-strong {
+    @apply bg-card/85 backdrop-blur-2xl border border-border/60 shadow-xl;
+  }
+
+  .card-premium {
+    @apply bg-card rounded-xl border border-border/60 shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-[hsl(var(--forest))] to-[hsl(var(--emerald))] bg-clip-text text-transparent;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .status-reported {
+    @apply bg-amber/15 text-[hsl(var(--amber-foreground))] border-[hsl(var(--amber))]/30;
+  }
+
+  .status-in-progress {
+    @apply bg-[hsl(var(--emerald))]/10 text-[hsl(var(--emerald))] border-[hsl(var(--emerald))]/30;
+  }
+
+  .status-completed {
+    @apply bg-[hsl(var(--forest))]/10 text-[hsl(var(--forest))] border-[hsl(var(--forest))]/30;
+  }
+}
