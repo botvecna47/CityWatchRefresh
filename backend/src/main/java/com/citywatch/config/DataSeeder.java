@@ -22,10 +22,10 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (userRepository.count() == 0) {
+        if (areaRepository.count() == 0) {
             seedAreas();
-            seedUsers();
         }
+        seedUsers();
     }
 
     private void seedAreas() {
@@ -47,6 +47,12 @@ public class DataSeeder implements CommandLineRunner {
                 .city("Springfield")
                 .centerLat(40.7150)
                 .centerLng(-73.9990)
+                .build(),
+            Area.builder()
+                .name("West Area")
+                .city("Springfield")
+                .centerLat(40.7110)
+                .centerLng(-74.0100)
                 .build()
         );
         areaRepository.saveAll(areas);
@@ -54,32 +60,70 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedUsers() {
         Area northArea = areaRepository.findByName("North Area").orElseThrow();
+        Area southArea = areaRepository.findByName("South Area").orElseThrow();
 
-        List<User> users = List.of(
-            User.builder()
-                .username("admin_master")
+        String encodedPassword = passwordEncoder.encode("password123");
+
+        userRepository.findByEmail("admin@citywatch.com").ifPresentOrElse(user -> {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }, () -> {
+            userRepository.save(User.builder()
+                .username("carol_admin")
                 .email("admin@citywatch.com")
-                .password(passwordEncoder.encode("admin123"))
+                .password(encodedPassword)
                 .role(Role.ADMIN)
                 .city("Springfield")
-                .build(),
-            User.builder()
-                .username("coordinator_alex")
-                .email("coordinator@citywatch.com")
-                .password(passwordEncoder.encode("coord123"))
+                .build());
+        });
+
+        userRepository.findByEmail("bob@citywatch.com").ifPresentOrElse(user -> {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }, () -> {
+            userRepository.save(User.builder()
+                .username("bob_coordinator")
+                .email("bob@citywatch.com")
+                .password(encodedPassword)
                 .role(Role.COORDINATOR)
                 .area(northArea)
                 .city("Springfield")
-                .build(),
-            User.builder()
-                .username("citizen_john")
-                .email("citizen@citywatch.com")
-                .password(passwordEncoder.encode("citizen123"))
+                .build());
+        });
+
+        userRepository.findByEmail("dave@citywatch.com").ifPresentOrElse(user -> {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }, () -> {
+            userRepository.save(User.builder()
+                .username("dave_coordinator")
+                .email("dave@citywatch.com")
+                .password(encodedPassword)
+                .role(Role.COORDINATOR)
+                .area(southArea)
+                .city("Springfield")
+                .build());
+        });
+
+        userRepository.findByEmail("alice@example.com").ifPresentOrElse(user -> {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }, () -> {
+            userRepository.save(User.builder()
+                .username("alice_citizen")
+                .email("alice@example.com")
+                .password(encodedPassword)
                 .role(Role.CITIZEN)
                 .city("Springfield")
-                .build()
-        );
-        userRepository.saveAll(users);
-        System.out.println("✅ Data seeded successfully! Accounts created: admin@citywatch.com, coordinator@citywatch.com, citizen@citywatch.com");
+                .build());
+        });
+
+        System.out.println("════════════════════════════════════════════════");
+        System.out.println("✅ Test accounts seeded! All passwords: password123");
+        System.out.println("   🛡️  Admin:       admin@citywatch.com");
+        System.out.println("   🔧 Coordinator: bob@citywatch.com");
+        System.out.println("   🔧 Coordinator: dave@citywatch.com");
+        System.out.println("   🧑 Citizen:     alice@example.com");
+        System.out.println("════════════════════════════════════════════════");
     }
 }

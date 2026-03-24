@@ -13,6 +13,9 @@ public class LoginResponse {
     private String token;
     private Long id;
     private String username;
+    private String name;
     private String email;
     private String role;
+    private String status;
+    private String area;
 }
