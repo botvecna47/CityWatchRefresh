@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 import { formatDistanceToNow, format } from "date-fns";
 import { CheckCircle2, Clock, MapPin, MessageSquare, Star, Upload, AlertTriangle, BarChart3, TrendingUp } from "lucide-react";
-import { useAppContext, Report, Area } from "../store";
+import { useAppContext, Report } from "../store";
+import { api } from "../api";
 import { Card, Button, Badge, cn } from "../components/ui";
 import { StatusBadge } from "./Home";
 import { motion } from "motion/react";
@@ -10,12 +11,29 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { toast } from "sonner";
 
 export function Dashboard() {
-  const { currentUser, reports } = useAppContext();
+  const { currentUser } = useAppContext();
+  const [myReports, setMyReports] = useState<Report[]>([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const loadFn = currentUser.role === "citizen" ? api.complaints.mine : api.complaints.assigned;
+    loadFn().then(data => setMyReports(data.map((c: any) => ({
+      id: String(c.id), category: c.category, title: c.category + " Issue",
+      description: c.description, image: c.imageUrl, imageUrl: c.imageUrl,
+      locationText: c.locationText, lat: c.latitude, lng: c.longitude,
+      area: c.areaName || c.area, areaName: c.areaName, status: c.status,
+      priority: c.priority, authorId: String(c.citizenId), authorName: c.citizenName,
+      authorAvatar: "", upvotes: c.upvotes || 0, downvotes: c.downvotes || 0,
+      coordinatorId: c.coordinatorId ? String(c.coordinatorId) : undefined,
+      coordinatorName: c.coordinatorName, comments: [], createdAt: c.createdAt,
+      urgency: c.priority, slaDeadline: c.slaDeadline,
+    })))).catch(() => {});
+  }, [currentUser]);
 
   if (!currentUser) return <div className="p-8 text-center text-gray-500 font-serif">Please log in to view your dashboard.</div>;
 
-  if (currentUser.role === "citizen") return <CitizenDashboard reports={reports.filter(r => r.authorId === currentUser.id)} />;
-  if (currentUser.role === "coordinator") return <CoordinatorDashboard reports={reports.filter(r => r.area === currentUser.area)} />;
+  if (currentUser.role === "citizen") return <CitizenDashboard reports={myReports} />;
+  if (currentUser.role === "coordinator") return <CoordinatorDashboard reports={myReports} />;
   return <div className="p-8 text-center text-gray-500 font-serif">Select Citizen or Coordinator role to view this dashboard. Admins use the Admin Panel.</div>;
 }
 
@@ -129,24 +147,23 @@ function CitizenDashboard({ reports }: { reports: Report[] }) {
 }
 
 function CoordinatorDashboard({ reports }: { reports: Report[] }) {
-  const { currentUser, updateReport } = useAppContext();
+  const { currentUser, updateReportStatus } = useAppContext();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
 
-  const assigned = reports.filter(r => r.coordinatorId === currentUser?.id && r.status !== "Completed");
-  const available = reports.filter(r => !r.coordinatorId && r.status === "Reported");
-  const completed = reports.filter(r => r.coordinatorId === currentUser?.id && r.status === "Completed");
+  const assigned = reports.filter(r => r.status === "IN_PROGRESS" || r.status === "ASSIGNED");
+  const available = reports.filter(r => r.status === "PENDING_REVIEW" || r.status === "APPROVED");
+  const completed = reports.filter(r => r.status === "COMPLETED" || r.status === "CLOSED");
 
   const handleResolve = (e: React.FormEvent) => {
     e.preventDefault();
     if (resolvingId && proofImage && location) {
-      updateReport(resolvingId, { status: "Completed", proofImage, resolutionLocation: location });
-      setResolvingId(null);
-      setProofImage(null);
-      setLocation(null);
-      toast.success("Issue marked as completed!");
+      api.complaints.submitProof(resolvingId, { imageUrl: proofImage, latitude: location.lat, longitude: location.lng })
+        .then(() => { updateReportStatus(resolvingId, "COMPLETED"); toast.success("Issue marked as completed!"); })
+        .catch(() => toast.error("Failed to submit proof."));
+      setResolvingId(null); setProofImage(null); setLocation(null);
     } else {
       toast.error("Both photo and location are required.");
     }
@@ -257,8 +274,8 @@ function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             {available.map(r => (
               <div key={r.id} className="relative group">
                 <ReportSummaryCard report={r} />
-                <Button 
-                  onClick={() => updateReport(r.id, { coordinatorId: currentUser?.id, status: "In Progress" })}
+                <Button
+                  onClick={() => api.complaints.updateStatus(r.id, "IN_PROGRESS").then(() => updateReportStatus(r.id, "IN_PROGRESS")).catch(() => toast.error("Failed"))}
                   size="sm"
                   className="absolute bottom-4 right-4 bg-[#1A4331] hover:bg-[#112d21] text-white"
                 >
@@ -331,7 +348,7 @@ function CoordinatorDashboard({ reports }: { reports: Report[] }) {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="button" variant="outline" onClick={getLocation} disabled={gettingLocation} className="w-full">
+                <Button type="button" variant="secondary" onClick={getLocation} disabled={gettingLocation} className="w-full">
                   <MapPin className="w-4 h-4 mr-2" />
                   {gettingLocation ? "Getting Location..." : location ? "Location Acquired" : "Get Current Location"}
                 </Button>
@@ -341,7 +358,7 @@ function CoordinatorDashboard({ reports }: { reports: Report[] }) {
               )}
               
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <Button type="button" variant="outline" onClick={() => { setResolvingId(null); setProofImage(null); setLocation(null); }}>Cancel</Button>
+                <Button type="button" variant="secondary" onClick={() => { setResolvingId(null); setProofImage(null); setLocation(null); }}>Cancel</Button>
                 <Button type="submit" disabled={!proofImage || !location} className="bg-green-600 hover:bg-green-700 text-white gap-2">
                   <CheckCircle2 className="w-4 h-4" /> Confirm Resolution
                 </Button>

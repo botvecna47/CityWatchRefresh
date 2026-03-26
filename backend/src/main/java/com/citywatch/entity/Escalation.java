@@ -33,8 +33,8 @@ public class Escalation {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Builder.Default
-    private Boolean resolved = false;
+    @Column(name = "is_resolved")
+    private Boolean isResolved = false;
 
     @CreationTimestamp
     @Column(name = "triggered_at", updatable = false)

@@ -34,7 +34,6 @@ public class Comment {
     private Comment parent;
 
     @Column(name = "is_moderated")
-    @Builder.Default
     private Boolean isModerated = false;
 
     @CreationTimestamp

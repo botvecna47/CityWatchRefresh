@@ -1,13 +1,27 @@
-import { useState, useMemo } from "react";
-import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, MoreVertical, Trash2, Mail, Phone, MapPin, Briefcase } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, Mail, Phone, MapPin, Briefcase } from "lucide-react";
 import { useAppContext, User, Report } from "../store";
+import { api } from "../api";
 import { Card, Button, Input, Badge, cn } from "../components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export function AdminPanel() {
-  const { users, currentUser, reports, applications, spamReports } = useAppContext();
+  const { users, currentUser, reports, loadAdminUsers, banUser, unbanUser } = useAppContext();
+  const [localReports, setLocalReports] = useState<Report[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "coordinators" | "applications" | "users" | "spam">("overview");
+
+  useEffect(() => {
+    if (currentUser?.role === "admin") {
+      loadAdminUsers();
+      api.admin.complaints().then(data => setLocalReports(data.map((c: any) => ({
+        id: String(c.id), category: c.category, title: c.category + " Issue",
+        description: c.description, status: c.status, lat: c.latitude ?? 0, lng: c.longitude ?? 0,
+        authorId: String(c.citizenId), authorName: c.citizenName, area: c.areaName,
+        upvotes: 0, downvotes: 0, comments: [], createdAt: c.createdAt, urgency: c.priority,
+      })))).catch(() => {});
+    }
+  }, [currentUser]);
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
@@ -25,8 +39,7 @@ export function AdminPanel() {
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">
         {(["overview", "applications", "coordinators", "users", "spam"] as const).map(tab => {
           let badgeCount = 0;
-          if (tab === "applications") badgeCount = applications.filter(a => a.status === "pending").length;
-          if (tab === "spam") badgeCount = spamReports.filter(s => s.status === "pending").length;
+          if (tab === "applications" || tab === "spam") badgeCount = 0;
 
           return (
             <button
@@ -60,11 +73,11 @@ export function AdminPanel() {
             transition={{ duration: 0.2 }}
             className="py-4"
           >
-            {activeTab === "overview" && <AdminOverview reports={reports} users={users} />}
-            {activeTab === "applications" && <ApplicationsManagement />}
+            {activeTab === "overview" && <AdminOverview reports={localReports} users={users} />}
+            {activeTab === "applications" && <div className="p-8 text-center text-gray-500">Application management coming soon.</div>}
             {activeTab === "coordinators" && <UserManagement users={users.filter(u => u.role === "coordinator")} title="Coordinator Management" />}
             {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Management" />}
-            {activeTab === "spam" && <SpamManagement />}
+            {activeTab === "spam" && <div className="p-8 text-center text-gray-500">Spam management coming soon.</div>}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -149,68 +162,11 @@ function StatCard({ title, value, icon: Icon, color, bg }: { title: string, valu
   );
 }
 
-function ApplicationsManagement() {
-  const { applications, updateApplicationStatus } = useAppContext();
-  const pendingApps = applications.filter(a => a.status === "pending");
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-[#1A4331] font-serif">Pending Coordinator Applications</h2>
-      {pendingApps.length === 0 ? (
-        <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-md border border-gray-200">
-          <ShieldAlert className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          No pending applications to review.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {pendingApps.map(app => (
-            <Card key={app.id} className="p-6 bg-white border border-gray-200 shadow-sm flex flex-col">
-              <div className="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
-                <div>
-                  <h3 className="font-bold text-[#1A4331] text-xl font-serif">{app.userName}</h3>
-                  <div className="text-sm text-gray-500 mt-2 space-y-1">
-                    <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> {app.email}</p>
-                    <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> {app.phone}</p>
-                    <p className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {app.address}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-sm">{new Date(app.createdAt).toLocaleDateString()}</span>
-              </div>
-              
-              <div className="space-y-4 mb-6 flex-1">
-                <div>
-                  <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-1">
-                    <Briefcase className="w-4 h-4" /> Relevant Experience
-                  </h4>
-                  <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-sm border border-gray-100">{app.experience}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-700 mb-1">Motivation Message</h4>
-                  <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-sm border border-gray-100 italic">"{app.message}"</p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-3 mt-auto pt-4 border-t border-gray-100">
-                <Button variant="outline" onClick={() => updateApplicationStatus(app.id, "rejected")} className="text-red-600 hover:bg-red-50 hover:text-red-700">
-                  <X className="w-4 h-4 mr-1" /> Reject
-                </Button>
-                <Button onClick={() => updateApplicationStatus(app.id, "approved")} className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white">
-                  <Check className="w-4 h-4 mr-1" /> Approve
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UserManagement({ users, title }: { users: User[], title: string }) {
+export function UserManagement({ users, title }: { users: User[], title: string }) {
   const { banUser, unbanUser } = useAppContext();
   const [search, setSearch] = useState("");
 
-  const filtered = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter((u: User) => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-4">
@@ -268,11 +224,11 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
                 </td>
                 <td className="p-4 text-right">
                   {u.status === "active" ? (
-                    <Button variant="outline" size="sm" onClick={() => banUser(u.id)} className="text-red-600 border-red-200 hover:bg-red-50 h-8">
+                    <Button variant="secondary" size="sm" onClick={() => banUser(u.id)} className="text-red-600 border-red-200 hover:bg-red-50 h-8">
                       <Ban className="w-4 h-4 mr-1" /> Ban
                     </Button>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => unbanUser(u.id)} className="text-green-600 border-green-200 hover:bg-green-50 h-8">
+                    <Button variant="secondary" size="sm" onClick={() => unbanUser(u.id)} className="text-green-600 border-green-200 hover:bg-green-50 h-8">
                       <CheckCircle2 className="w-4 h-4 mr-1" /> Unban
                     </Button>
                   )}
@@ -290,44 +246,4 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
     </div>
   );
 }
-
-function SpamManagement() {
-  const { spamReports, resolveSpamReport } = useAppContext();
-  const pendingSpam = spamReports.filter(s => s.status === "pending");
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-[#1A4331] font-serif">Spam & Abuse Reports</h2>
-      {pendingSpam.length === 0 ? (
-        <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-md border border-gray-200">
-          <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
-          No pending spam reports. Great job!
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {pendingSpam.map(spam => (
-            <Card key={spam.id} className="p-5 bg-white border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="destructive" className="uppercase text-[10px] tracking-wider">{spam.targetType}</Badge>
-                  <span className="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-sm">Target ID: {spam.targetId}</span>
-                  <span className="text-xs text-gray-400 ml-2">{new Date(spam.createdAt).toLocaleDateString()}</span>
-                </div>
-                <p className="text-[#1A4331] font-serif">Reported by <span className="font-bold">{spam.reporterName}</span></p>
-                <p className="text-gray-600 text-sm mt-2 bg-red-50 p-2 rounded-sm border border-red-100 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  {spam.reason}
-                </p>
-              </div>
-              <div className="w-full sm:w-auto">
-                <Button size="sm" onClick={() => resolveSpamReport(spam.id)} variant="outline" className="w-full sm:w-auto border-green-200 text-green-700 hover:bg-green-50">
-                  <Check className="w-4 h-4 mr-2" /> Mark Resolved
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+

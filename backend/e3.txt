@@ -1,0 +1,66 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.citywatch:citywatch-backend >-------------------
+[INFO] Building CityWatch Backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ citywatch-backend ---
+[INFO] Deleting C:\Users\Darshdeep\Desktop\Desktop\Trial And Error\CityWatchRevive_V_01\backend\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ citywatch-backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ citywatch-backend ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 59 source files with javac [debug release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/Comment.java:[37,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/Escalation.java:[34,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/User.java:[43,24] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/User.java:[47,24] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/User.java:[50,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/Proof.java:[42,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/entity/Notification.java:[40,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] 7 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/NotificationService.java:[40,65] cannot find symbol
+  symbol:   variable COMPLAINT
+  location: class com.citywatch.enums.NotificationType
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/ComplaintService.java:[166,17] cannot find symbol
+  symbol:   method isLocationValid(boolean)
+  location: class com.citywatch.entity.Proof.ProofBuilder
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/SlaScheduler.java:[43,21] cannot find symbol
+  symbol:   method notes(java.lang.String)
+  location: class com.citywatch.entity.Escalation.EscalationBuilder
+[INFO] 3 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.842 s
+[INFO] Finished at: 2026-03-24T22:24:07+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project citywatch-backend: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/NotificationService.java:[40,65] cannot find symbol
+[ERROR]   symbol:   variable COMPLAINT
+[ERROR]   location: class com.citywatch.enums.NotificationType
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/ComplaintService.java:[166,17] cannot find symbol
+[ERROR]   symbol:   method isLocationValid(boolean)
+[ERROR]   location: class com.citywatch.entity.Proof.ProofBuilder
+[ERROR] /C:/Users/Darshdeep/Desktop/Desktop/Trial And Error/CityWatchRevive_V_01/backend/src/main/java/com/citywatch/service/SlaScheduler.java:[43,21] cannot find symbol
+[ERROR]   symbol:   method notes(java.lang.String)
+[ERROR]   location: class com.citywatch.entity.Escalation.EscalationBuilder
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

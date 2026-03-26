@@ -40,16 +40,13 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "trust_level", length = 20)
-    @Builder.Default
     private TrustLevel trustLevel = TrustLevel.NORMAL;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "strike_count")
-    @Builder.Default
     private Integer strikeCount = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)

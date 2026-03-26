@@ -37,7 +37,6 @@ public class Notification {
     private Long referenceId;
 
     @Column(name = "is_read")
-    @Builder.Default
     private Boolean isRead = false;
 
     @CreationTimestamp

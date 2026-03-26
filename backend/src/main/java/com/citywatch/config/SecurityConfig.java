@@ -71,6 +71,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/debug_users", "/error").permitAll()
+                // Complaints listing and individual complaint pages are public
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/complaints", "/api/complaints/**").permitAll()
                 .anyRequest().authenticated()
             );
 

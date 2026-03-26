@@ -1,0 +1,14 @@
+package com.citywatch.repository;
+
+import com.citywatch.entity.Comment;
+import com.citywatch.entity.Complaint;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+
+    List<Comment> findByComplaintAndIsModeratedFalseOrderByCreatedAtAsc(Complaint complaint);
+}

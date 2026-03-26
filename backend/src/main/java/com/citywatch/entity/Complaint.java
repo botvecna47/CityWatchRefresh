@@ -9,14 +9,18 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 @Entity
-@Table(name = "complaints")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "complaints", indexes = {
+    @Index(name = "idx_complaint_area", columnList = "area_id"),
+    @Index(name = "idx_complaint_status", columnList = "status"),
+    @Index(name = "idx_complaint_citizen", columnList = "citizen_id")
+})
 public class Complaint {
+    public Complaint() {}
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,8 +41,15 @@ public class Complaint {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "complaint_images", joinColumns = @JoinColumn(name = "complaint_id"))
     @Column(name = "image_url", nullable = false, length = 500)
-    private String imageUrl;
+    private List<String> imageUrls;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "complaint_upvotes", joinColumns = @JoinColumn(name = "complaint_id"))
+    @Column(name = "citizen_id")
+    private Set<Long> upvotedCitizenIds;
 
     @Column(nullable = false)
     private Double latitude;
@@ -48,16 +59,13 @@ public class Complaint {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
     private ComplaintStatus status = ComplaintStatus.DRAFT;
 
     @Column(name = "intensity_score")
-    @Builder.Default
     private Double intensityScore = 0.0;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
-    @Builder.Default
     private Priority priority = Priority.LOW;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -68,11 +76,9 @@ public class Complaint {
     private LocalDateTime slaDeadline;
 
     @Column(name = "escalation_level")
-    @Builder.Default
     private Integer escalationLevel = 0;
 
     @Column(name = "reopen_count")
-    @Builder.Default
     private Integer reopenCount = 0;
 
     @CreationTimestamp
@@ -86,4 +92,64 @@ public class Complaint {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public User getCitizen() { return citizen; }
+    public void setCitizen(User citizen) { this.citizen = citizen; }
+    public Area getArea() { return area; }
+    public void setArea(Area area) { this.area = area; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+    public Set<Long> getUpvotedCitizenIds() { return upvotedCitizenIds; }
+    public void setUpvotedCitizenIds(Set<Long> upvotedCitizenIds) { this.upvotedCitizenIds = upvotedCitizenIds; }
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+    public ComplaintStatus getStatus() { return status; }
+    public void setStatus(ComplaintStatus status) { this.status = status; }
+    public Double getIntensityScore() { return intensityScore; }
+    public void setIntensityScore(Double intensityScore) { this.intensityScore = intensityScore; }
+    public Priority getPriority() { return priority; }
+    public void setPriority(Priority priority) { this.priority = priority; }
+    public User getAssignedCoordinator() { return assignedCoordinator; }
+    public void setAssignedCoordinator(User assignedCoordinator) { this.assignedCoordinator = assignedCoordinator; }
+    public LocalDateTime getSlaDeadline() { return slaDeadline; }
+    public void setSlaDeadline(LocalDateTime slaDeadline) { this.slaDeadline = slaDeadline; }
+    public Integer getEscalationLevel() { return escalationLevel; }
+    public void setEscalationLevel(Integer escalationLevel) { this.escalationLevel = escalationLevel; }
+    public Integer getReopenCount() { return reopenCount; }
+    public void setReopenCount(Integer reopenCount) { this.reopenCount = reopenCount; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
+
+    public static ComplaintBuilder builder() { return new ComplaintBuilder(); }
+    public static class ComplaintBuilder {
+        private Complaint c = new Complaint();
+        public ComplaintBuilder id(Long id) { c.setId(id); return this; }
+        public ComplaintBuilder citizen(User citizen) { c.setCitizen(citizen); return this; }
+        public ComplaintBuilder area(Area area) { c.setArea(area); return this; }
+        public ComplaintBuilder category(Category category) { c.setCategory(category); return this; }
+        public ComplaintBuilder description(String description) { c.setDescription(description); return this; }
+        public ComplaintBuilder imageUrls(List<String> imageUrls) { c.setImageUrls(imageUrls); return this; }
+        public ComplaintBuilder upvotedCitizenIds(Set<Long> upvotedCitizenIds) { c.setUpvotedCitizenIds(upvotedCitizenIds); return this; }
+        public ComplaintBuilder latitude(Double latitude) { c.setLatitude(latitude); return this; }
+        public ComplaintBuilder longitude(Double longitude) { c.setLongitude(longitude); return this; }
+        public ComplaintBuilder status(ComplaintStatus status) { c.setStatus(status); return this; }
+        public ComplaintBuilder intensityScore(Double intensityScore) { c.setIntensityScore(intensityScore); return this; }
+        public ComplaintBuilder priority(Priority priority) { c.setPriority(priority); return this; }
+        public ComplaintBuilder assignedCoordinator(User assignedCoordinator) { c.setAssignedCoordinator(assignedCoordinator); return this; }
+        public ComplaintBuilder slaDeadline(LocalDateTime slaDeadline) { c.setSlaDeadline(slaDeadline); return this; }
+        public ComplaintBuilder escalationLevel(Integer escalationLevel) { c.setEscalationLevel(escalationLevel); return this; }
+        public ComplaintBuilder reopenCount(Integer reopenCount) { c.setReopenCount(reopenCount); return this; }
+        public Complaint build() { return c; }
+    }
 }

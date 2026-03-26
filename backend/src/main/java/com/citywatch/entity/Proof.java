@@ -39,7 +39,6 @@ public class Proof {
     private Double distanceFromComplaint;
 
     @Column(name = "is_location_valid")
-    @Builder.Default
     private Boolean isLocationValid = false;
 
     @CreationTimestamp

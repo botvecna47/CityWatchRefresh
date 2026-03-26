@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Upload, MapPin, Crosshair, ArrowRight, CheckCircle2, AlertTriangle, ArrowBigUp } from "lucide-react";
 import { useAppContext, Report } from "../store";
+import { api } from "../api";
 import { Card, Button, Input, Textarea, cn } from "../components/ui";
 import { motion } from "motion/react";
 
@@ -69,29 +70,25 @@ export function SubmitReport() {
     e.preventDefault();
     if (!title || !description || !location) return;
 
-    const newReport: Report = {
-      id: Math.random().toString(36).substr(2, 9),
-      title,
-      description,
-      image: images[0] || "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=600&auto=format&fit=crop", // Fallback
-      additionalImages: images.slice(1),
-      locationText: location,
-      lat: 40.7128 + (Math.random() - 0.5) * 0.01,
-      lng: -74.0060 + (Math.random() - 0.5) * 0.01,
-      area: area as any,
-      status: "Reported",
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      authorAvatar: currentUser.avatar,
-      upvotes: 1,
-      downvotes: 0,
-      comments: [],
-      createdAt: new Date().toISOString(),
-      urgency: "Medium"
-    };
+    let parsedCategory = "OTHER";
+    if (category.includes("nfrastructure")) parsedCategory = "POTHOLE"; // mapping approx
+    if (category.includes("Sanitation")) parsedCategory = "GARBAGE";
+    if (category.includes("Utilities")) parsedCategory = "STREETLIGHT";
 
-    addReport(newReport);
-    navigate("/");
+    api.complaints.submit({
+      category: parsedCategory,
+      description: title + "\n\n" + description,
+      imageUrls: images, 
+      latitude: 40.7128 + (Math.random() - 0.5) * 0.01,
+      longitude: -74.0060 + (Math.random() - 0.5) * 0.01,
+      locationText: location
+    }).then(() => {
+      import("sonner").then(({ toast }) => toast.success("Complaint submitted successfully!"));
+      navigate("/");
+      // Ideally force a refresh in the store
+    }).catch((err: any) => {
+      import("sonner").then(({ toast }) => toast.error("Failed to submit: " + err.message));
+    });
   };
 
   return (
@@ -240,7 +237,7 @@ export function SubmitReport() {
                     <div className="border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer">
                       <Upload className="w-6 h-6 text-gray-400 group-hover:text-[#2E7D32] transition-colors mb-1" />
                       <span className="text-xs text-gray-500 font-serif">Add Photo</span>
-                      <input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
+                      <input type="file" accept="image/*" capture="environment" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
                     </div>
                   )}
                 </div>

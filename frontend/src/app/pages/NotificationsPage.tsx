@@ -11,7 +11,7 @@ export function NotificationsPage() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
-  const allUserNotifs = notifications.filter(n => n.userId === currentUser?.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const allUserNotifs = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const userNotifications = filter === "all" ? allUserNotifs : allUserNotifs.filter(n => !n.read);
   const hasUnread = allUserNotifs.some(n => !n.read);
 
@@ -53,7 +53,7 @@ export function NotificationsPage() {
             </button>
           </div>
           {hasUnread && (
-            <Button variant="outline" onClick={markAllNotificationsRead} size="sm" className="ml-auto sm:ml-0 bg-white">
+            <Button variant="secondary" onClick={markAllNotificationsRead} size="sm" className="ml-auto sm:ml-0 bg-white">
               <Check className="w-4 h-4 mr-2" /> Mark All Read
             </Button>
           )}

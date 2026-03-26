@@ -1,10 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { format, subDays, subHours } from "date-fns";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { toast } from "sonner";
+import { api } from "./api";
 
 export type Role = "citizen" | "coordinator" | "admin";
-export type Status = "Reported" | "In Progress" | "Completed";
-export type Area = "North Area" | "South Area" | "East Area" | "West Area";
 
 export interface User {
   id: string;
@@ -12,7 +10,7 @@ export interface User {
   email: string;
   role: Role;
   avatar: string;
-  area?: Area; // for coordinators
+  area?: string;
   status: "active" | "banned";
   settings: {
     emailNotifications: boolean;
@@ -25,393 +23,280 @@ export interface Comment {
   id: string;
   authorId: string;
   authorName: string;
+  authorRole?: string;
   text: string;
   createdAt: string;
+  parentId?: string;
 }
 
 export interface Report {
   id: string;
-  title: string;
+  title?: string;
+  category: string;
   description: string;
-  image: string;
-  locationText: string;
+  image?: string;
+  imageUrl?: string;
+  imageUrls: string[];
+  locationText?: string;
   lat: number;
   lng: number;
-  area: Area;
-  status: Status;
+  area?: string;
+  areaName?: string;
+  status: string;
+  priority?: string;
   authorId: string;
   authorName: string;
-  authorAvatar: string;
+  authorAvatar?: string;
   upvotes: number;
   downvotes: number;
-  userVotes?: Record<string, "up" | "down">;
+  coordinatorId?: string;
+  coordinatorName?: string;
   comments: Comment[];
   createdAt: string;
-  urgency: "Low" | "Medium" | "High";
-  coordinatorId?: string;
-  proofImage?: string;
-  resolutionLocation?: {lat: number, lng: number};
-  additionalImages?: string[];
-}
-
-export interface CoordinatorApplication {
-  id: string;
-  userId: string;
-  userName: string;
-  email: string;
-  phone: string;
-  address: string;
-  experience: string;
-  message: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
-}
-
-export interface SpamReport {
-  id: string;
-  reporterId: string;
-  reporterName: string;
-  targetType: "user" | "report" | "comment";
-  targetId: string;
-  reason: string;
-  status: "pending" | "resolved";
-  createdAt: string;
+  urgency?: string;
+  slaDeadline?: string;
+  closedAt?: string;
+  intensityScore?: number;
+  escalationLevel?: number;
 }
 
 export interface Notification {
   id: string;
-  userId: string;
   title: string;
   message: string;
   read: boolean;
-  type: "system" | "report" | "application";
+  type: string;
   createdAt: string;
   link?: string;
 }
 
-const mockUsers: User[] = [
-  { 
-    id: "u1", 
-    name: "Alice Citizen", 
-    email: "alice@example.com", 
-    role: "citizen", 
-    status: "active", 
-    avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGF2YXRhcnxlbnwxfHx8fDE3NzMzMTM0NzV8MA&ixlib=rb-4.1.0&q=80&w=150",
-    settings: { emailNotifications: true, smsNotifications: false, theme: "system" }
-  },
-  { 
-    id: "u2", 
-    name: "Bob Coordinator", 
-    email: "bob@citywatch.com", 
-    role: "coordinator", 
-    status: "active", 
-    avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGF2YXRhcnxlbnwxfHx8fDE3NzMzMTM0NzV8MA&ixlib=rb-4.1.0&q=80&w=150", 
-    area: "North Area",
-    settings: { emailNotifications: true, smsNotifications: true, theme: "light" }
-  },
-  { 
-    id: "u3", 
-    name: "Carol Admin", 
-    email: "admin@citywatch.com", 
-    role: "admin", 
-    status: "active", 
-    avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGF2YXRhcnxlbnwxfHx8fDE3NzMzMTM0NzV8MA&ixlib=rb-4.1.0&q=80&w=150",
-    settings: { emailNotifications: true, smsNotifications: false, theme: "system" }
-  },
-  { 
-    id: "u4", 
-    name: "Dave Coordinator", 
-    email: "dave@citywatch.com", 
-    role: "coordinator", 
-    status: "active", 
-    avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGF2YXRhcnxlbnwxfHx8fDE3NzMzMTM0NzV8MA&ixlib=rb-4.1.0&q=80&w=150", 
-    area: "South Area",
-    settings: { emailNotifications: true, smsNotifications: false, theme: "system" }
-  },
-];
-
-const mockReports: Report[] = [
-  {
-    id: "r1",
-    title: "Large Pothole on Main St",
-    description: "There is a massive pothole causing damage to cars near the central intersection. It has been there for weeks and keeps getting larger after the recent rain.",
-    image: "https://images.unsplash.com/photo-1667317980667-9d5ed99f829e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwcG90aG9sZSUyMGRhbWFnZXxlbnwxfHx8fDE3NzMyMjUwMDN8MA&ixlib=rb-4.1.0&q=80&w=600",
-    locationText: "123 Main St",
-    lat: 40.7128,
-    lng: -74.0060,
-    area: "North Area",
-    status: "In Progress",
-    authorId: "u1",
-    authorName: "Alice Citizen",
-    authorAvatar: mockUsers[0].avatar,
-    upvotes: 145,
-    downvotes: 2,
-    comments: [
-      { id: "c1", authorId: "u2", authorName: "Bob Coordinator", text: "We have dispatched a team to look into this today.", createdAt: format(subHours(new Date(), 5), "yyyy-MM-dd'T'HH:mm:ss'Z'") },
-      { id: "c2", authorId: "u1", authorName: "Alice Citizen", text: "Thank you! It's very dangerous at night.", createdAt: format(subHours(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss'Z'") }
-    ],
-    createdAt: format(subDays(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
-    urgency: "High",
-    coordinatorId: "u2"
-  },
-  {
-    id: "r2",
-    title: "Overgrown Trees Blocking Streetlight",
-    description: "The branches have completely covered the streetlight on Oak avenue, making the sidewalk pitch black at night.",
-    image: "https://images.unsplash.com/photo-1765300012968-2c4ceb1d99c4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYXJrJTIwb3Zlcmdyb3duJTIwdHJlZXMlMjBzdHJlZXR8ZW58MXx8fHwxNzczMzI1ODc5fDA&ixlib=rb-4.1.0&q=80&w=600",
-    locationText: "45 Oak Avenue",
-    lat: 40.7150,
-    lng: -74.0100,
-    area: "South Area",
-    status: "Reported",
-    authorId: "u1",
-    authorName: "Alice Citizen",
-    authorAvatar: mockUsers[0].avatar,
-    upvotes: 89,
-    downvotes: 0,
+function mapBackendComplaint(c: any): Report {
+  return {
+    id: String(c.id),
+    category: c.category || "",
+    title: c.category ? (c.category.charAt(0) + c.category.slice(1).toLowerCase()) + " Issue" : "Complaint",
+    description: c.description,
+    image: c.imageUrls && c.imageUrls.length > 0 ? c.imageUrls[0] : "",
+    imageUrl: c.imageUrls && c.imageUrls.length > 0 ? c.imageUrls[0] : "",
+    imageUrls: c.imageUrls || [],
+    locationText: c.locationText || `${c.latitude?.toFixed(4)}, ${c.longitude?.toFixed(4)}`,
+    lat: c.latitude,
+    lng: c.longitude,
+    area: c.areaName,
+    areaName: c.areaName,
+    status: c.status,
+    priority: c.priority,
+    authorId: String(c.citizenId),
+    authorName: c.citizenName,
+    authorAvatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?w=150",
+    upvotes: c.upvotes || 0,
+    downvotes: c.downvotes || 0,
+    coordinatorId: c.coordinatorId ? String(c.coordinatorId) : undefined,
+    coordinatorName: c.coordinatorName,
     comments: [],
-    createdAt: format(subDays(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
-    urgency: "Medium"
-  }
-];
+    createdAt: c.createdAt,
+    urgency: c.priority,
+    slaDeadline: c.slaDeadline,
+    closedAt: c.closedAt,
+    intensityScore: c.intensityScore,
+    escalationLevel: c.escalationLevel,
+  };
+}
 
-const mockNotifications: Notification[] = [
-  { id: "n1", userId: "u1", title: "Report Status Updated", message: "Your report 'Large Pothole on Main St' is now In Progress.", read: false, type: "report", createdAt: format(subHours(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss'Z'"), link: "/report/r1" },
-  { id: "n2", userId: "u3", title: "New Coordinator Application", message: "A user wants to join the coordinator team.", read: false, type: "application", createdAt: format(subHours(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss'Z'"), link: "/admin" },
-];
+function mapBackendComment(c: any): Comment {
+  return {
+    id: String(c.id),
+    authorId: String(c.authorId),
+    authorName: c.authorName,
+    authorRole: c.authorRole,
+    text: c.content,
+    createdAt: c.createdAt,
+    parentId: c.parentId ? String(c.parentId) : undefined,
+  };
+}
+
+function mapBackendNotification(n: any): Notification {
+  return {
+    id: String(n.id),
+    title: n.title,
+    message: n.message,
+    read: n.isRead,
+    type: n.type,
+    createdAt: n.createdAt,
+    link: n.link,
+  };
+}
 
 interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+
   reports: Report[];
   setReports: React.Dispatch<React.SetStateAction<Report[]>>;
-  addReport: (report: Report) => void;
+  loadReports: () => Promise<void>;
+  addReport: (data: any) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => void;
-  handleVote: (reportId: string, type: "up" | "down") => void;
-  addComment: (reportId: string, comment: Comment) => void;
-  
-  // Advanced Settings / Management
-  applications: CoordinatorApplication[];
-  submitApplication: (app: Omit<CoordinatorApplication, "id" | "status" | "createdAt">) => void;
-  updateApplicationStatus: (id: string, status: "approved" | "rejected") => void;
+  updateReportStatus: (id: string, status: string) => Promise<void>;
 
-  spamReports: SpamReport[];
-  submitSpamReport: (report: Omit<SpamReport, "id" | "status" | "createdAt">) => void;
-  resolveSpamReport: (id: string) => void;
+  handleVote: (reportId: string, type: "up" | "down") => void;
+  addComment: (reportId: string, content: string) => Promise<void>;
+  getComments: (reportId: string) => Promise<Comment[]>;
 
   notifications: Notification[];
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
-  addNotification: (notification: Omit<Notification, "id" | "createdAt" | "read">) => void;
+  loadNotifications: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 
-  banUser: (id: string) => void;
-  unbanUser: (id: string) => void;
+  banUser: (id: string) => Promise<void>;
+  unbanUser: (id: string) => Promise<void>;
+  loadAdminUsers: () => Promise<User[]>;
   updateUserSettings: (settings: Partial<User["settings"]>) => void;
+
+  // Kept for SubmitReport UI state only
+  applications: any[];
+  spamReports: any[];
+  submitApplication: (app: any) => void;
+  submitSpamReport: (report: any) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [reports, setReports] = useState<Report[]>(mockReports);
+  const [currentUser, setCurrentUserState] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [applications] = useState<any[]>([]);
+  const [spamReports] = useState<any[]>([]);
 
-  // On mount, check for stored JWT and restore session
+  const mapToFrontendUser = (data: any): User => ({
+    id: String(data.id),
+    name: data.name || data.username,
+    email: data.email,
+    role: data.role?.toLowerCase() as Role,
+    avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?w=150",
+    area: data.areaName || data.area,
+    status: (data.status || "ACTIVE").toLowerCase() === "active" ? "active" : "banned",
+    settings: { emailNotifications: true, smsNotifications: false, theme: "system" },
+  });
+
+  const setCurrentUser = (user: User | null) => setCurrentUserState(user);
+
+  // Restore session on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Token invalid");
-          return res.json();
-        })
-        .then((data) => {
-          setCurrentUser({
-            id: String(data.id),
-            name: data.name || data.username,
-            email: data.email,
-            role: data.role.toLowerCase() as "citizen" | "coordinator" | "admin",
-            avatar:
-              "https://images.unsplash.com/photo-1701463387028-3947648f1337?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGF2YXRhcnxlbnwxfHx8fDE3NzMzMTM0NzV8MA&ixlib=rb-4.1.0&q=80&w=150",
-            area: data.area || undefined,
-            status: (data.status || "ACTIVE").toLowerCase() as "active" | "banned",
-            settings: {
-              emailNotifications: true,
-              smsNotifications: false,
-              theme: "system",
-            },
-          });
-        })
-        .catch(() => {
-          localStorage.removeItem("token");
-        });
+    if (!token) return;
+    api.auth.me()
+      .then(data => setCurrentUserState(mapToFrontendUser(data)))
+      .catch(() => localStorage.removeItem("token"));
+  }, []);
+
+  const loadReports = useCallback(async () => {
+    try {
+      const data = await api.complaints.list();
+      setReports(data.map(mapBackendComplaint));
+    } catch {
+      // silently fail — public page still renders
     }
   }, []);
-  
-  const [applications, setApplications] = useState<CoordinatorApplication[]>([
-    { id: "app1", userId: "u1", userName: "Alice Citizen", email: "alice@example.com", address: "123 Main St", experience: "Volunteered at local shelter for 2 years", phone: "555-0199", message: "I want to help the community.", status: "pending", createdAt: format(subDays(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss'Z'") }
-  ]);
-  const [spamReports, setSpamReports] = useState<SpamReport[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
 
-  const addReport = (report: Report) => {
-    setReports((prev) => [report, ...prev]);
+  // Load reports on mount
+  useEffect(() => { loadReports(); }, [loadReports]);
+
+  // Load notifications when user is set
+  useEffect(() => {
+    if (currentUser) loadNotifications();
+  }, [currentUser]);
+
+  const addReport = async (data: any) => {
+    const created = await api.complaints.submit(data);
+    setReports(prev => [mapBackendComplaint(created), ...prev]);
   };
 
   const updateReport = (id: string, updates: Partial<Report>) => {
-    setReports((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
+    setReports(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   };
 
-  const addComment = (reportId: string, comment: Comment) => {
-    setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, comments: [...r.comments, comment] } : r));
+  const updateReportStatus = async (id: string, status: string) => {
+    const updated = await api.complaints.updateStatus(id, status);
+    setReports(prev => prev.map(r => r.id === id ? mapBackendComplaint(updated) : r));
   };
 
   const handleVote = (reportId: string, type: "up" | "down") => {
-    if (!currentUser) return;
-    const userId = currentUser.id;
-
-    setReports((prev) => prev.map((report) => {
-      if (report.id !== reportId) return report;
-      
-      const currentVotes = report.userVotes || {};
-      const previousVote = currentVotes[userId];
-      
-      let newUpvotes = report.upvotes;
-      let newDownvotes = report.downvotes;
-      const newUserVotes = { ...currentVotes };
-
-      if (previousVote === type) {
-        // Toggle off
-        if (type === "up") newUpvotes--;
-        else newDownvotes--;
-        delete newUserVotes[userId];
-      } else {
-        // Switch or new vote
-        if (previousVote === "up") newUpvotes--;
-        if (previousVote === "down") newDownvotes--;
-        
-        if (type === "up") newUpvotes++;
-        if (type === "down") newDownvotes++;
-        newUserVotes[userId] = type;
-      }
-
-      return {
-        ...report,
-        upvotes: newUpvotes,
-        downvotes: newDownvotes,
-        userVotes: newUserVotes
-      };
+    if (!currentUser) { toast.error("Please sign in to vote."); return; }
+    // Optimistic UI — backend voting is coordinator-specific (VALID/INVALID)
+    // Public upvote/downvote is a future feature; we update locally for now
+    setReports(prev => prev.map(r => {
+      if (r.id !== reportId) return r;
+      return { ...r, upvotes: type === "up" ? r.upvotes + 1 : r.upvotes, downvotes: type === "down" ? r.downvotes + 1 : r.downvotes };
     }));
   };
 
-  const submitApplication = (app: Omit<CoordinatorApplication, "id" | "status" | "createdAt">) => {
-    const newApp: CoordinatorApplication = {
-      ...app,
-      id: "app_" + Date.now(),
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
-    setApplications(prev => [newApp, ...prev]);
-    toast.success("Application submitted successfully!");
-    
-    // Notify Admin
-    addNotification({
-      userId: "u3", // Assuming u3 is the admin for demo
-      title: "New Coordinator Application",
-      message: `${app.userName} applied to be a coordinator.`,
-      type: "application",
-      link: "/admin"
-    });
+  const getComments = async (reportId: string): Promise<Comment[]> => {
+    const data = await api.comments.list(reportId);
+    return data.map(mapBackendComment);
   };
 
-  const updateApplicationStatus = (id: string, status: "approved" | "rejected") => {
-    setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    
-    const app = applications.find(a => a.id === id);
-    if (app && status === "approved") {
-      // Make the user a coordinator
-      setUsers(prev => prev.map(u => u.id === app.userId ? { ...u, role: "coordinator", area: "North Area" } : u));
-      if (currentUser?.id === app.userId) {
-        setCurrentUser(prev => prev ? { ...prev, role: "coordinator", area: "North Area" } : null);
-      }
-      
-      addNotification({
-        userId: app.userId,
-        title: "Application Approved",
-        message: "Your application to become a coordinator has been approved.",
-        type: "system",
-        link: "/dashboard"
-      });
-    }
-    toast.success(`Application ${status}`);
+  const addComment = async (reportId: string, content: string) => {
+    await api.comments.add(reportId, content);
   };
 
-  const submitSpamReport = (report: Omit<SpamReport, "id" | "status" | "createdAt">) => {
-    const newReport: SpamReport = {
-      ...report,
-      id: "spam_" + Date.now(),
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
-    setSpamReports(prev => [newReport, ...prev]);
-    toast.success("Report submitted to Admin.");
+  const loadNotifications = async () => {
+    try {
+      const data = await api.notifications.list();
+      setNotifications(data.map(mapBackendNotification));
+    } catch { }
   };
 
-  const resolveSpamReport = (id: string) => {
-    setSpamReports(prev => prev.map(r => r.id === id ? { ...r, status: "resolved" } : r));
-    toast.success("Spam report resolved.");
-  };
-
-  const markNotificationRead = (id: string) => {
+  const markNotificationRead = async (id: string) => {
+    await api.notifications.markRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
-  const markAllNotificationsRead = () => {
-    if (currentUser) {
-      setNotifications(prev => prev.map(n => n.userId === currentUser.id ? { ...n, read: true } : n));
-    }
+  const markAllNotificationsRead = async () => {
+    await api.notifications.markAllRead();
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const addNotification = (notification: Omit<Notification, "id" | "createdAt" | "read">) => {
-    const newNotif: Notification = {
-      ...notification,
-      id: "notif_" + Date.now(),
-      read: false,
-      createdAt: new Date().toISOString()
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-  };
-
-  const banUser = (id: string) => {
+  const banUser = async (id: string) => {
+    await api.admin.banUser(id);
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "banned" } : u));
     toast.success("User banned.");
   };
 
-  const unbanUser = (id: string) => {
+  const unbanUser = async (id: string) => {
+    await api.admin.unbanUser(id);
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "active" } : u));
     toast.success("User unbanned.");
   };
 
+  const loadAdminUsers = async (): Promise<User[]> => {
+    const data = await api.admin.users();
+    const mapped = data.map(mapToFrontendUser);
+    setUsers(mapped);
+    return mapped;
+  };
+
   const updateUserSettings = (settings: Partial<User["settings"]>) => {
     if (currentUser) {
-      const updatedUser = { ...currentUser, settings: { ...currentUser.settings, ...settings } };
-      setCurrentUser(updatedUser);
-      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-      toast.success("Settings updated successfully.");
+      const updated = { ...currentUser, settings: { ...currentUser.settings, ...settings } };
+      setCurrentUserState(updated);
+      toast.success("Settings updated.");
     }
   };
 
+  const submitApplication = (app: any) => toast.success("Application submitted.");
+  const submitSpamReport = (report: any) => toast.success("Report submitted to Admin.");
+
   return (
-    <AppContext.Provider value={{ 
-      currentUser, setCurrentUser, users, setUsers, reports, setReports, addReport, updateReport, handleVote, addComment,
-      applications, submitApplication, updateApplicationStatus,
-      spamReports, submitSpamReport, resolveSpamReport,
-      notifications, markNotificationRead, markAllNotificationsRead, addNotification,
-      banUser, unbanUser, updateUserSettings
+    <AppContext.Provider value={{
+      currentUser, setCurrentUser, users,
+      reports, setReports, loadReports, addReport, updateReport, updateReportStatus,
+      handleVote, addComment, getComments,
+      notifications, loadNotifications, markNotificationRead, markAllNotificationsRead,
+      banUser, unbanUser, loadAdminUsers, updateUserSettings,
+      applications, spamReports, submitApplication, submitSpamReport,
     }}>
       {children}
     </AppContext.Provider>
