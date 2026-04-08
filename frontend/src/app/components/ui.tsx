@@ -6,9 +6,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost', size?: 'default' | 'sm' | 'lg' }>(
+export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'default', size?: 'default' | 'sm' | 'lg' }>(
   ({ className, variant = 'primary', size = 'default', ...props }, ref) => {
     return (
+
       <button
         ref={ref}
         className={cn(
@@ -20,7 +21,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
           variant === 'secondary' && "bg-gray-100 text-[#1A4331] hover:bg-gray-200 focus:ring-gray-200",
           variant === 'danger' && "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
           variant === 'ghost' && "bg-transparent text-[#1A4331] hover:bg-gray-100 focus:ring-gray-200",
+          variant === 'outline' && "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-gray-200",
+          variant === 'default' && "bg-gray-100 text-gray-800 hover:bg-gray-200",
           className
+
         )}
         {...props}
       />
@@ -79,5 +83,14 @@ export function Badge({ children, className, variant = 'default' }: { children: 
     )}>
       {children}
     </span>
+  );
+}
+
+export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("animate-pulse rounded-md bg-gray-200", className)}
+      {...props}
+    />
   );
 }

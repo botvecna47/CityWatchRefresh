@@ -3,7 +3,8 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowLeft, ArrowBigUp, ArrowBigDown, MapPin, Share2, MessageSquare, AlertTriangle, CheckCircle2, ImagePlus, X, Trash2 } from "lucide-react";
 import { useAppContext, Comment, Report } from "../store";
-import { Card, Button, Input, Textarea, Badge } from "../components/ui";
+import { Card, Button, Input, Textarea, Badge, Skeleton } from "../components/ui";
+
 import { StatusBadge } from "./Home";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -11,12 +12,12 @@ import { toast } from "sonner";
 export function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { reports, currentUser, updateReport, handleVote: contextHandleVote, addComment, submitSpamReport, setReports } = useAppContext();
+  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer } = useAppContext();
+
   const report = reports.find(r => r.id === id);
 
   const [commentText, setCommentText] = useState("");
-  const [showUpvoteModal, setShowUpvoteModal] = useState(false);
-  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+
 
   if (!report) {
     return (
@@ -31,7 +32,7 @@ export function ReportDetail() {
     );
   }
 
-  const handleVote = (type: 'up' | 'down') => {
+  const handleVote = async (type: 'up' | 'down') => {
     if (!currentUser) {
       toast.error("Please sign in to vote.");
       navigate("/auth");
@@ -39,33 +40,15 @@ export function ReportDetail() {
     }
 
     if (type === 'up') {
-      setShowUpvoteModal(true);
+      await voteOnServer(report.id);
+      toast.success("Upvote recorded!");
     } else {
-      contextHandleVote(report.id, 'down');
-      toast.success("Downvoted successfully.");
+      toast.info("Downvoting is coming soon!");
     }
   };
 
-  const confirmUpvote = () => {
-    const currentAdditional = report.additionalImages || [];
-    const baseImageCount = report.image ? 1 : 0;
-    const totalCurrentCount = baseImageCount + currentAdditional.length;
-    
-    if (additionalImages.length > 0 && (totalCurrentCount + additionalImages.length) > 5) {
-      toast.error(`This report can only have a maximum of 5 images total. You can add up to ${5 - totalCurrentCount} more.`);
-      return;
-    }
 
-    const updates: Partial<Report> = {};
-    if (additionalImages.length > 0) {
-      updates.additionalImages = [...currentAdditional, ...additionalImages];
-      updateReport(report.id, updates);
-    }
-    contextHandleVote(report.id, 'up');
-    setShowUpvoteModal(false);
-    setAdditionalImages([]);
-    toast.success("Upvote recorded!");
-  };
+
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,15 +120,36 @@ export function ReportDetail() {
         <ArrowLeft className="w-4 h-4" /> Back to Feed
       </Link>
 
+      {loading ? (
+        <Card className="overflow-hidden bg-white shadow-md border-gray-200 flex p-6 animate-pulse">
+          <div className="w-16 flex-col gap-4">
+            <Skeleton className="w-8 h-8 rounded" />
+            <Skeleton className="w-8 h-4 rounded mt-4" />
+          </div>
+          <div className="flex-1 px-4 space-y-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-12 h-12 rounded-full" />
+              <div>
+                <Skeleton className="w-32 h-5 rounded mb-2" />
+                <Skeleton className="w-24 h-4 rounded" />
+              </div>
+            </div>
+            <Skeleton className="w-full h-8 rounded" />
+            <Skeleton className="w-full h-32 rounded" />
+            <Skeleton className="w-full h-64 rounded" />
+          </div>
+        </Card>
+      ) : (
       <Card className="overflow-hidden bg-white shadow-md border-gray-200">
+
         <div className="flex flex-col md:flex-row">
           {/* Voting Sidebar */}
           <div className="hidden md:flex w-16 bg-gray-50 flex-col items-center py-6 border-r border-gray-100 gap-2">
-            <button onClick={() => handleVote('up')} className={`p-2 transition-colors rounded hover:bg-gray-200 ${report.userVotes?.[currentUser?.id || ""] === 'up' ? "text-[#2E7D32] bg-green-50" : "text-gray-400 hover:text-[#2E7D32]"}`}>
+            <button onClick={() => handleVote('up')} className="p-2 text-gray-400 hover:text-[#2E7D32] transition-colors rounded hover:bg-gray-200">
               <ArrowBigUp className="w-8 h-8" />
             </button>
             <span className="text-lg font-bold text-[#1A4331]">{report.upvotes - report.downvotes}</span>
-            <button onClick={() => handleVote('down')} className={`p-2 transition-colors rounded hover:bg-gray-200 ${report.userVotes?.[currentUser?.id || ""] === 'down' ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-red-500"}`}>
+            <button onClick={() => handleVote('down')} className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-200">
               <ArrowBigDown className="w-8 h-8" />
             </button>
           </div>
@@ -237,11 +241,11 @@ export function ReportDetail() {
 
             {/* Mobile Voting */}
             <div className="flex md:hidden items-center gap-4 mb-8 pb-8 border-b border-gray-100">
-              <button onClick={() => handleVote('up')} className={`p-2 bg-gray-50 rounded-sm border border-gray-200 transition-colors ${report.userVotes?.[currentUser?.id || ""] === 'up' ? "text-[#2E7D32] bg-green-50" : "text-gray-400 hover:text-[#2E7D32]"}`}>
+              <button onClick={() => handleVote('up')} className="p-2 text-gray-400 hover:text-[#2E7D32] bg-gray-50 rounded-sm border border-gray-200">
                 <ArrowBigUp className="w-6 h-6" />
               </button>
               <span className="text-lg font-bold text-[#1A4331]">{report.upvotes - report.downvotes}</span>
-              <button onClick={() => handleVote('down')} className={`p-2 bg-gray-50 rounded-sm border border-gray-200 transition-colors ${report.userVotes?.[currentUser?.id || ""] === 'down' ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-red-500"}`}>
+              <button onClick={() => handleVote('down')} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-sm border border-gray-200">
                 <ArrowBigDown className="w-6 h-6" />
               </button>
             </div>
@@ -297,78 +301,7 @@ export function ReportDetail() {
         </div>
       </Card>
 
-      {/* Upvote & Image Modal */}
-      <AnimatePresence>
-        {showUpvoteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl relative text-[#1A4331]"
-            >
-              <button 
-                onClick={() => setShowUpvoteModal(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <h3 className="text-xl font-bold mb-2 font-serif flex items-center gap-2">
-                <ArrowBigUp className="text-[#2E7D32]" /> Confirm Upvote
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Upvoting helps prioritize issues for coordinators. Do you have any additional photos of this issue you'd like to attach? (Optional, Max 5 total)
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 mb-6">
-                {additionalImages.map((img, idx) => (
-                  <div key={idx} className="relative rounded-sm overflow-hidden border border-gray-200 h-24 group">
-                    <img src={img} alt="Additional" className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => setAdditionalImages(prev => prev.filter((_, i) => i !== idx))}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {((report.image ? 1 : 0) + (report.additionalImages?.length || 0) + additionalImages.length) < 5 && (
-                  <div className="border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors cursor-pointer bg-white group">
-                    <ImagePlus className="w-6 h-6 text-gray-400 group-hover:text-[#2E7D32] transition-colors mb-1" />
-                    <span className="text-xs text-gray-500 font-serif">Add Photo</span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      multiple
-                      className="absolute inset-0 opacity-0 cursor-pointer" 
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []) as File[];
-                        const currentTotal = (report.image ? 1 : 0) + (report.additionalImages?.length || 0) + additionalImages.length;
-                        const remaining = 5 - currentTotal;
-                        const toAdd = files.slice(0, remaining).map(f => URL.createObjectURL(f));
-                        setAdditionalImages(prev => [...prev, ...toAdd]);
-                        if (files.length > remaining) {
-                          toast.error(`Maximum 5 total images allowed. Only added ${remaining}.`);
-                        }
-                      }} 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowUpvoteModal(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={confirmUpvote} className="bg-[#1A4331] text-white hover:bg-[#112d21]">
-                  Submit Upvote
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-        
+        {/* Deleted Upvote Modal which is completely unnecessary since it's going via server anyway */}
         {showSpamModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div 
@@ -404,6 +337,7 @@ export function ReportDetail() {
           </div>
         )}
       </AnimatePresence>
+      )}
     </motion.div>
   );
 }

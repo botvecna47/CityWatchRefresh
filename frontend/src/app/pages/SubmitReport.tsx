@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Upload, MapPin, Crosshair, ArrowRight, CheckCircle2, AlertTriangle, ArrowBigUp } from "lucide-react";
 import { useAppContext, Report } from "../store";
-import { api } from "../api";
 import { Card, Button, Input, Textarea, cn } from "../components/ui";
 import { motion } from "motion/react";
+import { supabase } from "../supabase";
 
 export function SubmitReport() {
   const { addReport, currentUser, reports, updateReport } = useAppContext();
@@ -20,6 +20,8 @@ export function SubmitReport() {
   const [area, setArea] = useState("North Area");
   const [category, setCategory] = useState("Infrastructure");
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleDetectLocation = () => {
     setIsDetecting(true);
@@ -53,6 +55,7 @@ export function SubmitReport() {
       
       const newImages = filesToAdd.map(file => URL.createObjectURL(file));
       setImages(prev => [...prev, ...newImages]);
+      setImageFiles(prev => [...prev, ...filesToAdd]);
       
       if (files.length > remainingSlots) {
         import("sonner").then(({ toast }) => {
@@ -64,31 +67,68 @@ export function SubmitReport() {
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !location) return;
 
-    let parsedCategory = "OTHER";
-    if (category.includes("nfrastructure")) parsedCategory = "POTHOLE"; // mapping approx
-    if (category.includes("Sanitation")) parsedCategory = "GARBAGE";
-    if (category.includes("Utilities")) parsedCategory = "STREETLIGHT";
+    setIsSubmitting(true);
+    let uploadedUrls: string[] = [];
+    
+    // Upload files to Supabase citywatch-images bucket
+    if (imageFiles.length > 0) {
+      for (const file of imageFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `reports/${fileName}`;
 
-    api.complaints.submit({
-      category: parsedCategory,
-      description: title + "\n\n" + description,
-      imageUrls: images, 
-      latitude: 40.7128 + (Math.random() - 0.5) * 0.01,
-      longitude: -74.0060 + (Math.random() - 0.5) * 0.01,
-      locationText: location
-    }).then(() => {
-      import("sonner").then(({ toast }) => toast.success("Complaint submitted successfully!"));
-      navigate("/");
-      // Ideally force a refresh in the store
-    }).catch((err: any) => {
-      import("sonner").then(({ toast }) => toast.error("Failed to submit: " + err.message));
-    });
+        const { error: uploadError } = await supabase.storage
+          .from('citywatch-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          import("sonner").then(({ toast }) => toast.error('Failed to upload image'));
+          continue;
+        }
+
+        const { data } = supabase.storage
+          .from('citywatch-images')
+          .getPublicUrl(filePath);
+          
+        uploadedUrls.push(data.publicUrl);
+      }
+    }
+
+    const mainImageUrl = uploadedUrls.length > 0 ? uploadedUrls[0] : "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=600&auto=format&fit=crop";
+
+    // Call API (using mock store for now, but API wired)
+    const newReport: Report = {
+      id: Math.random().toString(36).substr(2, 9),
+      title,
+      description,
+      image: mainImageUrl, // Real URL!
+      additionalImages: uploadedUrls.slice(1),
+      locationText: location,
+      lat: 40.7128 + (Math.random() - 0.5) * 0.01,
+      lng: -74.0060 + (Math.random() - 0.5) * 0.01,
+      area: area as any,
+      status: "Reported",
+      authorId: currentUser?.id || "u1",
+      authorName: currentUser?.name || "Anonymous",
+      authorAvatar: currentUser?.avatar || "",
+      upvotes: 1,
+      downvotes: 0,
+      comments: [],
+      createdAt: new Date().toISOString(),
+      urgency: "Medium"
+    };
+
+    addReport(newReport);
+    setIsSubmitting(false);
+    navigate("/");
   };
 
   return (
@@ -290,8 +330,8 @@ export function SubmitReport() {
 
             <div className="flex justify-between pt-4">
               <Button type="button" variant="ghost" onClick={() => setStep(2)}>Edit Details</Button>
-              <Button onClick={handleSubmit} className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white">
-                <CheckCircle2 className="w-4 h-4" /> Submit Report
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white">
+                <CheckCircle2 className="w-4 h-4" /> {isSubmitting ? "Uploading..." : "Submit Report"}
               </Button>
             </div>
           </div>

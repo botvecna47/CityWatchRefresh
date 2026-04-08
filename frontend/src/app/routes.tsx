@@ -1,15 +1,30 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 import { AppLayout } from "./components/Layout";
-import { Home } from "./pages/Home";
-import { ReportDetail } from "./pages/ReportDetail";
-import { SubmitReport } from "./pages/SubmitReport";
-import { MapPage } from "./pages/MapPage";
-import { Dashboard } from "./pages/Dashboards";
-import { AdminPanel } from "./pages/AdminPanel";
 import { useAppContext } from "./store";
-import { AuthPage } from "./pages/AuthPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
-import { SettingsPage } from "./pages/SettingsPage";
+
+const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
+const ReportDetail = lazy(() => import("./pages/ReportDetail").then(m => ({ default: m.ReportDetail })));
+const SubmitReport = lazy(() => import("./pages/SubmitReport").then(m => ({ default: m.SubmitReport })));
+const MapPage = lazy(() => import("./pages/MapPage").then(m => ({ default: m.MapPage })));
+const Dashboard = lazy(() => import("./pages/Dashboards").then(m => ({ default: m.Dashboard })));
+const AdminPanel = lazy(() => import("./pages/AdminPanel").then(m => ({ default: m.AdminPanel })));
+const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
+const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
+
+function SuspenseLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1A4331]"></div>
+      </div>
+    }>
+      {children}
+    </Suspense>
+  );
+}
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAppContext();
@@ -22,16 +37,17 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppLayout />,
     children: [
-      { index: true, element: <Home /> },
-      { path: "report/:id", element: <ReportDetail /> },
-      { path: "map", element: <MapPage /> },
-      { path: "auth", element: <AuthPage /> },
-      { path: "submit", element: <ProtectedRoute><SubmitReport /></ProtectedRoute> },
-      { path: "dashboard", element: <ProtectedRoute><Dashboard /></ProtectedRoute> },
-      { path: "admin", element: <ProtectedRoute><AdminPanel /></ProtectedRoute> },
-      { path: "notifications", element: <ProtectedRoute><NotificationsPage /></ProtectedRoute> },
-      { path: "settings", element: <ProtectedRoute><SettingsPage /></ProtectedRoute> },
+      { index: true, element: <SuspenseLayout><Home /></SuspenseLayout> },
+      { path: "report/:id", element: <SuspenseLayout><ReportDetail /></SuspenseLayout> },
+      { path: "map", element: <SuspenseLayout><MapPage /></SuspenseLayout> },
+      { path: "auth", element: <SuspenseLayout><AuthPage /></SuspenseLayout> },
+      { path: "submit", element: <ProtectedRoute><SuspenseLayout><SubmitReport /></SuspenseLayout></ProtectedRoute> },
+      { path: "dashboard", element: <ProtectedRoute><SuspenseLayout><Dashboard /></SuspenseLayout></ProtectedRoute> },
+      { path: "admin", element: <ProtectedRoute><SuspenseLayout><AdminPanel /></SuspenseLayout></ProtectedRoute> },
+      { path: "notifications", element: <ProtectedRoute><SuspenseLayout><NotificationsPage /></SuspenseLayout></ProtectedRoute> },
+      { path: "settings", element: <ProtectedRoute><SuspenseLayout><SettingsPage /></SuspenseLayout></ProtectedRoute> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
+
   },
 ]);
