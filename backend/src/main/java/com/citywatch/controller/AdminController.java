@@ -39,7 +39,7 @@ public class AdminController {
     }
 
     @PatchMapping("/users/{id}/ban")
-    public ResponseEntity<Map<String, String>> banUser(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> banUser(@PathVariable String id) {
         userRepository.findById(id).ifPresent(u -> {
             u.setStatus(UserStatus.SUSPENDED);
             userRepository.save(u);
@@ -48,7 +48,7 @@ public class AdminController {
     }
 
     @PatchMapping("/users/{id}/unban")
-    public ResponseEntity<Map<String, String>> unbanUser(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> unbanUser(@PathVariable String id) {
         userRepository.findById(id).ifPresent(u -> {
             u.setStatus(UserStatus.ACTIVE);
             userRepository.save(u);

@@ -1,15 +1,69 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { MapPin, X, Layers, Filter } from "lucide-react";
 import { useAppContext, Area, Status, Report } from "../store";
 import { cn, Badge, Button } from "../components/ui";
 import { StatusBadge } from "./Home";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+let icons: Record<string, L.DivIcon> | null = null;
+
+const initLeaflet = () => {
+  if (icons) return;
+
+  // Fix for default Leaflet icons
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+
+  // Create custom colored markers for different statuses
+  const createCustomIcon = (colorClass: string) => {
+    return L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `<div class="relative w-8 h-8 -translate-x-1/2 -translate-y-full transition-transform hover:scale-110">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin ${colorClass} drop-shadow-md"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div class="absolute top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-current opacity-20 animate-ping"></div>
+             </div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32]
+    });
+  };
+
+  icons = {
+    Completed: createCustomIcon('text-green-600'),
+    'In Progress': createCustomIcon('text-amber-500'),
+    Reported: createCustomIcon('text-red-600')
+  };
+};
+
+function MapUpdater({ reports }: { reports: Report[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (reports.length > 0) {
+      const bounds = L.latLngBounds(reports.map((r: Report) => [r.lat, r.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [reports, map]);
+  return null;
+}
 
 export function MapPage() {
   const { reports } = useAppContext();
   const [activeArea, setActiveArea] = useState<Area | "All">("All");
   const [activeStatus, setActiveStatus] = useState<Status | "All">("All");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    initLeaflet();
+    setIsClient(true);
+  }, []);
 
   const filteredReports = reports.filter(r => {
     if (activeArea !== "All" && r.area !== activeArea) return false;
@@ -17,17 +71,42 @@ export function MapPage() {
     return true;
   });
 
+  // Default center (San Francisco roughly)
+  const defaultCenter: [number, number] = [37.7749, -122.4194];
+
+  if (!isClient) return null;
+
   return (
     <div className="relative w-full h-[calc(100vh-8rem)] rounded-sm overflow-hidden bg-[#e5e3df] border border-gray-200 shadow-sm">
-      {/* Mock Map Background */}
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1546087812-89cbb3e6e8a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwbWFwJTIwYWJzdHJhY3R8ZW58MXx8fHwxNzczMzA3NTQ5fDA&ixlib=rb-4.1.0&q=80&w=1600')] bg-cover bg-center opacity-40 mix-blend-multiply pointer-events-none"></div>
+      
+      <MapContainer 
+        center={defaultCenter} 
+        zoom={13} 
+        style={{ height: '100%', width: '100%', zIndex: 0 }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapUpdater reports={filteredReports} />
 
-      {/* Grid Overlay for Mock Map Feel */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(26,67,49,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(26,67,49,0.05)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+        {filteredReports.map(report => (
+          <Marker 
+            key={report.id} 
+            position={[report.lat, report.lng]}
+            icon={icons[report.status]}
+            eventHandlers={{
+              click: () => setSelectedReport(report),
+            }}
+          >
+            {/* We handle Popup externally for styling freedom, but could use <Popup> here too */}
+          </Marker>
+        ))}
+      </MapContainer>
 
-      {/* Glassmorphic Filters */}
-      <div className="absolute top-6 left-6 z-10 flex flex-col gap-4">
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-sm shadow-sm border border-white/50 w-72">
+      {/* Glassmorphic Filters Overlay */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-auto z-10 flex flex-col gap-4 pointer-events-none">
+        <div className="bg-white/90 backdrop-blur-md p-4 rounded-sm shadow-sm border border-white/50 w-full sm:w-72 pointer-events-auto">
           <h3 className="text-sm font-bold text-[#1A4331] mb-3 flex items-center gap-2 font-serif uppercase tracking-wider">
             <Filter className="w-4 h-4" /> Filter Map
           </h3>
@@ -75,42 +154,18 @@ export function MapPage() {
           </div>
         </div>
         
-        <div className="bg-white/80 backdrop-blur-md p-3 rounded-sm shadow-sm border border-white/50 flex items-center gap-3 w-72">
+        <div className="bg-white/90 backdrop-blur-md p-3 rounded-sm shadow-sm border border-white/50 hidden sm:flex items-center gap-3 w-72 pointer-events-auto">
           <Layers className="w-5 h-5 text-[#1A4331]" />
           <div>
             <p className="text-sm font-bold text-[#1A4331] font-serif leading-none">Map View Active</p>
-            <p className="text-xs text-gray-500 font-serif mt-1">Showing {filteredReports.length} issues</p>
+            <p className="text-xs text-gray-500 font-serif mt-1">Showing {filteredReports.length} issues dynamically bridged</p>
           </div>
         </div>
       </div>
 
-      {/* Mock Map Pins */}
-      {filteredReports.map((report, i) => {
-        // Simple mock positioning
-        const top = `${20 + (i * 15) % 60}%`;
-        const left = `${30 + (i * 25) % 50}%`;
-        
-        const isSelected = selectedReport?.id === report.id;
-
-        return (
-          <div key={report.id} className="absolute" style={{ top, left }}>
-            <button 
-              onClick={() => setSelectedReport(report)}
-              className={cn(
-                "group relative -translate-x-1/2 -translate-y-full transition-transform hover:scale-110",
-                isSelected ? "scale-110 z-20" : "z-10"
-              )}
-            >
-              <MapPin className={cn("w-10 h-10 drop-shadow-md", report.status === 'Completed' ? 'text-green-600' : report.status === 'In Progress' ? 'text-amber-500' : 'text-red-600')} fill="white" />
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-current opacity-20 animate-ping"></div>
-            </button>
-          </div>
-        );
-      })}
-
-      {/* Selected Report Popup */}
+      {/* Selected Report Custom Popup Overlay */}
       {selectedReport && (
-        <div className="absolute bottom-6 right-6 z-30 w-80 bg-white shadow-xl rounded-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 left-4 sm:left-auto z-30 sm:w-80 bg-white shadow-2xl rounded-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
           <div className="relative h-32 bg-gray-100">
             <img src={selectedReport.image} alt="Issue" className="w-full h-full object-cover" />
             <button 

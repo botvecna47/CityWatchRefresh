@@ -18,7 +18,9 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [city, setCity] = useState("Springfield");
+  const [city, setCity] = useState("Nanded");
+  const [stateCode, setStateCode] = useState("MH");
+  const [rtoCode, setRtoCode] = useState("16");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +36,7 @@ export function AuthPage() {
       const url = step === "login" ? `${API_BASE}/login` : `${API_BASE}/register`;
       const body = step === "login"
         ? { email, password }
-        : { email, password, name, city };
+        : { email, password, name, city, stateCode, rtoCode };
 
       const res = await fetch(url, {
         method: "POST",
@@ -119,11 +121,28 @@ export function AuthPage() {
                       <label className="block text-sm font-medium text-[#1A4331]">
                         City
                       </label>
-                      <div className="mt-1">
+                      <div className="mt-1 flex gap-2">
                         <Input 
-                          placeholder="Springfield"
+                          placeholder="Nanded"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input 
+                          placeholder="State"
+                          value={stateCode}
+                          onChange={(e) => setStateCode(e.target.value)}
+                          className="w-16 text-center uppercase"
+                          maxLength={2}
+                          title="2-letter state code"
+                        />
+                        <Input 
+                          placeholder="RTO"
+                          value={rtoCode}
+                          onChange={(e) => setRtoCode(e.target.value)}
+                          className="w-16 text-center"
+                          maxLength={2}
+                          title="2-digit RTO district code"
                         />
                       </div>
                     </div>
@@ -209,20 +228,20 @@ export function AuthPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-md bg-gray-50 border border-gray-200 p-4 text-xs text-gray-600 space-y-2">
-                  <p className="font-semibold text-gray-700 mb-2">All passwords: <code className="bg-gray-200 px-1.5 py-0.5 rounded text-[#1A4331]">password123</code></p>
+                <div className="mt-4 rounded-md bg-gray-50 border border-gray-200 p-4 text-xs text-gray-600 space-y-2 text-left">
+                  <p className="font-semibold text-gray-700 mb-2 text-center">Nanded Test Accounts (Password: <code className="bg-gray-200 px-1.5 py-0.5 rounded text-[#1A4331]">Admin@123</code>)</p>
                   <div className="grid grid-cols-1 gap-1.5">
                     <div className="flex items-center justify-between">
                       <span>🧑 Citizen:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">alice@example.com</code>
+                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">c1@gmail.com</code>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>🔧 Coordinator:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">bob@citywatch.com</code>
+                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">ravi@citywatch.in</code>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>🛡️ Admin:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">admin@citywatch.com</code>
+                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">admin@citywatch.in</code>
                     </div>
                   </div>
                 </div>

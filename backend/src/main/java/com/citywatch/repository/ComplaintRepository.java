@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
+public interface ComplaintRepository extends JpaRepository<Complaint, String> {
 
     List<Complaint> findByAreaOrderByCreatedAtDesc(Area area);
 

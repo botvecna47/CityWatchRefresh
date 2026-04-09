@@ -27,7 +27,7 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     public ResponseEntity<Map<String, String>> markRead(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long id) {
+            @PathVariable String id) {
         notificationService.markRead(principal.getUser(), id);
         return ResponseEntity.ok(Map.of("message", "Marked as read"));
     }

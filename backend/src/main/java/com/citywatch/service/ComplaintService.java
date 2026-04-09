@@ -6,6 +6,7 @@ import com.citywatch.dto.response.ComplaintResponse;
 import com.citywatch.entity.*;
 import com.citywatch.enums.*;
 import com.citywatch.repository.*;
+import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class ComplaintService {
     private final ProofRepository proofRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final CwIdGenerator idGenerator;
 
     private static final double NEARBY_DELTA = 0.005; // ~500m
 
@@ -48,6 +50,7 @@ public class ComplaintService {
         }
 
         Complaint complaint = Complaint.builder()
+                .id(idGenerator.nextComplaintId())
                 .citizen(citizen)
                 .area(area)
                 .category(category)
@@ -98,12 +101,12 @@ public class ComplaintService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    public ComplaintResponse getById(Long id) {
+    public ComplaintResponse getById(String id) {
         return toResponse(findOrThrow(id));
     }
 
     @Transactional
-    public ComplaintResponse updateStatus(User coordinator, Long id, ComplaintStatus newStatus) {
+    public ComplaintResponse updateStatus(User coordinator, String id, ComplaintStatus newStatus) {
         Complaint complaint = findOrThrow(id);
         validateTransition(complaint.getStatus(), newStatus);
 
@@ -129,10 +132,10 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse upvote(User citizen, Long id) {
+    public ComplaintResponse upvote(User citizen, String id) {
         Complaint complaint = findOrThrow(id);
         if (complaint.getUpvotedCitizenIds() == null) {
-            complaint.setUpvotedCitizenIds(new java.util.HashSet<Long>());
+            complaint.setUpvotedCitizenIds(new java.util.HashSet<String>());
         }
         if (!complaint.getUpvotedCitizenIds().contains(citizen.getId())) {
             complaint.getUpvotedCitizenIds().add(citizen.getId());
@@ -143,7 +146,7 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse submitProof(User coordinator, Long id, ProofRequest req) {
+    public ComplaintResponse submitProof(User coordinator, String id, ProofRequest req) {
         Complaint complaint = findOrThrow(id);
 
         if (complaint.getAssignedCoordinator() == null ||
@@ -157,6 +160,7 @@ public class ComplaintService {
         boolean locationValid = distance <= NEARBY_DELTA * 2;
 
         Proof proof = Proof.builder()
+                .id(idGenerator.nextProofId())
                 .complaint(complaint)
                 .coordinator(coordinator)
                 .imageUrl(req.getImageUrl())
@@ -182,7 +186,7 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse citizenResolve(User citizen, Long id, boolean accepted) {
+    public ComplaintResponse citizenResolve(User citizen, String id, boolean accepted) {
         Complaint complaint = findOrThrow(id);
 
         if (!complaint.getCitizen().getId().equals(citizen.getId())) {
@@ -291,7 +295,7 @@ public class ComplaintService {
                 .build();
     }
 
-    private Complaint findOrThrow(Long id) {
+    private Complaint findOrThrow(String id) {
         return complaintRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
     }

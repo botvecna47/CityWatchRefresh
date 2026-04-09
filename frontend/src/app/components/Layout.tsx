@@ -166,7 +166,7 @@ export function AppLayout() {
         )}
       </AnimatePresence>
 
-      <main className="max-w-6xl w-full mx-auto px-4 py-8 flex-1">
+      <main className="max-w-[1400px] w-full mx-auto px-2 sm:px-4 md:px-8 py-4 md:py-6 flex-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -174,6 +174,7 @@ export function AppLayout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
+            className="w-full h-full"
           >
             <Outlet />
           </motion.div>

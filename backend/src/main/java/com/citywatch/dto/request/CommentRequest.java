@@ -9,5 +9,5 @@ public class CommentRequest {
     @NotBlank(message = "Comment content cannot be empty")
     private String content;
 
-    private Long parentId; // null for top-level, set for a reply
+    private String parentId; // null for top-level, set for a reply
 }

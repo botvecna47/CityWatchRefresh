@@ -5,7 +5,7 @@ import java.util.List;
 
 public class ComplaintResponse {
 
-    private Long id;
+    private String id;           // CMP-DDMMYY-000001
     private String category;
     private String description;
     private List<String> imageUrls;
@@ -15,11 +15,11 @@ public class ComplaintResponse {
     private Double latitude;
     private Double longitude;
     private Double intensityScore;
-    private Long areaId;
+    private Long areaId;         // areas table keeps Long PK
     private String areaName;
-    private Long citizenId;
+    private String citizenId;    // GJ05C0000001
     private String citizenName;
-    private Long coordinatorId;
+    private String coordinatorId; // GJ05M0000001 or null
     private String coordinatorName;
     private int upvotes;
     private int downvotes;
@@ -31,8 +31,8 @@ public class ComplaintResponse {
 
     public ComplaintResponse() {}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
@@ -67,14 +67,14 @@ public class ComplaintResponse {
     public String getAreaName() { return areaName; }
     public void setAreaName(String areaName) { this.areaName = areaName; }
 
-    public Long getCitizenId() { return citizenId; }
-    public void setCitizenId(Long citizenId) { this.citizenId = citizenId; }
+    public String getCitizenId() { return citizenId; }
+    public void setCitizenId(String citizenId) { this.citizenId = citizenId; }
 
     public String getCitizenName() { return citizenName; }
     public void setCitizenName(String citizenName) { this.citizenName = citizenName; }
 
-    public Long getCoordinatorId() { return coordinatorId; }
-    public void setCoordinatorId(Long coordinatorId) { this.coordinatorId = coordinatorId; }
+    public String getCoordinatorId() { return coordinatorId; }
+    public void setCoordinatorId(String coordinatorId) { this.coordinatorId = coordinatorId; }
 
     public String getCoordinatorName() { return coordinatorName; }
     public void setCoordinatorName(String coordinatorName) { this.coordinatorName = coordinatorName; }
@@ -104,7 +104,7 @@ public class ComplaintResponse {
 
     public static class ComplaintResponseBuilder {
         private ComplaintResponse c = new ComplaintResponse();
-        public ComplaintResponseBuilder id(Long id) { c.setId(id); return this; }
+        public ComplaintResponseBuilder id(String id) { c.setId(id); return this; }
         public ComplaintResponseBuilder category(String category) { c.setCategory(category); return this; }
         public ComplaintResponseBuilder description(String description) { c.setDescription(description); return this; }
         public ComplaintResponseBuilder imageUrls(List<String> imageUrls) { c.setImageUrls(imageUrls); return this; }
@@ -116,9 +116,9 @@ public class ComplaintResponse {
         public ComplaintResponseBuilder intensityScore(Double intensityScore) { c.setIntensityScore(intensityScore); return this; }
         public ComplaintResponseBuilder areaId(Long areaId) { c.setAreaId(areaId); return this; }
         public ComplaintResponseBuilder areaName(String areaName) { c.setAreaName(areaName); return this; }
-        public ComplaintResponseBuilder citizenId(Long citizenId) { c.setCitizenId(citizenId); return this; }
+        public ComplaintResponseBuilder citizenId(String citizenId) { c.setCitizenId(citizenId); return this; }
         public ComplaintResponseBuilder citizenName(String citizenName) { c.setCitizenName(citizenName); return this; }
-        public ComplaintResponseBuilder coordinatorId(Long coordinatorId) { c.setCoordinatorId(coordinatorId); return this; }
+        public ComplaintResponseBuilder coordinatorId(String coordinatorId) { c.setCoordinatorId(coordinatorId); return this; }
         public ComplaintResponseBuilder coordinatorName(String coordinatorName) { c.setCoordinatorName(coordinatorName); return this; }
         public ComplaintResponseBuilder upvotes(int upvotes) { c.setUpvotes(upvotes); return this; }
         public ComplaintResponseBuilder downvotes(int downvotes) { c.setDownvotes(downvotes); return this; }

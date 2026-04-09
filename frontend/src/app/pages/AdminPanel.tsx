@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 export function AdminPanel() {
   const { users, currentUser, reports, applications, spamReports } = useAppContext();
-  const [activeTab, setActiveTab] = useState<"overview" | "coordinators" | "applications" | "users" | "spam">("overview");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "coordinators" | "applications" | "members" | "moderation">("dashboard");
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
@@ -23,10 +23,17 @@ export function AdminPanel() {
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">
-        {(["overview", "applications", "coordinators", "users", "spam"] as const).map(tab => {
-          let badgeCount = 0;
-          if (tab === "applications") badgeCount = applications.filter(a => a.status === "pending").length;
-          if (tab === "spam") badgeCount = spamReports.filter(s => s.status === "pending").length;
+        {([
+          { id: "dashboard",    label: "Dashboard" },
+          { id: "applications", label: "Applications" },
+          { id: "coordinators", label: "Coordinators" },
+          { id: "members",      label: "Members" },
+          { id: "moderation",   label: "Content Moderation" },
+        ] as const).map(({ id: tab, label }) => {
+          const badgeCount =
+            tab === "applications" ? applications.filter(a => a.status === "pending").length
+            : tab === "moderation" ? spamReports.filter(s => s.status === "pending").length
+            : 0;
 
           return (
             <button
@@ -35,13 +42,13 @@ export function AdminPanel() {
               aria-selected={activeTab === tab}
               role="tab"
               className={cn(
-                "px-4 py-2 font-medium text-sm transition-all border-b-2 font-serif capitalize tracking-wide flex items-center gap-2",
-                activeTab === tab 
-                  ? "border-[#1A4331] text-[#1A4331] bg-[#1A4331]/5" 
+                "px-4 py-2 font-medium text-sm transition-all border-b-2 font-serif tracking-wide flex items-center gap-2",
+                activeTab === tab
+                  ? "border-[#1A4331] text-[#1A4331] bg-[#1A4331]/5"
                   : "border-transparent text-gray-500 hover:text-[#1A4331] hover:border-gray-300 hover:bg-gray-50"
               )}
             >
-              {tab}
+              {label}
               {badgeCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">{badgeCount}</span>
               )}
@@ -60,11 +67,11 @@ export function AdminPanel() {
             transition={{ duration: 0.2 }}
             className="py-4"
           >
-            {activeTab === "overview" && <AdminOverview reports={reports} users={users} />}
+            {activeTab === "dashboard"   && <AdminOverview reports={reports} users={users} />}
             {activeTab === "applications" && <ApplicationsManagement />}
             {activeTab === "coordinators" && <UserManagement users={users.filter(u => u.role === "coordinator")} title="Coordinator Management" />}
-            {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Management" />}
-            {activeTab === "spam" && <SpamManagement />}
+            {activeTab === "members"      && <UserManagement users={users.filter(u => u.role === "citizen")} title="Member Management" />}
+            {activeTab === "moderation"   && <SpamManagement />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -79,7 +86,7 @@ function AdminOverview({ reports, users }: { reports: Report[], users: User[] })
   const highUrgency = reports.filter(r => r.urgency === "High" && r.status !== "Completed").length;
 
   const areaData = useMemo(() => {
-    const areas = ["North Area", "South Area", "East Area", "West Area"];
+    const areas = ["Shivajinagar", "CIDCO Colony", "Vazirabad", "Vishnupuri", "Kasba"];
     return areas.map((area, index) => ({
       id: `area-${index}`,
       name: area.split(' ')[0],

@@ -29,7 +29,7 @@ public class VoteController {
     @PreAuthorize("hasRole('COORDINATOR')")
     public ResponseEntity<Map<String, String>> castVote(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long complaintId,
+            @PathVariable String complaintId,
             @Valid @RequestBody VoteRequest req) {
         voteService.castVote(principal.getUser(), complaintId, req);
         return ResponseEntity.ok(Map.of("message", "Vote recorded"));
@@ -37,7 +37,7 @@ public class VoteController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Vote>> getVotes(@PathVariable Long complaintId) {
+    public ResponseEntity<List<Vote>> getVotes(@PathVariable String complaintId) {
         return complaintRepository.findById(complaintId)
                 .map(voteRepository::findByComplaint)
                 .map(ResponseEntity::ok)

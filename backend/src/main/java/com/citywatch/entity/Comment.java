@@ -14,9 +14,13 @@ import java.time.LocalDateTime;
 @Builder
 public class Comment {
 
+    /**
+     * 17-char ID: CMT-{DDMMYY}-{6-digit-seq}
+     * Example: CMT-090426-000001
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", length = 17, updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "complaint_id", nullable = false)

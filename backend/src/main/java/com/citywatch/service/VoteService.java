@@ -11,6 +11,7 @@ import com.citywatch.enums.VoteDecision;
 import com.citywatch.repository.ComplaintRepository;
 import com.citywatch.repository.UserRepository;
 import com.citywatch.repository.VoteRepository;
+import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,10 @@ public class VoteService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final ComplaintService complaintService;
+    private final CwIdGenerator idGenerator;
 
     @Transactional
-    public void castVote(User coordinator, Long complaintId, VoteRequest req) {
+    public void castVote(User coordinator, String complaintId, VoteRequest req) {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
 
@@ -42,6 +44,7 @@ public class VoteService {
         }
 
         Vote vote = Vote.builder()
+                .id(idGenerator.nextVoteId())
                 .complaint(complaint)
                 .coordinator(coordinator)
                 .decision(req.getDecision())

@@ -24,14 +24,9 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (areaRepository.count() == 0) {
-            seedAreas();
-        }
-        seedSlaConfigs();
-        seedUsers();
-        if (complaintRepository.count() == 0) {
-            seedComplaints();
-        }
+        // Disabled: Use database/master_setup.sql for seeding instead.
+        // This prevents 'IdentifierGenerationException' as Java code won't attempt 
+        // to insert legacy 'Springfield' data without proper structured IDs.
     }
 
     private void seedAreas() {

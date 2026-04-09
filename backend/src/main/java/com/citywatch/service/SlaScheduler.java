@@ -7,6 +7,7 @@ import com.citywatch.enums.EscalationReason;
 import com.citywatch.enums.NotificationType;
 import com.citywatch.repository.ComplaintRepository;
 import com.citywatch.repository.EscalationRepository;
+import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,6 +25,7 @@ public class SlaScheduler {
     private final ComplaintRepository complaintRepository;
     private final EscalationRepository escalationRepository;
     private final NotificationService notificationService;
+    private final CwIdGenerator idGenerator;
 
     // Runs every hour
     @Scheduled(cron = "0 0 * * * *")
@@ -37,6 +39,7 @@ public class SlaScheduler {
             complaint.setEscalationLevel(complaint.getEscalationLevel() + 1);
 
             Escalation escalation = Escalation.builder()
+                    .id(idGenerator.nextEscalationId())
                     .complaint(complaint)
                     .level(complaint.getEscalationLevel())
                     .reason(EscalationReason.SLA_EXCEEDED)
@@ -48,7 +51,7 @@ public class SlaScheduler {
             notificationService.notifyAdmins(
                     "SLA Breach — Complaint #" + complaint.getId(),
                     "Complaint in " + complaint.getArea().getName() + " has exceeded its SLA deadline.",
-                    complaint.getId()
+                    complaint.getId()  // String complaint ID
             );
 
             if (complaint.getAssignedCoordinator() != null) {

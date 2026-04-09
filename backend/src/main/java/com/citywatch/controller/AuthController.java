@@ -8,6 +8,7 @@ import com.citywatch.enums.Role;
 import com.citywatch.repository.UserRepository;
 import com.citywatch.security.CustomUserDetails;
 import com.citywatch.security.JwtUtils;
+import com.citywatch.util.CwIdGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,12 +26,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Transactional
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CwIdGenerator idGenerator;
 
     // ─── POST /api/auth/login ───────────────────────────────────────────
     @PostMapping("/login")
@@ -48,7 +52,7 @@ public class AuthController {
                     .token(jwt)
                     .id(user.getId())
                     .username(user.getUsername())
-                    .name(user.getUsername()) // using username as display name
+                    .name(user.getUsername())
                     .email(user.getEmail())
                     .role(user.getRole().name())
                     .status(user.getStatus().name())
@@ -72,6 +76,14 @@ public class AuthController {
                     .body(Map.of("error", "An account with this email already exists."));
         }
 
+        // Generate structured user ID: {STATE}{RTO}{TYPE}{7-seq}
+        // Example: GJ05C0000001
+        String userId = idGenerator.nextUserId(
+                Role.CITIZEN,
+                registerRequest.getStateCode(),
+                registerRequest.getRtoCode()
+        );
+
         // Generate a username from the name (lowercase, no spaces)
         String baseUsername = registerRequest.getName().toLowerCase().replaceAll("\\s+", "_");
         String username = baseUsername;
@@ -82,11 +94,14 @@ public class AuthController {
 
         // Create the user
         User user = User.builder()
+                .id(userId)
                 .username(username)
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role(Role.CITIZEN)  // new signups are always citizens
                 .city(registerRequest.getCity())
+                .stateCode(registerRequest.getStateCode().toUpperCase())
+                .rtoCode(registerRequest.getRtoCode())
                 .build();
 
         user = userRepository.save(user);

@@ -4,6 +4,7 @@ import com.citywatch.entity.AuditLog;
 import com.citywatch.entity.Complaint;
 import com.citywatch.entity.User;
 import com.citywatch.repository.AuditLogRepository;
+import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,9 +13,11 @@ import org.springframework.stereotype.Service;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
+    private final CwIdGenerator idGenerator;
 
     public void log(User actor, String action, Complaint complaint) {
         AuditLog log = AuditLog.builder()
+                .id(idGenerator.nextAuditId())
                 .user(actor)
                 .action(action)
                 .entityType("COMPLAINT")
@@ -24,8 +27,9 @@ public class AuditService {
         auditLogRepository.save(log);
     }
 
-    public void logAction(User actor, String action, String entityType, Long entityId, String oldValue, String newValue) {
+    public void logAction(User actor, String action, String entityType, String entityId, String oldValue, String newValue) {
         AuditLog log = AuditLog.builder()
+                .id(idGenerator.nextAuditId())
                 .user(actor)
                 .action(action)
                 .entityType(entityType)

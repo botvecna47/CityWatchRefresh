@@ -14,9 +14,13 @@ import java.time.LocalDateTime;
 @Builder
 public class Proof {
 
+    /**
+     * 17-char ID: PRF-{DDMMYY}-{6-digit-seq}
+     * Example: PRF-090426-000001
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", length = 17, updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "complaint_id", nullable = false)
@@ -44,5 +48,4 @@ public class Proof {
     @CreationTimestamp
     @Column(name = "submitted_at", updatable = false)
     private LocalDateTime submittedAt;
-
 }

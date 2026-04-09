@@ -52,7 +52,7 @@ public class ComplaintController {
 
     // ── Get a single complaint ───────────────────────────────────────────────
     @GetMapping("/{id}")
-    public ResponseEntity<ComplaintResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<ComplaintResponse> getById(@PathVariable String id) {
         return ResponseEntity.ok(complaintService.getById(id));
     }
 
@@ -77,7 +77,7 @@ public class ComplaintController {
     @PreAuthorize("hasAnyRole('COORDINATOR', 'ADMIN')")
     public ResponseEntity<ComplaintResponse> updateStatus(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody Map<String, String> body) {
         ComplaintStatus newStatus = ComplaintStatus.valueOf(body.get("status").toUpperCase());
         return ResponseEntity.ok(complaintService.updateStatus(principal.getUser(), id, newStatus));
@@ -88,7 +88,7 @@ public class ComplaintController {
     @PreAuthorize("hasRole('COORDINATOR')")
     public ResponseEntity<ComplaintResponse> submitProof(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody ProofRequest req) {
         return ResponseEntity.ok(complaintService.submitProof(principal.getUser(), id, req));
     }
@@ -98,7 +98,7 @@ public class ComplaintController {
     @PreAuthorize("hasRole('CITIZEN')")
     public ResponseEntity<ComplaintResponse> resolve(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody Map<String, Boolean> body) {
         return ResponseEntity.ok(complaintService.citizenResolve(principal.getUser(), id, body.get("accepted")));
     }
@@ -108,7 +108,7 @@ public class ComplaintController {
     @PreAuthorize("hasRole('CITIZEN')")
     public ResponseEntity<ComplaintResponse> upvote(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long id) {
+            @PathVariable String id) {
         return ResponseEntity.ok(complaintService.upvote(principal.getUser(), id));
     }
 }

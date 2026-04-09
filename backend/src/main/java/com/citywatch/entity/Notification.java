@@ -15,9 +15,13 @@ import java.time.LocalDateTime;
 @Builder
 public class Notification {
 
+    /**
+     * 17-char ID: NTF-{DDMMYY}-{6-digit-seq}
+     * Example: NTF-090426-000001
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", length = 17, updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -33,8 +37,13 @@ public class Notification {
     @Column(nullable = false, length = 30)
     private NotificationType type;
 
-    @Column(name = "reference_id")
-    private Long referenceId;
+    /**
+     * Loose reference to a complaint or escalation ID (VARCHAR, no FK).
+     * Use `type` to determine what entity this points to.
+     * Example: "CMP-090426-000001"
+     */
+    @Column(name = "reference_id", length = 17)
+    private String referenceId;
 
     @Column(name = "is_read")
     private Boolean isRead = false;

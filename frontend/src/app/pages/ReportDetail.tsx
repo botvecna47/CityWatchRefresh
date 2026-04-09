@@ -1,13 +1,16 @@
 import { useParams, Link, useNavigate } from "react-router";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowLeft, ArrowBigUp, ArrowBigDown, MapPin, Share2, MessageSquare, AlertTriangle, CheckCircle2, ImagePlus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowBigUp, MapPin, Share2, MessageSquare, AlertTriangle, CheckCircle2, X, Trash2 } from "lucide-react";
 import { useAppContext, Comment, Report } from "../store";
-import { Card, Button, Input, Textarea, Badge, Skeleton } from "../components/ui";
+import { Card, Button, Input, Textarea, Badge, Skeleton, cn } from "../components/ui";
 
 import { StatusBadge } from "./Home";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
 export function ReportDetail() {
   const { id } = useParams();
@@ -17,8 +20,17 @@ export function ReportDetail() {
   const report = reports.find(r => r.id === id);
 
   const [commentText, setCommentText] = useState("");
+  const [hasUpvoted, setHasUpvoted] = useState(false); // local optimistic state
 
-
+  // Fix for default Leaflet icons
+  useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+  }, []);
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -34,17 +46,18 @@ export function ReportDetail() {
 
   const handleVote = async (type: 'up' | 'down') => {
     if (!currentUser) {
-      toast.error("Please sign in to vote.");
+      toast.error("Please sign in to upvote.");
       navigate("/auth");
       return;
     }
-
-    if (type === 'up') {
-      await voteOnServer(report.id);
-      toast.success("Upvote recorded!");
-    } else {
-      toast.info("Downvoting is coming soon!");
+    if (type !== 'up') return; // only upvoting supported
+    if (hasUpvoted) {
+      toast.info("You have already upvoted this complaint.");
+      return;
     }
+    await voteOnServer(report.id);
+    setHasUpvoted(true);
+    toast.success("Upvote recorded — thank you for your support!");
   };
 
 
@@ -143,15 +156,20 @@ export function ReportDetail() {
         <>
           <Card className="overflow-hidden bg-white shadow-md border-gray-200">
             <div className="flex flex-col md:flex-row">
-              {/* Voting Sidebar */}
+              {/* Upvote Sidebar */}
               <div className="hidden md:flex w-16 bg-gray-50 flex-col items-center py-6 border-r border-gray-100 gap-2">
-                <button onClick={() => handleVote('up')} className="p-2 text-gray-400 hover:text-[#2E7D32] transition-colors rounded hover:bg-gray-200">
+                <button
+                  onClick={() => handleVote('up')}
+                  className={cn(
+                    "p-2 transition-colors rounded hover:bg-gray-200",
+                    hasUpvoted ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]"
+                  )}
+                  title={hasUpvoted ? "Already upvoted" : "Upvote this complaint"}
+                >
                   <ArrowBigUp className="w-8 h-8" />
                 </button>
-                <span className="text-lg font-bold text-[#1A4331]">{report.upvotes - report.downvotes}</span>
-                <button onClick={() => handleVote('down')} className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-200">
-                  <ArrowBigDown className="w-8 h-8" />
-                </button>
+                <span className="text-lg font-bold text-[#1A4331]">{report.upvotes}</span>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">votes</span>
               </div>
 
               {/* Main Content */}
@@ -212,16 +230,36 @@ export function ReportDetail() {
                   ))}
                 </div>
 
-                <div className="flex flex-wrap gap-4 items-center text-sm font-medium text-gray-600 mb-8 p-4 bg-[#FDFDF7] rounded-sm border border-gray-100">
+                <div className="flex flex-wrap gap-4 items-center text-sm font-medium text-gray-600 mb-6 p-4 bg-[#FDFDF7] rounded-sm border border-gray-100">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-red-500" />
                     <span className="text-[#1A4331]">{report.locationText}</span>
                   </div>
                   <div className="hidden md:block w-px h-4 bg-gray-300"></div>
                   <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-gray-500">[{report.lat.toFixed(4)}, {report.lng.toFixed(4)}]</span>
+                  </div>
+                  <div className="hidden md:block w-px h-4 bg-gray-300"></div>
+                  <div className="flex items-center gap-2">
                     <AlertTriangle className={`w-5 h-5 ${report.urgency === 'High' ? 'text-red-500' : report.urgency === 'Medium' ? 'text-amber-500' : 'text-blue-500'}`} />
                     <span>{report.urgency} Urgency</span>
                   </div>
+                </div>
+
+                {/* Mini Map */}
+                <div className="mb-8 rounded-sm overflow-hidden border border-gray-200 shadow-inner h-64 z-0 relative">
+                  <MapContainer 
+                    center={[report.lat, report.lng]} 
+                    zoom={15} 
+                    style={{ height: '100%', width: '100%' }}
+                    scrollWheelZoom={false}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[report.lat, report.lng]} />
+                  </MapContainer>
                 </div>
 
                 {report.proofImage && (
@@ -239,14 +277,19 @@ export function ReportDetail() {
                   </div>
                 )}
 
-                {/* Mobile Voting */}
+                {/* Mobile Upvote */}
                 <div className="flex md:hidden items-center gap-4 mb-8 pb-8 border-b border-gray-100">
-                  <button onClick={() => handleVote('up')} className="p-2 text-gray-400 hover:text-[#2E7D32] bg-gray-50 rounded-sm border border-gray-200">
+                  <button
+                    onClick={() => handleVote('up')}
+                    className={cn(
+                      "p-2 rounded-sm border flex items-center gap-2",
+                      hasUpvoted
+                        ? "text-[#2E7D32] bg-green-50 border-green-200"
+                        : "text-gray-400 bg-gray-50 border-gray-200 hover:text-[#2E7D32]"
+                    )}
+                  >
                     <ArrowBigUp className="w-6 h-6" />
-                  </button>
-                  <span className="text-lg font-bold text-[#1A4331]">{report.upvotes - report.downvotes}</span>
-                  <button onClick={() => handleVote('down')} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-sm border border-gray-200">
-                    <ArrowBigDown className="w-6 h-6" />
+                    <span className="text-sm font-semibold">{report.upvotes} upvotes</span>
                   </button>
                 </div>
 

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://axtcsaknntdxhzxwzvmo.supabase.co';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 // The Anon Key MUST be provided in the .env file as VITE_SUPABASE_ANON_KEY for security reasons
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 

@@ -7,6 +7,7 @@ import com.citywatch.enums.NotificationType;
 import com.citywatch.enums.Role;
 import com.citywatch.repository.NotificationRepository;
 import com.citywatch.repository.UserRepository;
+import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +20,11 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final CwIdGenerator idGenerator;
 
-    public void create(User user, String title, String message, NotificationType type, Long referenceId) {
+    public void create(User user, String title, String message, NotificationType type, String referenceId) {
         Notification notification = Notification.builder()
+                .id(idGenerator.nextNotificationId())
                 .user(user)
                 .title(title)
                 .message(message)
@@ -31,7 +34,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    public void notifyCoordinatorsInArea(com.citywatch.entity.Area area, String title, String message, Long referenceId) {
+    public void notifyCoordinatorsInArea(com.citywatch.entity.Area area, String title, String message, String referenceId) {
         List<User> coordinators = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.COORDINATOR && area.equals(u.getArea()))
                 .collect(Collectors.toList());
@@ -41,7 +44,7 @@ public class NotificationService {
         }
     }
 
-    public void notifyAdmins(String title, String message, Long referenceId) {
+    public void notifyAdmins(String title, String message, String referenceId) {
         List<User> admins = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.ADMIN)
                 .collect(Collectors.toList());
@@ -57,7 +60,7 @@ public class NotificationService {
                 .collect(Collectors.toList());
     }
 
-    public void markRead(User user, Long notificationId) {
+    public void markRead(User user, String notificationId) {
         notificationRepository.findById(notificationId).ifPresent(n -> {
             if (n.getUser().getId().equals(user.getId())) {
                 n.setIsRead(true);

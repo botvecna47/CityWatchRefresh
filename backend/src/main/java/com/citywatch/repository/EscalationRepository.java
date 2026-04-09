@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface EscalationRepository extends JpaRepository<Escalation, Long> {
+public interface EscalationRepository extends JpaRepository<Escalation, String> {
 
     List<Escalation> findByComplaintOrderByTriggeredAtDesc(Complaint complaint);
 }

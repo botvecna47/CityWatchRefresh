@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Upload, MapPin, Crosshair, ArrowRight, CheckCircle2, AlertTriangle, ArrowBigUp } from "lucide-react";
+import { Upload, MapPin, Crosshair, ArrowRight, CheckCircle2, AlertTriangle, ArrowBigUp, Camera, X } from "lucide-react";
 import { useAppContext, Report } from "../store";
 import { Card, Button, Input, Textarea, cn } from "../components/ui";
 import { motion } from "motion/react";
 import { supabase } from "../supabase";
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+let icons: Record<string, L.DivIcon> | null = null;
+const initLeaflet = () => {
+  if (icons) return;
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+  const createCustomIcon = (colorClass: string) => L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: `<div class="relative w-8 h-8 -translate-x-1/2 -translate-y-full"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="2" class="lucide lucide-map-pin ${colorClass} drop-shadow-md"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
+    iconSize: [32, 32], iconAnchor: [16, 32]
+  });
+  icons = { Reported: createCustomIcon('text-red-600') };
+};
+
+const MAX_IMAGES = 5;
 
 export function SubmitReport() {
   const { addReport, currentUser, reports, updateReport } = useAppContext();
@@ -12,56 +34,96 @@ export function SubmitReport() {
 
   const [step, setStep] = useState(1);
   const [location, setLocation] = useState("");
+  const [locationLatLong, setLocationLatLong] = useState<[number, number]>([19.155, 77.307]); // Nanded default
+  const [isClient, setIsClient] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [nearbyIssues, setNearbyIssues] = useState<Report[]>([]);
 
+  // For upvoting a nearby issue with optional supporting photo
+  const [upvotePhotoFile, setUpvotePhotoFile] = useState<File | null>(null);
+  const [upvotePhotoPreview, setUpvotePhotoPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    initLeaflet();
+    setIsClient(true);
+  }, []);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [area, setArea] = useState("North Area");
-  const [category, setCategory] = useState("Infrastructure");
+  const [area, setArea] = useState("Shivajinagar");
+  const [category, setCategory] = useState("POTHOLE");
   const [images, setImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleDetectLocation = () => {
     setIsDetecting(true);
-    setTimeout(() => {
-      setLocation("123 Main St, Near Central Square");
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocationLatLong([pos.coords.latitude, pos.coords.longitude]);
+          setLocation(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+          setIsDetecting(false);
+
+          const nearby = reports.filter(r => r.area === area && r.status !== "Completed").slice(0, 2);
+          if (nearby.length > 0) {
+            setNearbyIssues(nearby);
+          } else {
+            setStep(2);
+          }
+        },
+        () => {
+          // Fallback with Nanded center
+          setLocation("Shivajinagar, Nanded");
+          setLocationLatLong([19.155, 77.307]);
+          setIsDetecting(false);
+          setStep(2);
+        }
+      );
+    } else {
+      setLocation("Shivajinagar, Nanded");
       setIsDetecting(false);
-      
-      // Mock finding nearby issues (within 50m radius)
-      const nearby = reports.filter(r => r.area === "North Area" && r.status !== "Completed").slice(0, 1);
-      if (nearby.length > 0) {
-        setNearbyIssues(nearby);
-      } else {
-        setStep(2);
-      }
-    }, 1500);
+      setStep(2);
+    }
+  };
+
+  const handleUpvotePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUpvotePhotoFile(file);
+      setUpvotePhotoPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleUpvoteNearby = (id: string) => {
     const report = reports.find(r => r.id === id);
     if (report) {
       updateReport(id, { upvotes: report.upvotes + 1 });
+      import("sonner").then(({ toast }) => toast.success("Your support has been recorded!"));
       navigate(`/report/${id}`);
     }
   };
 
+  // ── Image handling for new complaint ──────────────────────────────────────
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      const remainingSlots = 5 - images.length;
-      const filesToAdd = files.slice(0, remainingSlots);
-      
-      const newImages = filesToAdd.map(file => URL.createObjectURL(file));
-      setImages(prev => [...prev, ...newImages]);
-      setImageFiles(prev => [...prev, ...filesToAdd]);
-      
-      if (files.length > remainingSlots) {
-        import("sonner").then(({ toast }) => {
-          toast.error(`Maximum 5 images allowed. Only added ${remainingSlots} images.`);
-        });
-      }
+    if (!files.length) return;
+
+    const available = MAX_IMAGES - images.length;
+    if (available <= 0) {
+      import("sonner").then(({ toast }) => toast.error("Maximum 5 images reached."));
+      return;
+    }
+
+    const filesToAdd = files.slice(0, available);
+    const newPreviews = filesToAdd.map(f => URL.createObjectURL(f));
+    setImages(prev => [...prev, ...newPreviews]);
+    setImageFiles(prev => [...prev, ...filesToAdd]);
+
+    if (files.length > available) {
+      import("sonner").then(({ toast }) =>
+        toast.error(`Only ${available} slot(s) remaining. ${files.length - available} image(s) were not added.`)
+      );
     }
   };
 
@@ -76,12 +138,11 @@ export function SubmitReport() {
 
     setIsSubmitting(true);
     let uploadedUrls: string[] = [];
-    
-    // Upload files to Supabase citywatch-images bucket
+
     if (imageFiles.length > 0) {
       for (const file of imageFiles) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
         const filePath = `reports/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -94,26 +155,24 @@ export function SubmitReport() {
           continue;
         }
 
-        const { data } = supabase.storage
-          .from('citywatch-images')
-          .getPublicUrl(filePath);
-          
+        const { data } = supabase.storage.from('citywatch-images').getPublicUrl(filePath);
         uploadedUrls.push(data.publicUrl);
       }
     }
 
-    const mainImageUrl = uploadedUrls.length > 0 ? uploadedUrls[0] : "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=600&auto=format&fit=crop";
+    const mainImageUrl = uploadedUrls.length > 0
+      ? uploadedUrls[0]
+      : "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=600&auto=format&fit=crop";
 
-    // Call API (using mock store for now, but API wired)
     const newReport: Report = {
       id: Math.random().toString(36).substr(2, 9),
       title,
       description,
-      image: mainImageUrl, // Real URL!
+      image: mainImageUrl,
       additionalImages: uploadedUrls.slice(1),
       locationText: location,
-      lat: 40.7128 + (Math.random() - 0.5) * 0.01,
-      lng: -74.0060 + (Math.random() - 0.5) * 0.01,
+      lat: locationLatLong[0] + (Math.random() - 0.5) * 0.002,
+      lng: locationLatLong[1] + (Math.random() - 0.5) * 0.002,
       area: area as any,
       status: "Reported",
       authorId: currentUser?.id || "u1",
@@ -128,6 +187,7 @@ export function SubmitReport() {
 
     addReport(newReport);
     setIsSubmitting(false);
+    import("sonner").then(({ toast }) => toast.success("Your complaint has been submitted!"));
     navigate("/");
   };
 
@@ -135,9 +195,10 @@ export function SubmitReport() {
     <div className="max-w-3xl mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#1A4331] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Report a Civic Issue</h1>
-        <p className="text-gray-600 font-serif">Help improve our city by reporting problems in your area.</p>
+        <p className="text-gray-600 font-serif">Help improve Nanded by reporting problems in your area.</p>
       </div>
 
+      {/* Step Progress */}
       <div className="flex items-center justify-between mb-8 relative">
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-gray-200 -z-10"></div>
         <StepIndicator num={1} active={step >= 1} label="Location" />
@@ -146,62 +207,102 @@ export function SubmitReport() {
       </div>
 
       <Card className="p-6 md:p-8 bg-white border border-gray-100 shadow-sm">
+
+        {/* ── STEP 1: Location ─────────────────────────────────────────── */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
               <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Where is the issue?</label>
               <div className="flex gap-2">
-                <Input 
-                  placeholder="Enter street address or drag map pin..." 
+                <Input
+                  placeholder="Enter street address or detect location..."
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="flex-1 border-[#1A4331]/20 focus:ring-[#2E7D32]"
                 />
                 <Button onClick={handleDetectLocation} variant="secondary" className="gap-2 border border-[#1A4331]/20 bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-100 whitespace-nowrap" disabled={isDetecting}>
-                  {isDetecting ? <span className="animate-pulse">Detecting...</span> : <><Crosshair className="w-4 h-4" /> Detect My Location</>}
+                  {isDetecting ? <span className="animate-pulse">Detecting...</span> : <><Crosshair className="w-4 h-4" /> My Location</>}
                 </Button>
               </div>
             </div>
 
-            {location && (
-              <div className="w-full h-48 bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200 flex items-center justify-center">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1546087812-89cbb3e6e8a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwbWFwJTIwYWJzdHJhY3R8ZW58MXx8fHwxNzczMzA3NTQ5fDA&ixlib=rb-4.1.0&q=80&w=800')] bg-cover bg-center opacity-50 grayscale mix-blend-multiply"></div>
-                <div className="z-10 bg-white/90 backdrop-blur px-4 py-2 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10">
-                  <MapPin className="w-5 h-5 text-[#2E7D32]" /> {location}
+            {location && isClient && (
+              <div className="w-full h-48 bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200">
+                <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker position={locationLatLong} icon={icons?.Reported} />
+                </MapContainer>
+                <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
+                  <MapPin className="w-4 h-4 text-[#2E7D32]" /> {location}
                 </div>
               </div>
             )}
 
+            {/* ── Nearby issues panel ───────────────────────────────────── */}
             {nearbyIssues.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-sm shadow-sm"
+                className="p-4 bg-amber-50 border border-amber-200 rounded-sm shadow-sm"
               >
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-bold text-amber-900 mb-2 font-serif">Similar Issues Found Nearby (Within 50m)</h3>
-                    <p className="text-sm text-amber-800 mb-4 font-serif">Before submitting a new report, check if your issue has already been reported. Upvoting existing issues helps us prioritize them faster.</p>
-                    
-                    <div className="space-y-3">
+                    <h3 className="font-bold text-amber-900 mb-1 font-serif">Similar Issue Found Nearby</h3>
+                    <p className="text-sm text-amber-800 mb-4 font-serif">
+                      The following issue has already been reported nearby. Upvoting it increases its priority and helps coordinators address it faster. You may also attach a supporting photo.
+                    </p>
+
+                    <div className="space-y-4">
                       {nearbyIssues.map(issue => (
-                        <div key={issue.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-sm border border-amber-100 shadow-sm gap-3">
-                          <div>
-                            <p className="font-semibold text-amber-900 text-sm font-serif">{issue.title}</p>
-                            <p className="text-xs text-amber-700 font-serif">{issue.locationText}</p>
+                        <div key={issue.id} className="bg-white p-4 rounded-sm border border-amber-100 shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                            <div>
+                              <p className="font-semibold text-amber-900 text-sm font-serif">{issue.title}</p>
+                              <p className="text-xs text-amber-700 font-serif flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" /> {issue.locationText}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => handleUpvoteNearby(issue.id)}
+                              className="bg-[#2E7D32] hover:bg-[#1B5E20] text-white gap-2 text-xs py-1 h-8 w-full sm:w-auto"
+                            >
+                              <ArrowBigUp className="w-4 h-4" /> Upvote
+                            </Button>
                           </div>
-                          <Button onClick={() => handleUpvoteNearby(issue.id)} className="bg-[#2E7D32] hover:bg-[#1B5E20] text-white gap-2 text-xs py-1 h-8 w-full sm:w-auto">
-                            <ArrowBigUp className="w-4 h-4" /> Upvote Instead
-                          </Button>
+
+                          {/* ── Optional photo attachment on upvote ─── */}
+                          <div className="border-t border-amber-100 pt-3">
+                            <p className="text-xs text-amber-800 font-medium mb-2 font-serif flex items-center gap-1">
+                              <Camera className="w-3.5 h-3.5" />
+                              Optionally attach a supporting photo to strengthen this complaint
+                            </p>
+                            {upvotePhotoPreview ? (
+                              <div className="relative w-24 h-20 rounded overflow-hidden border border-amber-200 group">
+                                <img src={upvotePhotoPreview} alt="Upvote photo" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => { setUpvotePhotoFile(null); setUpvotePhotoPreview(null); }}
+                                  className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-dashed border-amber-300 rounded text-xs text-amber-700 cursor-pointer hover:bg-amber-50 transition-colors">
+                                <Upload className="w-3.5 h-3.5" /> Add Photo
+                                <input type="file" accept="image/*" className="hidden" onChange={handleUpvotePhotoChange} />
+                              </label>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-amber-200 flex justify-end">
-                  <Button onClick={() => { setNearbyIssues([]); setStep(2); }} variant="ghost" className="text-amber-800 hover:bg-amber-100 hover:text-amber-900 font-serif w-full sm:w-auto">
-                    Skip, mine is different
+                  <Button onClick={() => { setNearbyIssues([]); setStep(2); }} variant="ghost" className="text-amber-800 hover:bg-amber-100 font-serif">
+                    Mine is different — continue filing
                   </Button>
                 </div>
               </motion.div>
@@ -215,81 +316,90 @@ export function SubmitReport() {
           </div>
         )}
 
+        {/* ── STEP 2: Details ─────────────────────────────────────────── */}
         {step === 2 && (
           <form onSubmit={(e) => { e.preventDefault(); setStep(3); }} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Issue Category</label>
-                  <select 
+                  <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
                   >
-                    <option>Infrastructure (Potholes, Sidewalks)</option>
-                    <option>Sanitation (Trash, Graffiti)</option>
-                    <option>Utilities (Streetlights, Water)</option>
-                    <option>Public Safety</option>
+                    <option value="POTHOLE">Pothole / Road Damage</option>
+                    <option value="GARBAGE">Garbage / Sanitation</option>
+                    <option value="STREETLIGHT">Street Light Outage</option>
+                    <option value="DRAINAGE">Drainage / Waterlogging</option>
+                    <option value="OTHER">Other</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">City Area</label>
-                  <select 
+                  <select
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
                   >
-                    <option value="North Area">North Area</option>
-                    <option value="South Area">South Area</option>
-                    <option value="East Area">East Area</option>
-                    <option value="West Area">West Area</option>
+                    {["Shivajinagar","CIDCO Colony","Vazirabad","Asarjan","Vishnupuri","Naganpura","New Nanded","Degloor Naka","Kasba","Huzur"].map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Title</label>
-                  <Input 
+                  <Input
                     required
-                    placeholder="Briefly describe the issue" 
+                    placeholder="Briefly describe the issue"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
               </div>
 
+              {/* ── Photo upload — max 5, only on new report ──────────── */}
               <div>
-                <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Photo Evidence (Optional, max 5)</label>
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">
+                  Photo Evidence <span className="text-gray-400 font-normal">(Optional · max {MAX_IMAGES})</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
                   {images.map((img, idx) => (
                     <div key={idx} className="relative rounded-sm overflow-hidden border border-gray-200 h-24 group">
                       <img src={img} alt="Preview" className="w-full h-full object-cover" />
-                      <button 
+                      <button
                         type="button"
                         onClick={() => removeImage(idx)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <AlertTriangle className="w-3 h-3" />
+                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
-                  {images.length < 5 && (
-                    <div className="border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer">
+                  {images.length < MAX_IMAGES && (
+                    <div className={cn(
+                      "border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer",
+                    )}>
                       <Upload className="w-6 h-6 text-gray-400 group-hover:text-[#2E7D32] transition-colors mb-1" />
                       <span className="text-xs text-gray-500 font-serif">Add Photo</span>
-                      <input type="file" accept="image/*" capture="environment" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
+                      <input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">{images.length}/5 images uploaded</p>
+                <p className="text-xs text-gray-500">
+                  {images.length}/{MAX_IMAGES} photos added
+                  {images.length >= MAX_IMAGES && <span className="text-amber-600 ml-1">· Limit reached</span>}
+                </p>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Detailed Description</label>
-              <Textarea 
+              <Textarea
                 required
-                placeholder="Provide any additional details that might help coordinators resolve this issue..." 
+                placeholder="Describe the issue in detail — location landmarks, severity, how long it has existed, and any hazards..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -298,29 +408,32 @@ export function SubmitReport() {
 
             <div className="flex justify-between pt-4">
               <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
-              <Button type="button" onClick={() => setStep(3)} className="gap-2" disabled={!title || !description}>Review Details <ArrowRight className="w-4 h-4" /></Button>
+              <Button type="button" onClick={() => setStep(3)} className="gap-2" disabled={!title || !description}>
+                Review Details <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </form>
         )}
 
+        {/* ── STEP 3: Review ─────────────────────────────────────────── */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
             <div className="bg-gray-50 p-6 rounded-sm border border-gray-200">
               <h3 className="text-xl font-bold text-[#1A4331] mb-4 font-serif border-b border-gray-200 pb-2">Review Your Report</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
+                <div className="space-y-3 text-sm">
                   <p><strong className="text-gray-700 font-serif">Title:</strong> {title}</p>
                   <p><strong className="text-gray-700 font-serif">Location:</strong> {location}</p>
                   <p><strong className="text-gray-700 font-serif">Area:</strong> {area}</p>
-                  <p><strong className="text-gray-700 font-serif">Category:</strong> {category}</p>
-                  <p><strong className="text-gray-700 font-serif">Description:</strong> <br/><span className="text-gray-600 font-serif">{description}</span></p>
+                  <p><strong className="text-gray-700 font-serif">Category:</strong> {category.replace("_", " ")}</p>
+                  <p><strong className="text-gray-700 font-serif">Description:</strong><br /><span className="text-gray-600 font-serif">{description}</span></p>
                 </div>
                 {images.length > 0 && (
                   <div>
-                    <strong className="text-gray-700 block mb-2 font-serif">Images Attached ({images.length}):</strong>
+                    <strong className="text-gray-700 block mb-2 font-serif text-sm">Photos Attached ({images.length}/{MAX_IMAGES}):</strong>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {images.map((img, idx) => (
-                        <img key={idx} src={img} alt={`Preview ${idx+1}`} className="w-full h-24 object-cover rounded-sm border border-gray-300 shadow-sm" />
+                        <img key={idx} src={img} alt={`Preview ${idx + 1}`} className="w-full h-24 object-cover rounded-sm border border-gray-300 shadow-sm" />
                       ))}
                     </div>
                   </div>
@@ -331,7 +444,7 @@ export function SubmitReport() {
             <div className="flex justify-between pt-4">
               <Button type="button" variant="ghost" onClick={() => setStep(2)}>Edit Details</Button>
               <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white">
-                <CheckCircle2 className="w-4 h-4" /> {isSubmitting ? "Uploading..." : "Submit Report"}
+                <CheckCircle2 className="w-4 h-4" /> {isSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
             </div>
           </div>

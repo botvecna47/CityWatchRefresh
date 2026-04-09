@@ -17,9 +17,13 @@ import java.time.LocalDateTime;
 @Builder
 public class Vote {
 
+    /**
+     * 17-char ID: VOT-{DDMMYY}-{6-digit-seq}
+     * Example: VOT-090426-000001
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", length = 17, updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "complaint_id", nullable = false)
@@ -39,5 +43,4 @@ public class Vote {
     @CreationTimestamp
     @Column(name = "voted_at", updatable = false)
     private LocalDateTime votedAt;
-
 }

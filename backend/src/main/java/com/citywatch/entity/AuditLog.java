@@ -14,13 +14,17 @@ import java.time.LocalDateTime;
 @Builder
 public class AuditLog {
 
+    /**
+     * 17-char ID: AUD-{DDMMYY}-{6-digit-seq}
+     * Example: AUD-090426-000001
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", length = 17, updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user;
+    private User user;  // nullable — NULL means system-triggered action
 
     @Column(nullable = false, length = 50)
     private String action;
@@ -28,8 +32,12 @@ public class AuditLog {
     @Column(name = "entity_type", nullable = false, length = 30)
     private String entityType;
 
-    @Column(name = "entity_id", nullable = false)
-    private Long entityId;
+    /**
+     * Generic reference to affected entity's ID (VARCHAR to support all entity types).
+     * Example: "CMP-090426-000001", "GJ05C0000001"
+     */
+    @Column(name = "entity_id", nullable = false, length = 17)
+    private String entityId;
 
     @Column(name = "old_value", columnDefinition = "TEXT")
     private String oldValue;
@@ -43,5 +51,4 @@ public class AuditLog {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime timestamp;
-
 }
