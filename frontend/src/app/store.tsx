@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 export type Role = "citizen" | "coordinator" | "admin";
 export type Status = "Reported" | "In Progress" | "Completed";
-export type Area = "North Area" | "South Area" | "East Area" | "West Area";
+export type Area = string;
 
 export interface User {
   id: string;
@@ -98,6 +98,7 @@ interface AppContextType {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   refreshReports: () => void;
+  refreshUsers: () => void;
   addReport: (report: Partial<Report>) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => void;
   addComment: (reportId: string, comment: Comment) => void;
@@ -117,9 +118,13 @@ interface AppContextType {
   markAllNotificationsRead: () => void;
   addNotification: (notification: Omit<Notification, "id" | "createdAt" | "read">) => void;
 
+  selectedReportId: string | null;
+  setSelectedReportId: (id: string | null) => void;
+
   banUser: (id: string) => void;
   unbanUser: (id: string) => void;
   updateUserSettings: (settings: Partial<User["settings"]>) => void;
+  deleteReport: (id: string, spamReportId?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -129,6 +134,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const [applications, setApplications] = useState<CoordinatorApplication[]>([]);
   const [spamReports, setSpamReports] = useState<SpamReport[]>([]);
@@ -155,9 +161,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             area: data.area || undefined,
             status: (data.status || "ACTIVE").toLowerCase() as "active" | "banned",
             settings: {
-              emailNotifications: true,
-              smsNotifications: false,
-              theme: "system",
+              emailNotifications: JSON.parse(localStorage.getItem("settings_emailNotifs") ?? "true"),
+              smsNotifications: JSON.parse(localStorage.getItem("settings_smsNotifs") ?? "false"),
+              theme: (localStorage.getItem("settings_theme") as "light" | "dark" | "system") || "light",
             },
           });
         })
@@ -177,7 +183,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           title: r.category + " Issue",
           description: r.description,
           image: r.imageUrls && r.imageUrls.length > 0 ? r.imageUrls[0] : "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600",
-          locationText: r.locationText || "Springfield",
+          locationText: r.locationText || (r.areaName ? `${r.areaName}, Nanded` : "Nanded"),
           lat: r.latitude,
           lng: r.longitude,
           area: r.areaName as Area,
@@ -198,6 +204,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       .finally(() => setLoading(false));
   };
 
+  const refreshUsers = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/admin/users", { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch users");
+        return res.json();
+      })
+      .then((data: any[]) => {
+        setUsers(data.map(u => ({
+          id: String(u.id),
+          name: u.username || "Unknown",
+          email: u.email,
+          role: (u.role || "citizen").toLowerCase(),
+          avatar: "https://images.unsplash.com/photo-1701463387028-3947648f1337?w=150",
+          status: (u.status || "active").toLowerCase(),
+          area: u.areaName || undefined,
+          settings: { emailNotifications: true, smsNotifications: false, theme: "system" }
+        })));
+      })
+      .catch(console.error);
+  };
+
+
   const mapStatus = (s: string): Status => {
     switch (s) {
       case "IN_PROGRESS": return "In Progress";
@@ -216,6 +246,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     refreshReports();
+    if (currentUser?.role === 'admin') {
+      refreshUsers();
+    }
   }, [currentUser]);
 
   const addReport = async (reportReq: Partial<Report>) => {
@@ -263,6 +296,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updateReport = (id: string, updates: Partial<Report>) => {
     setReports((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
+  };
+
+  const deleteReport = async (id: string, spamReportId?: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/complaints/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        if (spamReportId) {
+          resolveSpamReport(spamReportId);
+        }
+        toast.success("Post has been structurally deleted from feeds.");
+      } else {
+        toast.error("Failed to delete post.");
+      }
+    } catch(err) {
+      toast.error("Network error deleting post.");
+    }
   };
 
   const addComment = (reportId: string, comment: Comment) => {
@@ -348,14 +403,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  const banUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "banned" } : u));
-    toast.success("User banned.");
+  const banUser = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/users/${id}/ban`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "banned" } : u));
+        toast.success("User banned.");
+      } else {
+        toast.error("Failed to ban user.");
+      }
+    } catch(err) {
+      toast.error("Network error banning user.");
+    }
   };
 
-  const unbanUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "active" } : u));
-    toast.success("User unbanned.");
+  const unbanUser = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/users/${id}/unban`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "active" } : u));
+        toast.success("User unbanned.");
+      } else {
+        toast.error("Failed to unban user.");
+      }
+    } catch(err) {
+      toast.error("Network error unbanning user.");
+    }
   };
 
   const updateUserSettings = (settings: Partial<User["settings"]>) => {
@@ -363,17 +446,27 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const updatedUser = { ...currentUser, settings: { ...currentUser.settings, ...settings } };
       setCurrentUser(updatedUser);
       setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      // Persist to localStorage so settings survive page refresh
+      const merged = { ...currentUser.settings, ...settings };
+      localStorage.setItem("settings_theme", merged.theme);
+      localStorage.setItem("settings_emailNotifs", String(merged.emailNotifications));
+      localStorage.setItem("settings_smsNotifs", String(merged.smsNotifications));
       toast.success("Settings updated successfully.");
     }
   };
 
   return (
     <AppContext.Provider value={{ 
-      currentUser, setCurrentUser, users, setUsers, reports, setReports, loading, setLoading, refreshReports, addReport, updateReport, addComment, handleVote,
+      currentUser, setCurrentUser, users, setUsers, reports, setReports, loading, setLoading, refreshReports, refreshUsers, addReport, updateReport, addComment, handleVote,
       applications, submitApplication, updateApplicationStatus,
       spamReports, submitSpamReport, resolveSpamReport,
       notifications, markNotificationRead, markAllNotificationsRead, addNotification,
-      banUser, unbanUser, updateUserSettings
+      banUser,
+      unbanUser,
+      updateUserSettings,
+      selectedReportId,
+      setSelectedReportId,
+      deleteReport
     }}>
       {children}
     </AppContext.Provider>

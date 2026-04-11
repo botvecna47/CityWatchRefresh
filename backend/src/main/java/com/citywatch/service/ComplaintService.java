@@ -137,11 +137,14 @@ public class ComplaintService {
         if (complaint.getUpvotedCitizenIds() == null) {
             complaint.setUpvotedCitizenIds(new java.util.HashSet<String>());
         }
-        if (!complaint.getUpvotedCitizenIds().contains(citizen.getId())) {
+        // Toggle: remove if already voted, add if not
+        if (complaint.getUpvotedCitizenIds().contains(citizen.getId())) {
+            complaint.getUpvotedCitizenIds().remove(citizen.getId());
+        } else {
             complaint.getUpvotedCitizenIds().add(citizen.getId());
             recalculateIntensity(complaint);
-            complaintRepository.save(complaint);
         }
+        complaintRepository.save(complaint);
         return toResponse(complaint);
     }
 
@@ -270,13 +273,17 @@ public class ComplaintService {
     }
 
     public ComplaintResponse toResponse(Complaint c) {
+        String locText = c.getArea() != null
+                ? c.getArea().getName() + ", Nanded"
+                : String.format("%.4f, %.4f", c.getLatitude(), c.getLongitude());
         return ComplaintResponse.builder()
                 .id(c.getId())
                 .category(c.getCategory().name())
                 .description(c.getDescription())
                 .imageUrls(c.getImageUrls())
+                .locationText(locText)
                 .status(c.getStatus().name())
-                .priority(c.getPriority().name())
+                .priority(c.getPriority() != null ? c.getPriority().name() : "LOW")
                 .latitude(c.getLatitude())
                 .longitude(c.getLongitude())
                 .intensityScore(c.getIntensityScore())
@@ -289,6 +296,7 @@ public class ComplaintService {
                 .escalationLevel(c.getEscalationLevel())
                 .reopenCount(c.getReopenCount())
                 .upvotes(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds().size() : 0)
+                .upvotedCitizenIds(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds() : new java.util.HashSet<>())
                 .createdAt(c.getCreatedAt())
                 .slaDeadline(c.getSlaDeadline())
                 .closedAt(c.getClosedAt())

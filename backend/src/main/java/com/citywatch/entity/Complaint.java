@@ -12,12 +12,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "complaints", indexes = {
     @Index(name = "idx_complaint_area",    columnList = "area_id"),
     @Index(name = "idx_complaint_status",  columnList = "status"),
-    @Index(name = "idx_complaint_citizen", columnList = "citizen_id")
+    @Index(name = "idx_complaint_citizen", columnList = "citizen_id"),
+    @Index(name = "idx_complaint_cat",     columnList = "category"),
+    @Index(name = "idx_complaint_priority", columnList = "priority")
 })
+@SQLRestriction("deleted = false")
 public class Complaint {
     public Complaint() {}
 
@@ -53,7 +58,10 @@ public class Complaint {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "complaint_upvotes", joinColumns = @JoinColumn(name = "complaint_id"))
     @Column(name = "citizen_id")
-    private Set<String> upvotedCitizenIds;  // now String to match User.id type
+    private Set<String> upvotedCitizenIds;
+
+    @Column(nullable = false)
+    private Boolean deleted = false;
 
     @Column(nullable = false)
     private Double latitude;
@@ -114,6 +122,8 @@ public class Complaint {
     public void setLatitude(Double latitude) { this.latitude = latitude; }
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
+    public Boolean getDeleted() { return deleted; }
+    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
     public ComplaintStatus getStatus() { return status; }
     public void setStatus(ComplaintStatus status) { this.status = status; }
     public Double getIntensityScore() { return intensityScore; }

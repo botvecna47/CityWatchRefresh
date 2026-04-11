@@ -23,6 +23,7 @@ public class ComplaintResponse {
     private String coordinatorName;
     private int upvotes;
     private int downvotes;
+    private java.util.Set<String> upvotedCitizenIds; // who has upvoted
     private int escalationLevel;
     private int reopenCount;
     private LocalDateTime createdAt;
@@ -85,6 +86,9 @@ public class ComplaintResponse {
     public int getDownvotes() { return downvotes; }
     public void setDownvotes(int downvotes) { this.downvotes = downvotes; }
 
+    public java.util.Set<String> getUpvotedCitizenIds() { return upvotedCitizenIds; }
+    public void setUpvotedCitizenIds(java.util.Set<String> upvotedCitizenIds) { this.upvotedCitizenIds = upvotedCitizenIds; }
+
     public int getEscalationLevel() { return escalationLevel; }
     public void setEscalationLevel(int escalationLevel) { this.escalationLevel = escalationLevel; }
 
@@ -122,6 +126,7 @@ public class ComplaintResponse {
         public ComplaintResponseBuilder coordinatorName(String coordinatorName) { c.setCoordinatorName(coordinatorName); return this; }
         public ComplaintResponseBuilder upvotes(int upvotes) { c.setUpvotes(upvotes); return this; }
         public ComplaintResponseBuilder downvotes(int downvotes) { c.setDownvotes(downvotes); return this; }
+        public ComplaintResponseBuilder upvotedCitizenIds(java.util.Set<String> ids) { c.setUpvotedCitizenIds(ids); return this; }
         public ComplaintResponseBuilder escalationLevel(int escalationLevel) { c.setEscalationLevel(escalationLevel); return this; }
         public ComplaintResponseBuilder reopenCount(int reopenCount) { c.setReopenCount(reopenCount); return this; }
         public ComplaintResponseBuilder createdAt(LocalDateTime createdAt) { c.setCreatedAt(createdAt); return this; }

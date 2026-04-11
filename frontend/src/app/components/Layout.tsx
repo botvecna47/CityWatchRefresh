@@ -5,14 +5,28 @@ import { cn, Button, Input, Textarea } from "./ui";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import { ReportSidebarOverlay } from "../pages/ReportSidebarOverlay";
+import logo from "../../assets/logo.png";
 
 export function AppLayout() {
-  const { currentUser, setCurrentUser, notifications, submitApplication } = useAppContext();
+  const { currentUser, setCurrentUser, users, notifications, submitApplication } = useAppContext();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+
+  useEffect(() => {
+    const theme = currentUser?.settings?.theme || localStorage.getItem("settings_theme") || "light";
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [currentUser?.settings?.theme]);
+
+
   
   // Close mobile menu on route change
   useEffect(() => {
@@ -76,7 +90,8 @@ export function AppLayout() {
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <Link to="/" className="text-xl sm:text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <Link to="/" className="text-xl sm:text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
             CityWatch
           </Link>
         </div>
@@ -122,16 +137,18 @@ export function AppLayout() {
                 <Badge role={currentUser.role} />
               </div>
 
-              <button onClick={() => { localStorage.removeItem("token"); setCurrentUser(null); }} className="p-2 text-gray-300 hover:text-red-400 transition-colors" title="Logout">
+              <button onClick={() => setCurrentUser(null)} className="p-2 text-gray-300 hover:text-red-400 transition-colors" title="Logout">
                 <LogOut className="w-5 h-5" />
               </button>
+
+
             </>
           ) : (
-            <Link to="/auth">
-              <Button className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white gap-2">
+            <Button asChild className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white gap-2">
+              <Link to="/auth">
                 <LogIn className="w-4 h-4" /> Sign In
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
       </nav>
@@ -166,7 +183,7 @@ export function AppLayout() {
         )}
       </AnimatePresence>
 
-      <main className="max-w-[1400px] w-full mx-auto px-2 sm:px-4 md:px-8 py-4 md:py-6 flex-1">
+      <main className="max-w-6xl w-full mx-auto px-4 py-8 flex-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -174,7 +191,6 @@ export function AppLayout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="w-full h-full"
           >
             <Outlet />
           </motion.div>
@@ -185,7 +201,10 @@ export function AppLayout() {
       <footer className="bg-[#1A4331] text-[#FDFDF7] py-12 px-6 mt-12 border-t-4 border-[#2E7D32]">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-2xl font-bold mb-4 font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>CityWatch</h3>
+            <h3 className="text-2xl font-bold mb-4 font-serif flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+              <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
+              CityWatch
+            </h3>
             <p className="text-sm text-gray-300 mb-4">
               A premium civic issue reporting platform empowering citizens to maintain the beauty and functionality of their city.
             </p>
@@ -281,6 +300,7 @@ export function AppLayout() {
           </motion.div>
         </div>
       )}
+      <ReportSidebarOverlay />
     </div>
   );
 }

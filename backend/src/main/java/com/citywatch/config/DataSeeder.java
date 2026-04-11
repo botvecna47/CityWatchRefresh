@@ -4,190 +4,287 @@ import com.citywatch.entity.*;
 import com.citywatch.enums.*;
 import com.citywatch.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DataSeeder — Idempotent startup seeder for CityWatch Nanded demo data.
+ *
+ * ► Runs on EVERY startup (safe — checks before inserting).
+ * ► ALWAYS force-resets demo-account passwords so they stay in sync with
+ *   whatever BCrypt format the current Spring Security version uses.
+ * ► All demo accounts: password = Admin@123
+ */
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
 
-    private final UserRepository userRepository;
-    private final AreaRepository areaRepository;
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
+    private static final String DEMO_PASSWORD = "Admin@123";
+
+    private final UserRepository      userRepository;
+    private final AreaRepository      areaRepository;
     private final SlaConfigRepository slaConfigRepository;
     private final ComplaintRepository complaintRepository;
-    private final CommentRepository commentRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final CommentRepository   commentRepository;
+    private final PasswordEncoder     passwordEncoder;
 
     @Override
+    @Transactional
     public void run(String... args) {
-        // Disabled: Use database/master_setup.sql for seeding instead.
-        // This prevents 'IdentifierGenerationException' as Java code won't attempt 
-        // to insert legacy 'Springfield' data without proper structured IDs.
+        // Encode at runtime — guaranteed compatible with the BCrypt version in pom.xml
+        String hash = passwordEncoder.encode(DEMO_PASSWORD);
+
+        seedSlaConfigs();
+        seedAreas();
+        seedStaff(hash); // Always sync Admin and Coordinators
+
+        // Only seed demo data (Citizens & Complaints) if the database is "empty" of citizens
+        if (userRepository.findByRole(Role.CITIZEN).isEmpty()) {
+            seedDemoCitizens(hash);
+            seedComplaints();
+        } else {
+            log.info("DataSeeder: Existing citizens found. Skipping demo data seeding.");
+        }
+
+        log.info("------------------------------------------------------");
+        log.info("  CityWatch — Startup Check Complete");
+        log.info("  Demo password for ALL accounts: {}", DEMO_PASSWORD);
+        log.info("  Admin:       admin@citywatch.in");
+        log.info("  Coordinator: ravi@citywatch.in");
+        log.info("  Coordinator: sunita@citywatch.in");
+        log.info("------------------------------------------------------");
     }
 
-    private void seedAreas() {
-        areaRepository.saveAll(List.of(
-            Area.builder().name("North Area").city("Springfield").centerLat(40.7128).centerLng(-74.0060).build(),
-            Area.builder().name("South Area").city("Springfield").centerLat(40.7100).centerLng(-74.0050).build(),
-            Area.builder().name("East Area").city("Springfield").centerLat(40.7150).centerLng(-73.9990).build(),
-            Area.builder().name("West Area").city("Springfield").centerLat(40.7110).centerLng(-74.0100).build()
-        ));
-    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void seedSlaConfigs() {
         for (Category cat : Category.values()) {
-            slaConfigRepository.findByCategory(cat).ifPresentOrElse(c -> {}, () -> {
-                int hours = switch (cat) {
-                    case GARBAGE -> 72;
-                    case POTHOLE -> 168;
-                    case DRAINAGE -> 96;
-                    case STREETLIGHT -> 48;
-                    case OTHER -> 120;
-                };
-                slaConfigRepository.save(SlaConfig.builder().category(cat).slaHours(hours).build());
-            });
+            slaConfigRepository.findByCategory(cat).ifPresentOrElse(
+                c -> { /* already exists — skip */ },
+                () -> {
+                    int hours = switch (cat) {
+                        case GARBAGE     -> 72;
+                        case POTHOLE     -> 168;
+                        case DRAINAGE    -> 96;
+                        case STREETLIGHT -> 48;
+                        case OTHER       -> 120;
+                    };
+                    slaConfigRepository.save(
+                        SlaConfig.builder().category(cat).slaHours(hours).build()
+                    );
+                }
+            );
         }
     }
 
-    private void seedUsers() {
-        String pw = passwordEncoder.encode("password123");
-
-        seedOrUpdate("admin@citywatch.com", pw, null, user -> {
-            if (user == null) {
-                userRepository.save(User.builder().username("carol_admin").email("admin@citywatch.com")
-                    .password(pw).role(Role.ADMIN).city("Springfield").build());
-            } else {
-                user.setPassword(pw);
-                userRepository.save(user);
+    private void seedAreas() {
+        record AreaTuple(String name, double lat, double lng) {}
+        List<AreaTuple> areas = List.of(
+            new AreaTuple("Shivajinagar", 19.165, 77.305),
+            new AreaTuple("CIDCO Colony",  19.125, 77.325),
+            new AreaTuple("Vazirabad",     19.1538, 77.3130),
+            new AreaTuple("Asarjan",       19.124, 77.285),
+            new AreaTuple("Vishnupuri",    19.112, 77.289),
+            new AreaTuple("Naganpura",     19.085, 77.321),
+            new AreaTuple("New Nanded",    19.182, 77.312),
+            new AreaTuple("Degloor Naka",  19.145, 77.340),
+            new AreaTuple("Kasba",         19.162, 77.302),
+            new AreaTuple("Huzur",         19.172, 77.315)
+        );
+        for (AreaTuple a : areas) {
+            if (areaRepository.findByName(a.name()).isEmpty()) {
+                areaRepository.save(
+                    Area.builder()
+                        .name(a.name()).city("Nanded")
+                        .centerLat(a.lat()).centerLng(a.lng())
+                        .build()
+                );
             }
-        });
-
-        Area north = areaRepository.findByName("North Area").orElseThrow();
-        Area south = areaRepository.findByName("South Area").orElseThrow();
-
-        seedOrUpdate("bob@citywatch.com", pw, north, user -> {
-            if (user == null) {
-                userRepository.save(User.builder().username("bob_coordinator").email("bob@citywatch.com")
-                    .password(pw).role(Role.COORDINATOR).area(north).city("Springfield").build());
-            } else {
-                user.setPassword(pw);
-                userRepository.save(user);
-            }
-        });
-
-        seedOrUpdate("dave@citywatch.com", pw, south, user -> {
-            if (user == null) {
-                userRepository.save(User.builder().username("dave_coordinator").email("dave@citywatch.com")
-                    .password(pw).role(Role.COORDINATOR).area(south).city("Springfield").build());
-            } else {
-                user.setPassword(pw);
-                userRepository.save(user);
-            }
-        });
-
-        seedOrUpdate("alice@example.com", pw, null, user -> {
-            if (user == null) {
-                userRepository.save(User.builder().username("alice_citizen").email("alice@example.com")
-                    .password(pw).role(Role.CITIZEN).city("Springfield").build());
-            } else {
-                user.setPassword(pw);
-                userRepository.save(user);
-            }
-        });
-
-        System.out.println("════════════════════════════════════════════════");
-        System.out.println("✅ Users seeded. All passwords: password123");
-        System.out.println("   Admin:       admin@citywatch.com");
-        System.out.println("   Coordinator: bob@citywatch.com");
-        System.out.println("   Coordinator: dave@citywatch.com");
-        System.out.println("   Citizen:     alice@example.com");
-        System.out.println("════════════════════════════════════════════════");
+        }
     }
 
-    private void seedOrUpdate(String email, String pw, Area area, java.util.function.Consumer<User> action) {
-        action.accept(userRepository.findByEmail(email).orElse(null));
+    /**
+     * Synchronizes Admin and coordinator accounts. Always ensures they exist and
+     * have the correct demo password for testing.
+     */
+    private void seedStaff(String hash) {
+        // ── Admin ────────────────────────────────────────────────────────────
+        userRepository.findByEmail("admin@citywatch.in").ifPresentOrElse(
+            u -> { u.setPassword(hash); userRepository.save(u); },
+            () -> userRepository.save(User.builder()
+                .id("MH16A0000001").username("admin")
+                .email("admin@citywatch.in").password(hash)
+                .role(Role.ADMIN).city("Nanded").stateCode("MH").rtoCode("16")
+                .build())
+        );
+
+        // ── Coordinators ─────────────────────────────────────────────────────
+        Area shivaji = areaRepository.findByName("Shivajinagar").orElse(null);
+        Area cidco   = areaRepository.findByName("CIDCO Colony").orElse(null);
+
+        userRepository.findByEmail("ravi@citywatch.in").ifPresentOrElse(
+            u -> { u.setPassword(hash); userRepository.save(u); },
+            () -> userRepository.save(User.builder()
+                .id("MH16M0000001").username("ravi_p")
+                .email("ravi@citywatch.in").password(hash)
+                .role(Role.COORDINATOR).area(shivaji).city("Nanded").stateCode("MH").rtoCode("16")
+                .build())
+        );
+        userRepository.findByEmail("sunita@citywatch.in").ifPresentOrElse(
+            u -> { u.setPassword(hash); userRepository.save(u); },
+            () -> userRepository.save(User.builder()
+                .id("MH16M0000002").username("sunita_d")
+                .email("sunita@citywatch.in").password(hash)
+                .role(Role.COORDINATOR).area(cidco).city("Nanded").stateCode("MH").rtoCode("16")
+                .build())
+        );
+    }
+
+    /**
+     * Seeds the standard 5 demo citizens. Only called if the DB has no citizens.
+     */
+    private void seedDemoCitizens(String hash) {
+        log.info("DataSeeder: Seeding 5 demo citizens...");
+        for (int i = 1; i <= 5; i++) {
+            final String email = "c" + i + "@gmail.com";
+            final String uid   = String.format("MH16C%07d", i);
+            final String uname = "citizen" + i;
+            userRepository.findByEmail(email).ifPresentOrElse(
+                u -> { u.setPassword(hash); userRepository.save(u); },
+                () -> userRepository.save(User.builder()
+                    .id(uid).username(uname)
+                    .email(email).password(hash)
+                    .role(Role.CITIZEN).city("Nanded").stateCode("MH").rtoCode("16")
+                    .build())
+            );
+        }
     }
 
     private void seedComplaints() {
-        User alice = userRepository.findByEmail("alice@example.com").orElseThrow();
-        User bob = userRepository.findByEmail("bob@citywatch.com").orElseThrow();
-        Area north = areaRepository.findByName("North Area").orElseThrow();
-        Area south = areaRepository.findByName("South Area").orElseThrow();
+        User citizen1 = userRepository.findByEmail("c1@gmail.com").orElse(null);
+        User citizen2 = userRepository.findByEmail("c2@gmail.com").orElse(null);
+        User citizen3 = userRepository.findByEmail("c3@gmail.com").orElse(null);
+        User ravi     = userRepository.findByEmail("ravi@citywatch.in").orElse(null);
+        User sunita   = userRepository.findByEmail("sunita@citywatch.in").orElse(null);
 
-        // Complaint 1 — In Progress
-        Complaint c1 = complaintRepository.save(Complaint.builder()
-            .citizen(alice)
-            .area(north)
-            .category(Category.POTHOLE)
-            .description("There is a massive pothole near the central intersection at Main Street. It has been growing for weeks after the rain and is causing damage to vehicles. Requires urgent repair before someone is injured.")
-            .imageUrls(java.util.List.of("https://images.unsplash.com/photo-1667317980667-9d5ed99f829e?w=600"))
-            .latitude(40.7128)
-            .longitude(-74.0060)
-            .status(ComplaintStatus.IN_PROGRESS)
-            .assignedCoordinator(bob)
-            .intensityScore(2.3)
-            .priority(Priority.HIGH)
-            .slaDeadline(LocalDateTime.now().plusHours(72))
-            .build());
+        Area vazir = areaRepository.findByName("Vazirabad").orElse(null);
 
-        commentRepository.save(Comment.builder()
-            .complaint(c1).user(bob)
-            .content("We have dispatched a team to assess the damage. Work is scheduled to begin tomorrow morning.")
-            .build());
-        commentRepository.save(Comment.builder()
-            .complaint(c1).user(alice)
-            .content("Thank you! It has been very dangerous at night, especially for motorcycles.")
-            .build());
+        if (citizen1 == null || vazir == null) {
+            log.warn("DataSeeder: skipping complaint seed — required user/area not found");
+            return;
+        }
 
-        // Complaint 2 — Pending Review
-        complaintRepository.save(Complaint.builder()
-            .citizen(alice)
-            .area(south)
-            .category(Category.STREETLIGHT)
-            .description("The streetlight on Oak Avenue near the school has been broken for two weeks. The area is completely dark after 7pm and it is very unsafe for children walking home from evening activities.")
-            .imageUrls(java.util.List.of("https://images.unsplash.com/photo-1765300012968-2c4ceb1d99c4?w=600"))
-            .latitude(40.7100)
-            .longitude(-74.0050)
-            .status(ComplaintStatus.PENDING_REVIEW)
-            .intensityScore(0.8)
-            .priority(Priority.MEDIUM)
-            .build());
+        // --- ID 1: Pothole (Market) — HIGH ---
+        seedOrUpdate(
+            "CMP-100426-000001", citizen1, vazir, Category.POTHOLE,
+            "Large pothole near Vazirabad main market has caused two motorcycle accidents this week. Road is broken near the junction.",
+            19.1535, 77.3128, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH
+        );
 
-        // Complaint 3 — Completed
-        complaintRepository.save(Complaint.builder()
-            .citizen(alice)
-            .area(north)
-            .category(Category.GARBAGE)
-            .description("Overflowing garbage bins at the corner of Park Lane — garbage piling up on the sidewalk for 5 days. The smell is affecting nearby residents and attracting pests. Sanitation last visited 3 weeks ago.")
-            .imageUrls(java.util.List.of("https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600"))
-            .latitude(40.7135)
-            .longitude(-74.0065)
-            .status(ComplaintStatus.COMPLETED)
-            .assignedCoordinator(bob)
-            .intensityScore(1.1)
-            .priority(Priority.MEDIUM)
-            .slaDeadline(LocalDateTime.now().plusHours(10))
-            .build());
+        // --- ID 2: Garbage (Square) — HIGH ---
+        seedOrUpdate(
+            "CMP-100426-000002", citizen2, vazir, Category.GARBAGE,
+            "Garbage pile-up near Vazirabad Square main gate — bins not cleared for 6 days. Foul smell affecting the entire market block.",
+            19.1542, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH
+        );
 
-        // Complaint 4 — Approved (no coordinator yet)
-        complaintRepository.save(Complaint.builder()
-            .citizen(alice)
-            .area(north)
-            .category(Category.DRAINAGE)
-            .description("The drain at Green Street is completely blocked after last week's rain. Stagnant water is flooding the road and pavement. Several residents have complained. This needs immediate attention before the next rainfall.")
-            .imageUrls(java.util.List.of("https://images.unsplash.com/photo-1546198632-9ef6368bef12?w=600"))
-            .latitude(40.7120)
-            .longitude(-74.0055)
-            .status(ComplaintStatus.APPROVED)
-            .intensityScore(1.6)
-            .priority(Priority.HIGH)
-            .slaDeadline(LocalDateTime.now().plusHours(48))
-            .build());
+        // --- ID 3: Streetlight (Rear Lane) — MEDIUM ---
+        seedOrUpdate(
+            "CMP-100426-000003", citizen3, vazir, Category.STREETLIGHT,
+            "Entire lane behind the main residential complex has no working streetlights since last week. Safety risk at night.",
+            19.1528, 77.3145, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM
+        );
 
-        System.out.println("✅ Sample complaints seeded (4 complaints, 2 comments)");
+        // --- ID 4: Drainage (Post Office) — HIGH ---
+        seedOrUpdate(
+            "CMP-100426-000004", citizen1, vazir, Category.DRAINAGE,
+            "Blocked storm drain near Vazirabad Post Office — stagnant water overflowing onto road. Residents are worried about health hazards.",
+            19.1550, 77.3115, ComplaintStatus.ASSIGNED, ravi, Priority.HIGH
+        );
+
+        // --- ID 5: Garbage (Construction) — MEDIUM ---
+        seedOrUpdate(
+            "CMP-100426-000005", citizen2, vazir, Category.GARBAGE,
+            "Illegal dumping of construction debris and waste on the footpath near Vazirabad colony entrance.",
+            19.1515, 77.3105, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM
+        );
+
+        // --- ID 6: Pothole (Naka) — MEDIUM ---
+        seedOrUpdate(
+            "CMP-100426-000006", citizen1, vazir, Category.POTHOLE,
+            "Series of small potholes making the commute very bumpy near Vazirabad Naka junction. Several vehicles damaged.",
+            19.1565, 77.3170, ComplaintStatus.ASSIGNED, sunita, Priority.MEDIUM
+        );
+
+        // --- ID 7: Streetlight (Intersection) — LOW ---
+        seedOrUpdate(
+            "CMP-100426-000007", citizen3, vazir, Category.STREETLIGHT,
+            "Blinking/flickering streetlight at the Vazirabad main intersection is very distracting for drivers at night.",
+            19.1548, 77.3132, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW
+        );
+
+        // --- ID 8: Drainage (Residential) — HIGH ---
+        seedOrUpdate(
+            "CMP-100426-000008", citizen2, vazir, Category.DRAINAGE,
+            "Foul smell and overflow from the open drain near the residential colony in Vazirabad. Drain has not been cleaned in months.",
+            19.1502, 77.3120, ComplaintStatus.ASSIGNED, ravi, Priority.HIGH
+        );
+
+        // --- ID 9: Pothole (Pipeline) — MEDIUM ---
+        seedOrUpdate(
+            "CMP-100426-000009", citizen1, vazir, Category.POTHOLE,
+            "Deep crater formed after recent pipeline repair work near Vazirabad water tank. Road surface not restored properly.",
+            19.1558, 77.3152, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM
+        );
+
+        // --- ID 10: Other (Parking) — LOW ---
+        seedOrUpdate(
+            "CMP-100426-000010", citizen3, vazir, Category.OTHER,
+            "Unauthorised vehicles parked daily at the main entry gate of Vazirabad colony, blocking movement for residents.",
+            19.1538, 77.3130, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW
+        );
+
+        Complaint c1 = complaintRepository.findById("CMP-100426-000001").get();
+        if (ravi != null && commentRepository.count() == 0) {
+            commentRepository.save(Comment.builder()
+                .id("CMT-100426-000001").complaint(c1).user(ravi)
+                .content("Team dispatched to assess road damage. Repair work begins tomorrow morning.")
+                .build());
+        }
+
+        log.info("DataSeeder: 10 sample complaints synchronized in Vazirabad.");
+    }
+
+    private void seedOrUpdate(String id, User citizen, Area area, Category category, String desc,
+                               double lat, double lng, ComplaintStatus status, User coordinator, Priority priority) {
+        complaintRepository.findById(id).ifPresentOrElse(
+            c -> {
+                c.setArea(area);
+                c.setLatitude(lat);
+                c.setLongitude(lng);
+                c.setDescription(desc);
+                c.setPriority(priority);
+                complaintRepository.save(c);
+            },
+            () -> complaintRepository.save(Complaint.builder()
+                .id(id).citizen(citizen).area(area)
+                .category(category).description(desc)
+                .latitude(lat).longitude(lng)
+                .status(status).intensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5)
+                .priority(priority)
+                .assignedCoordinator(coordinator)
+                .slaDeadline(LocalDateTime.now().plusDays(5))
+                .build())
+        );
     }
 }
+
+        User citizen3 = userRepository.findByEmail("c3@gmail.com").orElse(null);

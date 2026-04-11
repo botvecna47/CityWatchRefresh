@@ -7,7 +7,7 @@ import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 
 export function NotificationsPage() {
-  const { currentUser, notifications, markNotificationRead, markAllNotificationsRead } = useAppContext();
+  const { currentUser, notifications, markNotificationRead, markAllNotificationsRead, setSelectedReportId } = useAppContext();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
@@ -17,8 +17,14 @@ export function NotificationsPage() {
 
   const handleNotificationClick = (id: string, link?: string) => {
     markNotificationRead(id);
+    // If the link looks like a report link, extract ID and open sidebar
     if (link) {
-      navigate(link);
+      const reportMatch = link.match(/\/report\/([^/]+)/);
+      if (reportMatch) {
+        setSelectedReportId(reportMatch[1]);
+      } else {
+        navigate(link);
+      }
     }
   };
 

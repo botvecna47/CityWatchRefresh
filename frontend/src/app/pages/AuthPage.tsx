@@ -5,6 +5,7 @@ import { Card, Button, Input, cn } from "../components/ui";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
+import logo from "../../assets/logo.png";
 
 const API_BASE = "/api/auth";
 
@@ -80,10 +81,26 @@ export function AuthPage() {
     }
   };
 
+  const handleQuickSignIn = (testEmail: string) => {
+    setEmail(testEmail);
+    setPassword("Admin@123");
+    // We use a small timeout to ensure state is updated before submission if we were calling handleSubmit directly,
+    // but better yet, let's just trigger a flag or call a specialized login function.
+    // For simplicity, we'll just set the values and let the user click sign in, 
+    // OR we can trigger the login automatically.
+    setTimeout(() => {
+       const form = document.querySelector('form');
+       if (form) form.requestSubmit();
+    }, 100);
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDF7] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-serif">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <h2 className="mt-6 text-center text-4xl font-extrabold text-[#1A4331]" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <div className="flex justify-center mb-6">
+          <img src={logo} className="w-16 h-16 rounded-full border-4 border-[#1A4331]/20 shadow-lg bg-white" alt="CityWatch Logo" />
+        </div>
+        <h2 className="text-center text-4xl font-extrabold text-[#1A4331]" style={{ fontFamily: 'Playfair Display, serif' }}>
           CityWatch
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
@@ -224,27 +241,54 @@ export function AuthPage() {
                     <div className="w-full border-t border-gray-300" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Test Accounts</span>
+                    <span className="px-2 bg-white text-gray-500">Quick Test Access</span>
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-md bg-gray-50 border border-gray-200 p-4 text-xs text-gray-600 space-y-2 text-left">
-                  <p className="font-semibold text-gray-700 mb-2 text-center">Nanded Test Accounts (Password: <code className="bg-gray-200 px-1.5 py-0.5 rounded text-[#1A4331]">Admin@123</code>)</p>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <span>🧑 Citizen:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">c1@gmail.com</code>
+                <div className="mt-4 grid grid-cols-1 gap-2">
+                  <button 
+                    onClick={() => handleQuickSignIn("c1@gmail.com")}
+                    className="flex items-center justify-between p-2.5 rounded-sm bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🧑</span>
+                      <div>
+                        <p className="text-xs font-bold text-blue-900 group-hover:underline">Citizen Portal</p>
+                        <p className="text-[10px] text-blue-700 opacity-70">c1@gmail.com</p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>🔧 Coordinator:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">ravi@citywatch.in</code>
+                    <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
+                  </button>
+
+                  <button 
+                    onClick={() => handleQuickSignIn("ravi@citywatch.in")}
+                    className="flex items-center justify-between p-2.5 rounded-sm bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔧</span>
+                      <div>
+                        <p className="text-xs font-bold text-purple-900 group-hover:underline">Coordinator Panel</p>
+                        <p className="text-[10px] text-purple-700 opacity-70">ravi@citywatch.in</p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>🛡️ Admin:</span>
-                      <code className="bg-gray-200 px-1.5 py-0.5 rounded">admin@citywatch.in</code>
+                    <span className="text-[10px] font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
+                  </button>
+
+                  <button 
+                    onClick={() => handleQuickSignIn("admin@citywatch.in")}
+                    className="flex items-center justify-between p-2.5 rounded-sm bg-red-50 border border-red-100 hover:bg-red-100 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🛡️</span>
+                      <div>
+                        <p className="text-xs font-bold text-red-900 group-hover:underline">Command Center (Admin)</p>
+                        <p className="text-[10px] text-red-700 opacity-70">admin@citywatch.in</p>
+                      </div>
                     </div>
-                  </div>
+                    <span className="text-[10px] font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
+                  </button>
                 </div>
+                <p className="text-[10px] text-center text-gray-400 mt-2">Password: <code className="bg-gray-100 px-1 rounded">Admin@123</code></p>
               </motion.div>
             )}
           </Card>

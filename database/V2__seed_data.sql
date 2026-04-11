@@ -5,6 +5,9 @@
 --  Seeded users:  1 admin + 2 coordinators + 5 citizens  = 8 users
 --  Seeded areas:  10 Nanded localities
 --  Seeded complaints: 10 realistic civic issues
+--
+--  All passwords: Admin@123
+--  Hash below ($2a$12$) is BCrypt-12 of "Admin@123"
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ─── SLA Configuration ────────────────────────────────────────────────────────
@@ -36,9 +39,9 @@ INSERT INTO areas (name, city, boundary_lat_min, boundary_lat_max, boundary_lng_
 INSERT INTO users (id, username, email, password_hash, role, trust_level, status, city, state_code, rto_code)
 VALUES (
     'MH16A0000001',
-    'cw_admin',
+    'admin',
     'admin@citywatch.in',
-    '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
     'ADMIN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16'
 );
 
@@ -46,15 +49,14 @@ UPDATE sla_config SET created_by = 'MH16A0000001';
 
 -- ─── Users: Coordinators ──────────────────────────────────────────────────────
 -- ID: MH16M0000001, MH16M0000002
--- Password: Coord@123 (same hash for seeding convenience)
 INSERT INTO users (id, username, email, password_hash, role, trust_level, status, city, state_code, rto_code, area_id)
 VALUES
-    ('MH16M0000001', 'coord_ravi',  'ravi.patil@citywatch.in',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16M0000001', 'ravi_p',  'ravi@citywatch.in',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'COORDINATOR', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16',
      (SELECT id FROM areas WHERE name = 'Shivajinagar')),
-    ('MH16M0000002', 'coord_sunita', 'sunita.desai@citywatch.in',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16M0000002', 'sunita_d', 'sunita@citywatch.in',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'COORDINATOR', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16',
      (SELECT id FROM areas WHERE name = 'CIDCO Colony'));
 
@@ -62,20 +64,20 @@ VALUES
 -- IDs: MH16C0000001 → MH16C0000005
 INSERT INTO users (id, username, email, password_hash, role, trust_level, status, city, state_code, rto_code)
 VALUES
-    ('MH16C0000001', 'amit_kamble',  'amit.kamble@gmail.com',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16C0000001', 'citizen1', 'c1@gmail.com',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'CITIZEN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16'),
-    ('MH16C0000002', 'priya_shinde', 'priya.shinde@gmail.com',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16C0000002', 'citizen2', 'c2@gmail.com',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'CITIZEN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16'),
-    ('MH16C0000003', 'suresh_nair',  'suresh.nair@gmail.com',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16C0000003', 'citizen3', 'c3@gmail.com',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'CITIZEN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16'),
-    ('MH16C0000004', 'meena_jadhav', 'meena.jadhav@gmail.com',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16C0000004', 'citizen4', 'c4@gmail.com',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'CITIZEN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16'),
-    ('MH16C0000005', 'rohit_pawar',  'rohit.pawar@gmail.com',
-     '$2a$12$LqjJF0K2x3GGxCZi5Y7zAuBOGPAI2OLWMTXqVbWxM2a0NuDTEpSYy',
+    ('MH16C0000005', 'citizen5', 'c5@gmail.com',
+     '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi',
      'CITIZEN', 'NORMAL', 'ACTIVE', 'Nanded', 'MH', '16');
 
 -- ─── Fast-forward sequences past seeded values ────────────────────────────────

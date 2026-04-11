@@ -1,46 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router";
 import { MapPin, X, Layers, Filter } from "lucide-react";
 import { useAppContext, Area, Status, Report } from "../store";
-import { cn, Badge, Button } from "../components/ui";
+import { cn, Button } from "../components/ui";
 import { StatusBadge } from "./Home";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-
-let icons: Record<string, L.DivIcon> | null = null;
-
-const initLeaflet = () => {
-  if (icons) return;
-
-  // Fix for default Leaflet icons
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  });
-
-  // Create custom colored markers for different statuses
-  const createCustomIcon = (colorClass: string) => {
-    return L.divIcon({
-      className: 'custom-leaflet-marker',
-      html: `<div class="relative w-8 h-8 -translate-x-1/2 -translate-y-full transition-transform hover:scale-110">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin ${colorClass} drop-shadow-md"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              <div class="absolute top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-current opacity-20 animate-ping"></div>
-             </div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32]
-    });
-  };
-
-  icons = {
-    Completed: createCustomIcon('text-green-600'),
-    'In Progress': createCustomIcon('text-amber-500'),
-    Reported: createCustomIcon('text-red-600')
-  };
-};
 
 function MapUpdater({ reports }: { reports: Report[] }) {
   const map = useMap();
@@ -53,17 +18,25 @@ function MapUpdater({ reports }: { reports: Report[] }) {
   return null;
 }
 
+const urgencyColor = (urgency: string) => {
+  if (urgency === "High")   return { fill: "#ef4444", stroke: "#b91c1c" };
+  if (urgency === "Medium") return { fill: "#f59e0b", stroke: "#b45309" };
+  return                           { fill: "#3b82f6", stroke: "#1d4ed8" };
+};
+
 export function MapPage() {
-  const { reports } = useAppContext();
-  const [activeArea, setActiveArea] = useState<Area | "All">("All");
-  const [activeStatus, setActiveStatus] = useState<Status | "All">("All");
+  const { reports, setSelectedReportId } = useAppContext();
+  const [activeArea, setActiveArea] = useState<Area | "All">(localStorage.getItem("map_filterArea") || "All");
+  const [activeStatus, setActiveStatus] = useState<Status | "All">((localStorage.getItem("map_filterStatus") as Status | "All") || "All");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isClient, setIsClient] = useState(false);
 
+  useEffect(() => { setIsClient(true); }, []);
+
   useEffect(() => {
-    initLeaflet();
-    setIsClient(true);
-  }, []);
+    localStorage.setItem("map_filterArea", activeArea);
+    localStorage.setItem("map_filterStatus", activeStatus);
+  }, [activeArea, activeStatus]);
 
   const filteredReports = reports.filter(r => {
     if (activeArea !== "All" && r.area !== activeArea) return false;
@@ -71,8 +44,8 @@ export function MapPage() {
     return true;
   });
 
-  // Default center (San Francisco roughly)
-  const defaultCenter: [number, number] = [37.7749, -122.4194];
+  const defaultCenter: [number, number] = [19.1383, 77.3210];
+  const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
 
   if (!isClient) return null;
 
@@ -90,21 +63,25 @@ export function MapPage() {
         />
         <MapUpdater reports={filteredReports} />
 
-        {filteredReports.map(report => (
-          <Marker 
-            key={report.id} 
-            position={[report.lat, report.lng]}
-            icon={icons[report.status]}
-            eventHandlers={{
-              click: () => setSelectedReport(report),
-            }}
-          >
-            {/* We handle Popup externally for styling freedom, but could use <Popup> here too */}
-          </Marker>
-        ))}
+        {filteredReports.map(report => {
+          const { fill, stroke } = urgencyColor(report.urgency);
+          const radius = report.urgency === "High" ? 13 : report.urgency === "Medium" ? 9 : 7;
+          return (
+            <CircleMarker
+              key={report.id}
+              center={[report.lat, report.lng]}
+              radius={radius}
+              fillColor={fill}
+              color={stroke}
+              weight={2}
+              fillOpacity={0.85}
+              eventHandlers={{ click: () => setSelectedReport(report) }}
+            />
+          );
+        })}
       </MapContainer>
 
-      {/* Glassmorphic Filters Overlay */}
+      {/* Filters Overlay */}
       <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-auto z-10 flex flex-col gap-4 pointer-events-none">
         <div className="bg-white/90 backdrop-blur-md p-4 rounded-sm shadow-sm border border-white/50 w-full sm:w-72 pointer-events-auto">
           <h3 className="text-sm font-bold text-[#1A4331] mb-3 flex items-center gap-2 font-serif uppercase tracking-wider">
@@ -115,7 +92,7 @@ export function MapPage() {
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2 font-serif">By Area</label>
               <div className="flex flex-wrap gap-2">
-                {["All", "North Area", "South Area", "East Area", "West Area"].map((area) => (
+                {availableAreas.map((area) => (
                   <button
                     key={area}
                     onClick={() => setActiveArea(area as any)}
@@ -154,16 +131,19 @@ export function MapPage() {
           </div>
         </div>
         
-        <div className="bg-white/90 backdrop-blur-md p-3 rounded-sm shadow-sm border border-white/50 hidden sm:flex items-center gap-3 w-72 pointer-events-auto">
-          <Layers className="w-5 h-5 text-[#1A4331]" />
-          <div>
-            <p className="text-sm font-bold text-[#1A4331] font-serif leading-none">Map View Active</p>
-            <p className="text-xs text-gray-500 font-serif mt-1">Showing {filteredReports.length} issues dynamically bridged</p>
+        {/* Legend */}
+        <div className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-sm shadow-sm border border-white/50 hidden sm:flex items-center gap-4 w-72 pointer-events-auto">
+          <Layers className="w-4 h-4 text-[#1A4331] flex-shrink-0" />
+          <div className="flex items-center gap-3 text-xs font-serif font-medium text-gray-600">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> High</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 inline-block" /> Medium</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Low</span>
           </div>
+          <span className="ml-auto text-[10px] text-gray-400">{filteredReports.length} issues</span>
         </div>
       </div>
 
-      {/* Selected Report Custom Popup Overlay */}
+      {/* Selected Report Popup */}
       {selectedReport && (
         <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 left-4 sm:left-auto z-30 sm:w-80 bg-white shadow-2xl rounded-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
           <div className="relative h-32 bg-gray-100">
@@ -174,6 +154,15 @@ export function MapPage() {
             >
               <X className="w-4 h-4" />
             </button>
+            {/* Urgency badge on image */}
+            <span className={cn(
+              "absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-sm border",
+              selectedReport.urgency === "High" ? "bg-red-100 text-red-700 border-red-200" :
+              selectedReport.urgency === "Medium" ? "bg-amber-100 text-amber-700 border-amber-200" :
+              "bg-blue-100 text-blue-700 border-blue-200"
+            )}>
+              {selectedReport.urgency} Urgency
+            </span>
           </div>
           
           <div className="p-4">
@@ -185,13 +174,17 @@ export function MapPage() {
             <h4 className="font-bold text-[#1A4331] mb-1 line-clamp-1" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedReport.title}</h4>
             <p className="text-sm text-gray-600 mb-4 line-clamp-2 font-serif">{selectedReport.description}</p>
             
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
               <span className="text-xs text-gray-500 flex items-center gap-1 font-serif">
                 <MapPin className="w-3 h-3 text-red-500" /> {selectedReport.locationText.split(',')[0]}
               </span>
-              <Link to={`/report/${selectedReport.id}`}>
-                <Button size="sm" className="h-8 text-xs py-0 bg-[#1A4331] hover:bg-[#112d21] text-white font-serif rounded-sm">View Detail</Button>
-              </Link>
+              <Button 
+                onClick={() => setSelectedReportId(selectedReport.id)} 
+                size="sm" 
+                className="h-8 text-xs py-0 bg-[#1A4331] hover:bg-[#112d21] text-white font-serif rounded-sm"
+              >
+                View Detail
+              </Button>
             </div>
           </div>
         </div>
@@ -199,3 +192,6 @@ export function MapPage() {
     </div>
   );
 }
+
+
+

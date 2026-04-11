@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowLeft, ArrowBigUp, MapPin, Share2, MessageSquare, AlertTriangle, CheckCircle2, X, Trash2 } from "lucide-react";
 import { useAppContext, Comment, Report } from "../store";
@@ -20,7 +20,9 @@ export function ReportDetail() {
   const report = reports.find(r => r.id === id);
 
   const [commentText, setCommentText] = useState("");
-  const [hasUpvoted, setHasUpvoted] = useState(false); // local optimistic state
+  const [hasUpvoted, setHasUpvoted] = useState(false);
+  const [showSpamModal, setShowSpamModal] = useState(false);
+  const [spamReason, setSpamReason] = useState("");
 
   // Fix for default Leaflet icons
   useEffect(() => {
@@ -31,6 +33,7 @@ export function ReportDetail() {
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
   }, []);
+
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -45,33 +48,19 @@ export function ReportDetail() {
   }
 
   const handleVote = async (type: 'up' | 'down') => {
-    if (!currentUser) {
-      toast.error("Please sign in to upvote.");
-      navigate("/auth");
-      return;
-    }
-    if (type !== 'up') return; // only upvoting supported
-    if (hasUpvoted) {
-      toast.info("You have already upvoted this complaint.");
-      return;
-    }
+    if (!currentUser) { toast.error("Please sign in to upvote."); navigate("/auth"); return; }
+    if (currentUser.role === "admin") { toast.error("Admins cannot upvote complaints."); return; }
+    if (type !== 'up') return;
+    if (hasUpvoted) { toast.info("You have already upvoted this complaint."); return; }
     await voteOnServer(report.id);
     setHasUpvoted(true);
     toast.success("Upvote recorded — thank you for your support!");
   };
 
-
-
-
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      toast.error("Please sign in to comment.");
-      navigate("/auth");
-      return;
-    }
+    if (!currentUser) { toast.error("Please sign in to comment."); navigate("/auth"); return; }
     if (!commentText.trim()) return;
-
     const newComment: Comment = {
       id: Math.random().toString(36).substr(2, 9),
       authorId: currentUser.id,
@@ -79,13 +68,9 @@ export function ReportDetail() {
       text: commentText,
       createdAt: new Date().toISOString()
     };
-
     addComment(report.id, newComment);
     setCommentText("");
   };
-
-  const [showSpamModal, setShowSpamModal] = useState(false);
-  const [spamReason, setSpamReason] = useState("");
 
   const handleReportSpam = () => {
     if (!currentUser) return;

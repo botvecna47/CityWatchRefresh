@@ -65,6 +65,15 @@ public class AdminController {
         );
     }
 
+    @DeleteMapping("/complaints/{id}")
+    public ResponseEntity<Map<String, String>> deleteComplaint(@PathVariable String id) {
+        complaintRepository.findById(id).ifPresent(c -> {
+            c.setDeleted(true);
+            complaintRepository.save(c);
+        });
+        return ResponseEntity.ok(Map.of("message", "Complaint deleted"));
+    }
+
     @GetMapping("/escalations")
     public ResponseEntity<List<Escalation>> getAllEscalations() {
         return ResponseEntity.ok(escalationRepository.findAll());

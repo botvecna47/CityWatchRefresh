@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { MessageSquare, ArrowBigUp, ArrowBigDown, MapPin, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -8,13 +8,20 @@ import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
 
 export function Home() {
-  const { reports, currentUser, updateReport, loading, handleVote: voteOnServer } = useAppContext();
+  const { reports, currentUser, loading, handleVote: voteOnServer } = useAppContext();
+  const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
   const navigate = useNavigate();
-  const [filterArea, setFilterArea] = useState<Area | "All">("All");
-  const [filterStatus, setFilterStatus] = useState<Status | "All">("All");
-  const [filterUrgency, setFilterUrgency] = useState<"Low" | "Medium" | "High" | "All">("All");
+  const [filterArea, setFilterArea] = useState<Area | "All">(localStorage.getItem("feed_filterArea") || "All");
+  const [filterStatus, setFilterStatus] = useState<Status | "All">((localStorage.getItem("feed_filterStatus") as Status | "All") || "All");
+  const [filterUrgency, setFilterUrgency] = useState<"Low" | "Medium" | "High" | "All">((localStorage.getItem("feed_filterUrgency") as any) || "All");
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("feed_filterArea", filterArea);
+    localStorage.setItem("feed_filterStatus", filterStatus);
+    localStorage.setItem("feed_filterUrgency", filterUrgency);
+  }, [filterArea, filterStatus, filterUrgency]);
 
   const filteredReports = reports.filter(r => {
     if (filterArea !== "All" && r.area !== filterArea) return false;
@@ -25,14 +32,11 @@ export function Home() {
   });
 
   const handleVoteAction = async (id: string, type: 'up' | 'down') => {
-    if (!currentUser) {
-      navigate('/auth');
-      return;
-    }
+    if (!currentUser) { navigate('/auth'); return; }
+    if (currentUser.role === 'admin') { toast.error("Admins cannot upvote complaints."); return; }
     if (type === 'up') {
       await voteOnServer(id);
     } else {
-      // Backend might need a downvote endpoint, for now we only support upvotes
       toast.info("Downvoting is coming soon!");
     }
   };
@@ -87,11 +91,9 @@ export function Home() {
                 value={filterArea}
                 onChange={(e) => setFilterArea(e.target.value as Area | "All")}
               >
-                <option value="All">All Areas</option>
-                <option value="North Area">North Area</option>
-                <option value="South Area">South Area</option>
-                <option value="East Area">East Area</option>
-                <option value="West Area">West Area</option>
+                {availableAreas.map(area => (
+                  <option key={area} value={area}>{area === 'All' ? 'All Areas' : area}</option>
+                ))}
               </select>
             </div>
 
@@ -222,10 +224,7 @@ export function Home() {
                       <button onClick={() => handleVoteAction(report.id, 'up')} className="p-1 text-gray-400 hover:text-[#2E7D32] transition-colors rounded hover:bg-gray-200">
                         <ArrowBigUp className="w-6 h-6" />
                       </button>
-                      <span className="text-sm font-bold text-[#1A4331]">{report.upvotes - report.downvotes}</span>
-                      <button onClick={() => handleVoteAction(report.id, 'down')} className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-200">
-                        <ArrowBigDown className="w-6 h-6" />
-                      </button>
+                      <span className="text-sm font-bold text-[#1A4331]">{report.upvotes}</span>
                     </div>
 
 
@@ -255,7 +254,7 @@ export function Home() {
                         </div>
                       </div>
 
-                      <Link to={`/report/${report.id}`} className="block group">
+                      <button onClick={() => navigate(`/report/${report.id}`)} className="block group text-left w-full">
                         <h2 className="text-xl font-bold mb-2 group-hover:text-[#2E7D32] transition-colors leading-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
                           {report.title}
                         </h2>
@@ -268,13 +267,13 @@ export function Home() {
                             <img src={report.image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           </div>
                         )}
-                      </Link>
+                      </button>
 
-                      <div className="flex items-center gap-6 mt-auto pt-4 border-t border-gray-100">
-                        <Link to={`/report/${report.id}`} className="flex items-center gap-2 text-gray-500 hover:text-[#1A4331] text-sm font-medium transition-colors">
+                      <div className="flex flex-wrap items-center gap-y-2 gap-x-6 mt-auto pt-4 border-t border-gray-100">
+                        <button onClick={() => navigate(`/report/${report.id}`)} className="flex items-center gap-2 text-gray-500 hover:text-[#1A4331] text-sm font-medium transition-colors">
                           <MessageSquare className="w-4 h-4" />
                           {report.comments.length} Comments
-                        </Link>
+                        </button>
                         <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
                           <MapPin className="w-4 h-4" />
                           <span className="truncate max-w-[200px]">{report.locationText}</span>

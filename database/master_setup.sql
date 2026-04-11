@@ -191,7 +191,7 @@ INSERT INTO areas (name, city, center_lat, center_lng) VALUES
 
 -- Admin (Seed with password hash for Admin@123)
 INSERT INTO users (id, username, email, password_hash, role, city, state_code, rto_code)
-VALUES ('MH16A0000001', 'admin', 'admin@citywatch.in', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'ADMIN', 'Nanded', 'MH', '16');
+VALUES ('MH16A0000001', 'admin', 'admin@citywatch.in', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'ADMIN', 'Nanded', 'MH', '16');
 
 -- SLA Config (Fixed: INSERT with created_by directly)
 INSERT INTO sla_config (category, sla_hours, created_by) VALUES
@@ -200,16 +200,16 @@ INSERT INTO sla_config (category, sla_hours, created_by) VALUES
 
 -- Coordinators
 INSERT INTO users (id, username, email, password_hash, role, city, state_code, rto_code, area_id) VALUES
-    ('MH16M0000001', 'ravi_p', 'ravi@citywatch.in', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'COORDINATOR', 'Nanded', 'MH', '16', 1),
-    ('MH16M0000002', 'sunita_d', 'sunita@citywatch.in', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'COORDINATOR', 'Nanded', 'MH', '16', 2);
+    ('MH16M0000001', 'ravi_p', 'ravi@citywatch.in', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'COORDINATOR', 'Nanded', 'MH', '16', 1),
+    ('MH16M0000002', 'sunita_d', 'sunita@citywatch.in', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'COORDINATOR', 'Nanded', 'MH', '16', 2);
 
 -- Citizens
 INSERT INTO users (id, username, email, password_hash, role, city, state_code, rto_code) VALUES
-    ('MH16C0000001', 'citizen1', 'c1@gmail.com', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'CITIZEN', 'Nanded', 'MH', '16'),
-    ('MH16C0000002', 'citizen2', 'c2@gmail.com', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'CITIZEN', 'Nanded', 'MH', '16'),
-    ('MH16C0000003', 'citizen3', 'c3@gmail.com', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'CITIZEN', 'Nanded', 'MH', '16'),
-    ('MH16C0000004', 'citizen4', 'c4@gmail.com', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'CITIZEN', 'Nanded', 'MH', '16'),
-    ('MH16C0000005', 'citizen5', 'c5@gmail.com', '$2a$10$Y50UaMWM7p1S0mVLun9ZlepxqZ9P7tKjEaOnN2H5H3m1B5M2p6W3O', 'CITIZEN', 'Nanded', 'MH', '16');
+    ('MH16C0000001', 'citizen1', 'c1@gmail.com', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'CITIZEN', 'Nanded', 'MH', '16'),
+    ('MH16C0000002', 'citizen2', 'c2@gmail.com', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'CITIZEN', 'Nanded', 'MH', '16'),
+    ('MH16C0000003', 'citizen3', 'c3@gmail.com', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'CITIZEN', 'Nanded', 'MH', '16'),
+    ('MH16C0000004', 'citizen4', 'c4@gmail.com', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'CITIZEN', 'Nanded', 'MH', '16'),
+    ('MH16C0000005', 'citizen5', 'c5@gmail.com', '$2a$10$0xzTY2Kcx3zz27kQPhs8MeIllKqtRsR0HSlR5XwxERfxgaKag3Qvi', 'CITIZEN', 'Nanded', 'MH', '16');
 
 -- Complaints (10 Vazirabad Specific Issues)
 -- Vazirabad Area ID is 3

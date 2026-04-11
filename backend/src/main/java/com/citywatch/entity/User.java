@@ -11,7 +11,12 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_user_email", columnList = "email"),
+    @Index(name = "idx_user_username", columnList = "username"),
+    @Index(name = "idx_user_role", columnList = "role"),
+    @Index(name = "idx_user_status", columnList = "status")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,13 +53,16 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "trust_level", length = 20)
+    @Builder.Default
     private TrustLevel trustLevel = TrustLevel.NORMAL;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
+    @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "strike_count")
+    @Builder.Default
     private Integer strikeCount = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)

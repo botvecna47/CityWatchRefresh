@@ -17,22 +17,24 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":5173" ^| findstr "LISTENING
     taskkill /PID %%p /F >nul 2>&1
 )
 
-echo [CityWatch] Starting Backend (JDK 23)...
-start "CityWatch Backend" /D "%PROJECT_ROOT%backend" cmd /k ".\apache-maven-3.9.6\bin\mvn.cmd spring-boot:run -Dspring-boot.run.jvmArguments="-Dspring.datasource.url=jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require -Dspring.datasource.username=postgres.axtcsaknntdxhzxwzvmo -Dspring.datasource.password=botvecna@47 -Djwt.secret=cOJnbZHo26X7O9lNvEIPd5yuuAYa2Am9aWiUuE96XgZfSD0Wpp98tRMMRTvCWyRS""
+echo [CityWatch] Starting Backend (JDK 23, Local PostgreSQL)...
+:: Uses .env file in backend/ for DB_URL, DB_USERNAME, DB_PASSWORD, CW_JWT_SECRET
+start "CityWatch Backend" /D "%PROJECT_ROOT%backend" cmd /k ".\apache-maven-3.9.6\bin\mvn.cmd spring-boot:run"
 
 :: Wait a moment for backend to initialize
-echo [CityWatch] Waiting for backend to warm up...
-ping -n 6 127.0.0.1 >nul
+echo [CityWatch] Waiting for backend to warm up (15 seconds)...
+ping -n 16 127.0.0.1 >nul
 
 echo [CityWatch] Starting Frontend (Vite)...
 start "CityWatch Frontend" /D "%PROJECT_ROOT%frontend" cmd /k "echo Starting Frontend... && npm run dev"
 
 echo.
-echo [CityWatch] Both services have been launched in separate windows.
-echo   - Check the "CityWatch Backend" window for Spring Boot logs.
-echo   - Check the "CityWatch Frontend" window for Vite logs.
+echo [CityWatch] Both services launched in separate windows.
+echo   Check "CityWatch Backend" window for Spring Boot logs.
+echo   Check "CityWatch Frontend" window for Vite logs.
 echo.
 echo   Backend URL:  http://localhost:8081
 echo   Frontend URL: http://localhost:5173
+echo   Test Login:   admin@citywatch.in / Admin@123
 echo.
 pause

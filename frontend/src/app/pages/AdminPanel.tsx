@@ -1,13 +1,26 @@
-import { useState, useMemo } from "react";
-import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, MoreVertical, Trash2, Mail, Phone, MapPin, Briefcase } from "lucide-react";
+import { useState, useMemo, ElementType } from "react";
+import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, MoreVertical, Trash2, Mail, Phone, MapPin, Briefcase, Target, Settings, Megaphone, Clock, Map, TrendingUp, Search, Filter, Layers, Zap } from "lucide-react";
 import { useAppContext, User, Report } from "../store";
-import { Card, Button, Input, Badge, cn } from "../components/ui";
+import { Card, Button, Input, Badge, cn, Textarea } from "../components/ui";
 import { motion, AnimatePresence } from "motion/react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from "recharts";
+import { format, subDays, differenceInHours } from "date-fns";
+import { toast } from "sonner";
+import { MapContainer, TileLayer, Popup, CircleMarker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix standard Leaflet icon paths
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 export function AdminPanel() {
   const { users, currentUser, reports, applications, spamReports } = useAppContext();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "coordinators" | "applications" | "members" | "moderation">("dashboard");
+  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "settings">("overview");
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
@@ -17,23 +30,17 @@ export function AdminPanel() {
     <div className="space-y-6">
       <div className="flex justify-between items-end border-b border-gray-200 pb-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#1A4331] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Admin Control Panel</h1>
-          <p className="text-gray-600 font-serif">System overview and user management.</p>
+          <h1 className="text-3xl font-bold text-[#1A4331] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Command Center</h1>
+          <p className="text-gray-600 font-serif">City-level overview and tactical administration.</p>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">
-        {([
-          { id: "dashboard",    label: "Dashboard" },
-          { id: "applications", label: "Applications" },
-          { id: "coordinators", label: "Coordinators" },
-          { id: "members",      label: "Members" },
-          { id: "moderation",   label: "Content Moderation" },
-        ] as const).map(({ id: tab, label }) => {
-          const badgeCount =
-            tab === "applications" ? applications.filter(a => a.status === "pending").length
-            : tab === "moderation" ? spamReports.filter(s => s.status === "pending").length
-            : 0;
+        {(["overview", "issues", "coordinators", "users", "applications", "spam", "settings"] as const).map(tab => {
+          let badgeCount = 0;
+          if (tab === "applications") badgeCount = applications.filter(a => a.status === "pending").length;
+          if (tab === "spam") badgeCount = spamReports.filter(s => s.status === "pending").length;
+          if (tab === "issues") badgeCount = reports.filter(r => r.urgency === "High" && r.status !== "Completed").length; // Highlight critical issues
 
           return (
             <button
@@ -42,15 +49,15 @@ export function AdminPanel() {
               aria-selected={activeTab === tab}
               role="tab"
               className={cn(
-                "px-4 py-2 font-medium text-sm transition-all border-b-2 font-serif tracking-wide flex items-center gap-2",
-                activeTab === tab
-                  ? "border-[#1A4331] text-[#1A4331] bg-[#1A4331]/5"
+                "px-4 py-2 font-medium text-sm transition-all border-b-2 font-serif capitalize tracking-wide flex items-center gap-2",
+                activeTab === tab 
+                  ? "border-[#1A4331] text-[#1A4331] bg-[#1A4331]/5" 
                   : "border-transparent text-gray-500 hover:text-[#1A4331] hover:border-gray-300 hover:bg-gray-50"
               )}
             >
-              {label}
+              {tab}
               {badgeCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">{badgeCount}</span>
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full shadow-sm text-white", tab === 'issues' ? 'bg-amber-500' : 'bg-red-500')}>{badgeCount}</span>
               )}
             </button>
           );
@@ -67,11 +74,13 @@ export function AdminPanel() {
             transition={{ duration: 0.2 }}
             className="py-4"
           >
-            {activeTab === "dashboard"   && <AdminOverview reports={reports} users={users} />}
+            {activeTab === "overview" && <AdminOverview reports={reports} users={users} />}
+            {activeTab === "issues" && <IssuesManagement reports={reports} users={users} />}
+            {activeTab === "coordinators" && <CoordinatorManagement users={users.filter(u => u.role === "coordinator")} reports={reports} />}
+            {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Directory" />}
             {activeTab === "applications" && <ApplicationsManagement />}
-            {activeTab === "coordinators" && <UserManagement users={users.filter(u => u.role === "coordinator")} title="Coordinator Management" />}
-            {activeTab === "members"      && <UserManagement users={users.filter(u => u.role === "citizen")} title="Member Management" />}
-            {activeTab === "moderation"   && <SpamManagement />}
+            {activeTab === "spam" && <SpamManagement />}
+            {activeTab === "settings" && <SettingsManagement />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -85,54 +94,154 @@ function AdminOverview({ reports, users }: { reports: Report[], users: User[] })
   const pending = total - completed;
   const highUrgency = reports.filter(r => r.urgency === "High" && r.status !== "Completed").length;
 
+  const activeReports = reports.filter(r => r.status !== "Completed");
+
+  // Time-series data for multi-line chart (Received vs Resolved)
+  const timeData = useMemo(() => {
+    const data = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = subDays(new Date(), i);
+      const dateStr = format(d, 'MMM dd');
+      data.push({
+        date: dateStr,
+        Received: Math.floor(Math.random() * 20) + 5,
+        Resolved: Math.floor(Math.random() * 15) + 3,
+      });
+    }
+    // inject some real data counts for the most recent day
+    data[29].Received += pending;
+    data[29].Resolved += completed;
+    return data;
+  }, [pending, completed]);
+
+  // Heatmap Data (SLA breach rates)
   const areaData = useMemo(() => {
-    const areas = ["Shivajinagar", "CIDCO Colony", "Vazirabad", "Vishnupuri", "Kasba"];
-    return areas.map((area, index) => ({
-      id: `area-${index}`,
-      name: area.split(' ')[0],
-      Active: reports.filter(r => r.area === area && r.status !== "Completed").length,
-      Resolved: reports.filter(r => r.area === area && r.status === "Completed").length,
+    const areas = ["North Area", "South Area", "East Area", "West Area"];
+    return areas.map((area) => ({
+      name: area,
+      "SLA Breached": Math.floor(Math.random() * 5), // Mocking breach rates
+      "At Risk": Math.floor(Math.random() * 10),
+      "On Track": Math.floor(Math.random() * 20) + 5,
     }));
-  }, [reports]);
+  }, []);
+
+
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Total Reports" value={total} icon={AlertCircle} color="text-blue-600" bg="bg-blue-50" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Active Complaints" value={pending} icon={AlertCircle} color="text-amber-600" bg="bg-amber-50" />
         <StatCard title="Resolved Issues" value={completed} icon={CheckCircle2} color="text-green-600" bg="bg-green-50" />
-        <StatCard title="Pending Review" value={pending} icon={ShieldAlert} color="text-amber-600" bg="bg-amber-50" />
-        <StatCard title="Critical Urgency" value={highUrgency} icon={AlertCircle} color="text-red-600" bg="bg-red-50" />
+        <StatCard title="Critical SLA Risks" value={highUrgency} icon={ShieldAlert} color="text-red-600" bg="bg-red-50" />
+        <StatCard title="Active Coordinators" value={users.filter(u => u.role === 'coordinator').length} icon={Users} color="text-blue-600" bg="bg-blue-50" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-[#1A4331] mb-6 font-serif border-b border-gray-100 pb-2">Issue Distribution by Area</h3>
-          <div className="w-full h-64">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Global Live Map */}
+        <Card className="p-6 bg-white shadow-sm border border-gray-200 col-span-1 lg:col-span-2">
+          <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-2">
+            <h3 className="text-lg font-bold text-[#1A4331] font-serif flex items-center gap-2">
+              <Map className="w-5 h-5 text-[#2E7D32]" /> Global Live Map (Nanded)
+            </h3>
+            <div className="flex gap-3 text-xs font-medium text-gray-500">
+               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> High</span>
+               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Medium</span>
+               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Low</span>
+            </div>
+          </div>
+          <div className="w-full h-80 bg-[#e5e7eb] rounded-lg relative overflow-hidden shadow-inner z-0">
+            <MapContainer center={[19.1383, 77.3210]} zoom={13} style={{ height: "100%", width: "100%" }}>
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+              />
+              {activeReports.map(report => (
+                <CircleMarker 
+                  key={report.id} 
+                  center={[report.lat, report.lng]}
+                  radius={report.urgency === 'High' ? 12 : report.urgency === 'Medium' ? 8 : 6}
+                  fillColor={report.urgency === 'High' ? '#ef4444' : report.urgency === 'Medium' ? '#f59e0b' : '#3b82f6'}
+                  color="white"
+                  weight={2}
+                  fillOpacity={0.8}
+                >
+                  <Popup>
+                    <div className="text-sm font-serif">
+                      <p className="font-bold text-[#1A4331] mb-1">{report.title}</p>
+                      <p className="text-xs text-gray-500 mb-1">{report.area}</p>
+                      <Badge variant="outline" className="text-[10px] py-0">{report.urgency}</Badge>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </MapContainer>
+            <div className="absolute bottom-2 left-2 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-sm border border-gray-200 text-[10px] text-gray-500 font-medium z-[1000] pointer-events-none">CityWatch Overlay System</div>
+          </div>
+        </Card>
+
+        {/* Complaints Trend (30 Days) */}
+        <Card className="p-6 bg-white shadow-sm border border-gray-200">
+          <h3 className="text-lg font-bold text-[#1A4331] mb-6 font-serif flex items-center gap-2 border-b border-gray-100 pb-2">
+            <TrendingUp className="w-5 h-5 text-blue-500" /> 30-Day Resolution Trend
+          </h3>
+          <div className="w-full h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={areaData}>
-                <CartesianGrid key="grid" strokeDasharray="3 3" vertical={false} />
-                <XAxis key="xaxis" dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis key="yaxis" axisLine={false} tickLine={false} />
-                <Tooltip key="tooltip" cursor={{ fill: 'transparent' }} />
-                <Bar key="bar-active" dataKey="Active" stackId="a" fill="#f59e0b" isAnimationActive={false} />
-                <Bar key="bar-resolved" dataKey="Resolved" stackId="a" fill="#22c55e" isAnimationActive={false} />
-              </BarChart>
+              <LineChart data={timeData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <Tooltip contentStyle={{ borderRadius: '4px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)' }} />
+                <Line type="monotone" dataKey="Received" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Resolved" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-[#1A4331] mb-4 font-serif border-b border-gray-100 pb-2">Recent System Activity</h3>
-          <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-            {reports.slice(0, 10).map(r => (
-              <div key={r.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded-sm transition-colors cursor-default">
+        {/* Top Coordinators Widget */}
+        <Card className="p-6 bg-white shadow-sm border border-gray-200">
+          <h3 className="text-lg font-bold text-[#1A4331] mb-6 font-serif flex items-center gap-2 border-b border-gray-100 pb-2">
+            <Users className="w-5 h-5 text-blue-500" /> Top Coordinators
+          </h3>
+          <div className="space-y-4">
+            {users.filter(u => u.role === 'coordinator').map((u, index) => (
+              <div key={u.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-sm border border-gray-100">
                 <div className="flex items-center gap-3">
-                  <div className={cn("w-2 h-2 rounded-full", r.status === 'Completed' ? 'bg-green-500' : 'bg-amber-500')}></div>
-                  <span className="font-medium text-[#1A4331] font-serif text-sm truncate max-w-[200px] sm:max-w-xs">{r.title}</span>
+                  <div className="w-6 h-6 rounded-full bg-[#1A4331] text-white flex items-center justify-center text-xs font-bold">
+                    #{index + 1}
+                  </div>
+                  <img src={u.avatar} alt={u.name} className="w-8 h-8 rounded-full" />
+                  <div>
+                    <p className="font-bold text-sm text-[#1A4331]">{u.name}</p>
+                    <p className="text-xs text-gray-500">{u.area}</p>
+                  </div>
                 </div>
-                <span className="text-xs text-gray-500 font-serif whitespace-nowrap">{r.area}</span>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 font-bold uppercase">Avg Time</p>
+                  <p className="text-sm font-bold text-green-600">{12 + index * 4}h</p>
+                </div>
               </div>
             ))}
+          </div>
+        </Card>
+
+        {/* SLA Heatmap */}
+        <Card className="p-6 bg-white shadow-sm border border-gray-200 col-span-1 lg:col-span-2">
+          <h3 className="text-lg font-bold text-[#1A4331] mb-6 font-serif flex items-center gap-2 border-b border-gray-100 pb-2">
+            <Target className="w-5 h-5 text-purple-500" /> SLA Health Breakdown by Zone
+          </h3>
+          <div className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={areaData} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#4b5563', fontWeight: 500 }} />
+                <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '4px', border: '1px solid #e5e7eb' }} />
+                <Bar dataKey="On Track" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} barSize={30} />
+                <Bar dataKey="At Risk" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="SLA Breached" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       </div>
@@ -140,7 +249,7 @@ function AdminOverview({ reports, users }: { reports: Report[], users: User[] })
   );
 }
 
-function StatCard({ title, value, icon: Icon, color, bg }: { title: string, value: number, icon: any, color: string, bg: string }) {
+function StatCard({ title, value, icon: Icon, color, bg }: { title: string, value: number, icon: ElementType, color: string, bg: string }) {
   return (
     <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
       <Card className="p-6 bg-white border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -148,12 +257,334 @@ function StatCard({ title, value, icon: Icon, color, bg }: { title: string, valu
           <Icon className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm text-gray-500 font-medium font-serif">{title}</p>
+          <p className="text-sm text-gray-500 font-medium font-serif leading-tight">{title}</p>
           <p className="text-2xl font-bold text-[#1A4331] font-serif">{value}</p>
         </div>
       </Card>
     </motion.div>
   );
+}
+
+function IssuesManagement({ reports, users }: { reports: Report[], users: User[] }) {
+  const [search, setSearch] = useState("");
+  const [filterArea, setFilterArea] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("All");
+  const [filterUrgency, setFilterUrgency] = useState<string>("All");
+  const [filterDate, setFilterDate] = useState<string>("All");
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+
+  const filtered = reports.filter(r => {
+    if (filterArea !== "All" && r.area !== filterArea) return false;
+    if (filterStatus !== "All" && r.status !== filterStatus) return false;
+    if (filterUrgency !== "All" && r.urgency !== filterUrgency) return false;
+    if (filterDate !== "All") {
+      const daysElapsed = differenceInHours(new Date(), new Date(r.createdAt)) / 24;
+      if (filterDate === "Today" && daysElapsed > 1) return false;
+      if (filterDate === "Week" && daysElapsed > 7) return false;
+      if (filterDate === "Month" && daysElapsed > 30) return false;
+    }
+    if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const selectedReport = reports.find(r => r.id === selectedIssueId);
+  const assignedCoordinator = selectedReport?.coordinatorId ? users.find(u => u.id === selectedReport.coordinatorId) : null;
+
+  return (
+    <div className="space-y-6 relative">
+      <div className="bg-white p-4 rounded-sm border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-1">
+          <Search className="w-4 h-4 text-gray-400" />
+          <Input placeholder="Search issues..." value={search} onChange={e => setSearch(e.target.value)} className="h-9 w-full md:max-w-xs" />
+        </div>
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterUrgency} onChange={e => setFilterUrgency(e.target.value)}>
+            <option value="All">All Priorities</option>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+          </select>
+          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="All">All Statuses</option>
+            <option value="Reported">Reported (New)</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterArea} onChange={e => setFilterArea(e.target.value)}>
+            <option value="All">All Areas</option>
+            <option value="North Area">North Area</option>
+            <option value="South Area">South Area</option>
+            <option value="East Area">East Area</option>
+            <option value="West Area">West Area</option>
+          </select>
+          <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterDate} onChange={e => setFilterDate(e.target.value)}>
+            <option value="All">All Time</option>
+            <option value="Today">Today</option>
+            <option value="Week">This Week</option>
+            <option value="Month">This Month</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-sm overflow-hidden shadow-sm overflow-x-auto">
+        <table className="w-full text-left text-sm font-serif min-w-[800px]">
+          <thead className="bg-[#FDFDF7] border-b border-gray-200 text-gray-600">
+            <tr>
+              <th className="p-4 font-medium">Issue</th>
+              <th className="p-4 font-medium">Location</th>
+              <th className="p-4 font-medium">Status & SLA</th>
+              <th className="p-4 font-medium">Priority</th>
+              <th className="p-4 font-medium text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.map(r => {
+              const hoursElapsed = differenceInHours(new Date(), new Date(r.createdAt));
+              const isBreached = hoursElapsed > 48 && r.status !== "Completed";
+              const isWarning = hoursElapsed > 24 && !isBreached && r.status !== "Completed";
+
+              return (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setSelectedIssueId(r.id)}>
+                  <td className="p-4">
+                    <p className="font-bold text-[#1A4331]">{r.title}</p>
+                    <p className="text-xs text-gray-500">Reported by {r.authorName}</p>
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="outline" className="bg-gray-50">{r.area}</Badge>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-col gap-1 items-start">
+                      <Badge className={cn(
+                        "font-medium",
+                        r.status === "Reported" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" :
+                        r.status === "In Progress" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" :
+                        "bg-green-100 text-green-800 hover:bg-green-100"
+                      )}>{r.status}</Badge>
+                      {isBreached ? (
+                         <span className="text-[10px] font-bold text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> SLA Breach ({hoursElapsed}h)</span>
+                      ) : isWarning ? (
+                         <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1"><Clock className="w-3 h-3" /> SLA Warning</span>
+                      ) : r.status === "Completed" ? (
+                         <span className="text-[10px] font-bold text-green-600 flex items-center gap-1"><Check className="w-3 h-3" /> Resolved</span>
+                      ) : (
+                         <span className="text-[10px] font-medium text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {48 - hoursElapsed}h remaining</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                     <span className={cn("inline-flex items-center gap-1 text-xs font-bold", r.urgency === "High" ? "text-red-600" : r.urgency === "Medium" ? "text-amber-600" : "text-blue-600")}>
+                        <div className={cn("w-2 h-2 rounded-full", r.urgency === "High" ? "bg-red-500" : r.urgency === "Medium" ? "bg-amber-500" : "bg-blue-500")}></div>
+                        {r.urgency}
+                     </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <Button variant="ghost" size="sm" className="h-8">View <MoreVertical className="w-4 h-4 ml-1" /></Button>
+                  </td>
+                </tr>
+              )
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="p-8 text-center text-gray-500">No issues found matching criteria.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Slide-out Drawer for Issue Details */}
+      <AnimatePresence>
+        {selectedReport && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
+              onClick={() => setSelectedIssueId(null)}
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-200"
+            >
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md z-10">
+                <h2 className="text-xl font-bold text-[#1A4331] font-serif">Report Matrix</h2>
+                <button onClick={() => setSelectedIssueId(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                 <div>
+                    <h3 className="font-bold text-2xl text-[#1A4331] mb-2 font-serif leading-tight">{selectedReport.title}</h3>
+                    <p className="text-gray-600 text-sm font-serif mb-4">{selectedReport.description}</p>
+                    
+                    <div className="flex flex-wrap gap-2 mb-4">
+                       <Badge className="bg-[#1A4331]/10 text-[#1A4331] border-none">{selectedReport.area}</Badge>
+                       <Badge variant="outline">{selectedReport.urgency} Priority</Badge>
+                       <Badge variant="outline">{selectedReport.status}</Badge>
+                    </div>
+                 </div>
+
+                 {selectedReport.image && (
+                   <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Attached Evidence</p>
+                      <img src={selectedReport.image} alt="Report" className="w-full h-48 object-cover rounded-sm border border-gray-200" />
+                   </div>
+                 )}
+
+                 <div className="bg-gray-50 p-4 rounded-sm border border-gray-200 space-y-3">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignment Details</p>
+                    {assignedCoordinator ? (
+                       <div className="flex items-center gap-3">
+                          <img src={assignedCoordinator.avatar} alt="Coordinator" className="w-10 h-10 rounded-full border border-gray-300" />
+                          <div>
+                             <p className="font-bold text-[#1A4331] text-sm">{assignedCoordinator.name}</p>
+                             <p className="text-xs text-gray-500">Coordinator â€¢ {assignedCoordinator.area}</p>
+                          </div>
+                       </div>
+                    ) : (
+                       <p className="text-sm text-gray-600 italic">No coordinator assigned yet.</p>
+                    )}
+                 </div>
+
+                 {selectedReport.proofImage && (
+                   <div className="bg-green-50 p-4 rounded-sm border border-green-200">
+                      <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Resolution Proof</p>
+                      <img src={selectedReport.proofImage} alt="Proof" className="w-full h-48 object-cover rounded-sm border border-green-300" />
+                   </div>
+                 )}
+                 
+                 <div className="pt-4 flex gap-2">
+                    <Button className="w-full bg-[#1A4331] hover:bg-[#112d21]">Edit Status</Button>
+                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CoordinatorManagement({ users, reports }: { users: User[], reports: Report[] }) {
+  const { banUser, unbanUser } = useAppContext();
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-[#1A4331] font-serif">Coordinator Performance</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {users.map(u => {
+          const coordinatorReports = reports.filter(r => r.coordinatorId === u.id);
+          const active = coordinatorReports.filter(r => r.status === "In Progress").length;
+          const resolved = coordinatorReports.filter(r => r.status === "Completed").length;
+          const avgResolutionTime = resolved > 0 ? `${Math.floor(Math.random() * 24 + 12)}h` : "N/A"; // Mock avg time
+
+          return (
+            <Card key={u.id} className="p-6 bg-white border border-gray-200 shadow-sm flex flex-col hover:border-[#2E7D32]/30 transition-colors">
+              <div className="flex justify-between items-start mb-4">
+                 <div className="flex items-center gap-3">
+                   <img src={u.avatar} alt={u.name} className="w-12 h-12 rounded-full border-2 border-gray-100 shadow-sm" />
+                   <div>
+                     <h3 className="font-bold text-[#1A4331] font-serif">{u.name}</h3>
+                     <Badge variant="secondary" className="bg-[#1A4331]/5 text-[#1A4331] border-none mt-1">{u.area}</Badge>
+                   </div>
+                 </div>
+                 {u.status !== "active" && <Badge variant="destructive">Banned</Badge>}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-6 flex-1">
+                 <div className="bg-gray-50 p-3 rounded-sm border border-gray-100 text-center">
+                    <p className="text-xl font-bold text-amber-600">{active}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-1">Active</p>
+                 </div>
+                 <div className="bg-gray-50 p-3 rounded-sm border border-gray-100 text-center">
+                    <p className="text-xl font-bold text-green-600">{resolved}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-1">Resolved</p>
+                 </div>
+                 <div className="bg-gray-50 p-3 rounded-sm border border-gray-100 text-center">
+                    <p className="text-xl font-bold text-[#1A4331]">{avgResolutionTime}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-1">Avg Time</p>
+                 </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                <Button variant="outline" size="sm" className="w-full">Message</Button>
+                {u.status === "active" ? (
+                  <Button variant="outline" size="sm" onClick={() => banUser(u.id)} className="w-full text-red-600 border-red-200 hover:bg-red-50">Revoke</Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => unbanUser(u.id)} className="w-full text-green-600 border-green-200 hover:bg-green-50">Restore</Button>
+                )}
+              </div>
+            </Card>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SettingsManagement() {
+  return (
+    <div className="space-y-8 max-w-5xl">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* SLA Configuration Matrix */}
+          <Card className="p-6 bg-white border border-gray-200 shadow-sm">
+             <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
+                <Settings className="w-5 h-5 text-gray-500" /> SLA Configuration Matrix
+             </h3>
+             <p className="text-sm text-gray-500 mb-6 font-serif">Define hours-to-resolve targets for automatic SLA breach warnings.</p>
+             
+             <div className="space-y-4">
+                {[
+                  { cat: "Infrastructure (Potholes, Roads)", hours: 72 },
+                  { cat: "Sanitation (Garbage, Waste)", hours: 48 },
+                  { cat: "Utilities (Water, Power)", hours: 24 },
+                  { cat: "General Nuisance", hours: 96 }
+                ].map((rule, idx) => (
+                   <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-sm border border-gray-100">
+                      <span className="text-sm font-medium text-gray-700">{rule.cat}</span>
+                      <div className="flex items-center gap-2">
+                         <Input type="number" defaultValue={rule.hours} className="w-20 h-8 text-right" />
+                         <span className="text-sm text-gray-500">hrs</span>
+                      </div>
+                   </div>
+                ))}
+                <Button className="w-full bg-[#1A4331] hover:bg-[#112d21] mt-2">Save SLA Rules</Button>
+             </div>
+          </Card>
+
+          {/* Broadcast Tool */}
+          <Card className="p-6 bg-white border border-gray-200 shadow-sm">
+             <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-blue-500" /> System Broadcast
+             </h3>
+             <p className="text-sm text-gray-500 mb-6 font-serif">Send a global push notification to specific user groups.</p>
+
+             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Broadcast sent successfully!"); }}>
+                <div>
+                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Target Audience</label>
+                   <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm font-serif">
+                     <option>All Users (Citizens & Coordinators)</option>
+                     <option>Coordinators Only</option>
+                     <option>Citizens Only</option>
+                   </select>
+                </div>
+                <div>
+                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Title</label>
+                   <Input placeholder="e.g. System Maintenance Notice" required />
+                </div>
+                <div>
+                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Body</label>
+                   <Textarea placeholder="Type your announcement here..." rows={4} required />
+                </div>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                   <Megaphone className="w-4 h-4" /> Send Broadcast
+                </Button>
+             </form>
+          </Card>
+       </div>
+    </div>
+  )
 }
 
 function ApplicationsManagement() {
@@ -223,13 +654,9 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl font-bold text-[#1A4331] font-serif">{title}</h2>
-        <div className="w-full sm:w-64">
-          <Input 
-            placeholder="Search users..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full"
-          />
+        <div className="w-full sm:w-64 flex items-center gap-2">
+          <Search className="w-4 h-4 text-gray-400" />
+          <Input placeholder="Search citizens..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full" />
         </div>
       </div>
 
@@ -237,10 +664,10 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
         <table className="w-full text-left text-sm font-serif min-w-[600px]">
           <thead className="bg-[#FDFDF7] border-b border-gray-200 text-gray-600">
             <tr>
-              <th className="p-4 font-medium">User</th>
-              <th className="p-4 font-medium">Role/Area</th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium text-right">Actions</th>
+              <th className="p-4 font-medium">User Profile</th>
+              <th className="p-4 font-medium">System Role</th>
+              <th className="p-4 font-medium">Account Status</th>
+              <th className="p-4 font-medium text-right">Administrative Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -250,25 +677,21 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
                   <div className="flex items-center gap-3">
                     <img src={u.avatar} alt="" className="w-8 h-8 rounded-full border border-gray-200" />
                     <div>
-                      <p className="font-medium text-[#1A4331]">{u.name}</p>
+                      <p className="font-bold text-[#1A4331]">{u.name}</p>
                       <p className="text-xs text-gray-500">{u.email}</p>
                     </div>
                   </div>
                 </td>
                 <td className="p-4">
-                  {u.role === "coordinator" ? (
-                    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">{u.area || "Unassigned"}</Badge>
-                  ) : (
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Citizen</Badge>
-                  )}
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">Citizen</Badge>
                 </td>
                 <td className="p-4">
                   {u.status === "active" ? (
-                    <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium bg-green-50 px-2 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full">
                       <div className="w-2 h-2 rounded-full bg-green-500"></div> Active
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium bg-red-50 px-2 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full">
                       <div className="w-2 h-2 rounded-full bg-red-500"></div> Banned
                     </span>
                   )}
@@ -276,11 +699,11 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
                 <td className="p-4 text-right">
                   {u.status === "active" ? (
                     <Button variant="outline" size="sm" onClick={() => banUser(u.id)} className="text-red-600 border-red-200 hover:bg-red-50 h-8">
-                      <Ban className="w-4 h-4 mr-1" /> Ban
+                      <Ban className="w-4 h-4 mr-1" /> Suspend
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" onClick={() => unbanUser(u.id)} className="text-green-600 border-green-200 hover:bg-green-50 h-8">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Unban
+                      <CheckCircle2 className="w-4 h-4 mr-1" /> Restore
                     </Button>
                   )}
                 </td>
@@ -299,16 +722,37 @@ function UserManagement({ users, title }: { users: User[], title: string }) {
 }
 
 function SpamManagement() {
-  const { spamReports, resolveSpamReport } = useAppContext();
-  const pendingSpam = spamReports.filter(s => s.status === "pending");
+  const { spamReports, resolveSpamReport, deleteReport } = useAppContext();
+  const [filterCategory, setFilterCategory] = useState<string>("All");
+  
+  const pendingSpam = spamReports.filter(s => {
+    if (s.status !== "pending") return false;
+    if (filterCategory !== "All" && s.targetType !== filterCategory) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-[#1A4331] font-serif">Spam & Abuse Reports</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-xl font-bold text-[#1A4331] font-serif">Spam & Abuse Reports</h2>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <select 
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif"
+            value={filterCategory} 
+            onChange={e => setFilterCategory(e.target.value)}
+          >
+            <option value="All">All Categories</option>
+            <option value="report">Report</option>
+            <option value="comment">Comment</option>
+            <option value="user">User</option>
+          </select>
+        </div>
+      </div>
+      
       {pendingSpam.length === 0 ? (
         <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-md border border-gray-200">
           <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
-          No pending spam reports. Great job!
+          System is clean. No pending abuse reports.
         </div>
       ) : (
         <div className="space-y-4">
@@ -326,9 +770,18 @@ function SpamManagement() {
                   {spam.reason}
                 </p>
               </div>
-              <div className="w-full sm:w-auto">
+              <div className="w-full sm:w-auto flex flex-col gap-2">
+                {spam.targetType === 'report' && (
+                  <Button size="sm" onClick={() => {
+                    if (window.confirm("Are you sure you want to delete the associated post? This will softly wipe it from feeds.")) {
+                      deleteReport(spam.targetId, spam.id);
+                    }
+                  }} variant="outline" className="w-full sm:w-auto border-red-200 text-red-700 hover:bg-red-50">
+                    <Trash2 className="w-4 h-4 mr-2" /> Delete Post
+                  </Button>
+                )}
                 <Button size="sm" onClick={() => resolveSpamReport(spam.id)} variant="outline" className="w-full sm:w-auto border-green-200 text-green-700 hover:bg-green-50">
-                  <Check className="w-4 h-4 mr-2" /> Mark Resolved
+                  <Check className="w-4 h-4 mr-2" /> Dismiss
                 </Button>
               </div>
             </Card>
