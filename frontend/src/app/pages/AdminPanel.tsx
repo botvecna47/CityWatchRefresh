@@ -1,5 +1,5 @@
-import { useState, useMemo, ElementType } from "react";
-import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, MoreVertical, Trash2, Mail, Phone, MapPin, Briefcase, Target, Settings, Megaphone, Clock, Map, TrendingUp, Search, Filter, Layers, Zap } from "lucide-react";
+import { useState, useMemo, ElementType, useEffect } from "react";
+import { Users, AlertCircle, CheckCircle2, ShieldBan, ShieldAlert, Check, X, Ban, MoreVertical, Trash2, Mail, Phone, MapPin, Briefcase, Target, Settings, Megaphone, Clock, Map as MapIcon, TrendingUp, Search, Filter, Layers, Zap } from "lucide-react";
 import { useAppContext, User, Report } from "../store";
 import { Card, Button, Input, Badge, cn, Textarea } from "../components/ui";
 import { motion, AnimatePresence } from "motion/react";
@@ -19,8 +19,8 @@ L.Icon.Default.mergeOptions({
 });
 
 export function AdminPanel() {
-  const { users, currentUser, reports, applications, spamReports } = useAppContext();
-  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "settings">("overview");
+  const { users, currentUser, reports, applications, spamReports, refreshApplications, refreshSpamReports } = useAppContext();
+  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "system">("overview");
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
@@ -36,7 +36,7 @@ export function AdminPanel() {
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">
-        {(["overview", "issues", "coordinators", "users", "applications", "spam", "settings"] as const).map(tab => {
+        {(["overview", "issues", "coordinators", "users", "applications", "spam", "system"] as const).map(tab => {
           let badgeCount = 0;
           if (tab === "applications") badgeCount = applications.filter(a => a.status === "pending").length;
           if (tab === "spam") badgeCount = spamReports.filter(s => s.status === "pending").length;
@@ -55,7 +55,7 @@ export function AdminPanel() {
                   : "border-transparent text-gray-500 hover:text-[#1A4331] hover:border-gray-300 hover:bg-gray-50"
               )}
             >
-              {tab}
+              {tab === "system" ? "System Config" : tab}
               {badgeCount > 0 && (
                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full shadow-sm text-white", tab === 'issues' ? 'bg-amber-500' : 'bg-red-500')}>{badgeCount}</span>
               )}
@@ -80,7 +80,7 @@ export function AdminPanel() {
             {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Directory" />}
             {activeTab === "applications" && <ApplicationsManagement />}
             {activeTab === "spam" && <SpamManagement />}
-            {activeTab === "settings" && <SettingsManagement />}
+            {activeTab === "system" && <SystemManagement />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -102,28 +102,70 @@ function AdminOverview({ reports, users }: { reports: Report[], users: User[] })
     for (let i = 29; i >= 0; i--) {
       const d = subDays(new Date(), i);
       const dateStr = format(d, 'MMM dd');
+      
+      const dayStart = new Date(d).setHours(0,0,0,0);
+      const dayEnd = new Date(d).setHours(23,59,59,999);
+      
+      const received = reports.filter(r => {
+        if (!r.createdAt) return false;
+        const rTime = new Date(r.createdAt).getTime();
+        if (isNaN(rTime)) return false;
+        return rTime >= dayStart && rTime <= dayEnd;
+      }).length;
+      
+      const resolved = reports.filter(r => {
+        if (!r.createdAt) return false;
+        const rTime = new Date(r.createdAt).getTime();
+        if (isNaN(rTime)) return false;
+        return r.status === "Completed" && rTime >= dayStart && rTime <= dayEnd;
+      }).length;
+      
       data.push({
         date: dateStr,
-        Received: Math.floor(Math.random() * 20) + 5,
-        Resolved: Math.floor(Math.random() * 15) + 3,
+        Received: received,
+        Resolved: resolved,
       });
     }
-    // inject some real data counts for the most recent day
-    data[29].Received += pending;
-    data[29].Resolved += completed;
     return data;
-  }, [pending, completed]);
+  }, [reports]);
 
   // Heatmap Data (SLA breach rates)
   const areaData = useMemo(() => {
-    const areas = ["North Area", "South Area", "East Area", "West Area"];
-    return areas.map((area) => ({
-      name: area,
-      "SLA Breached": Math.floor(Math.random() * 5), // Mocking breach rates
-      "At Risk": Math.floor(Math.random() * 10),
-      "On Track": Math.floor(Math.random() * 20) + 5,
+    const areaMap = new Map<string, { breached: number, atRisk: number, onTrack: number }>();
+    
+    reports.forEach(r => {
+      const area = r.area || "Unknown";
+      if (!areaMap.has(area)) {
+        areaMap.set(area, { breached: 0, atRisk: 0, onTrack: 0 });
+      }
+      const stats = areaMap.get(area)!;
+      
+      if (r.status === "Completed") {
+        stats.onTrack++;
+      } else {
+        const createdDate = r.createdAt ? new Date(r.createdAt) : null;
+        if (!createdDate || isNaN(createdDate.getTime())) {
+          stats.onTrack++;
+          return;
+        }
+        const ageHours = differenceInHours(new Date(), createdDate);
+        if (ageHours > 48 || (r.urgency === "High" && ageHours > 24)) {
+          stats.breached++;
+        } else if (ageHours > 24 || (r.urgency === "High" && ageHours > 12)) {
+          stats.atRisk++;
+        } else {
+          stats.onTrack++;
+        }
+      }
+    });
+
+    return Array.from(areaMap.entries()).map(([name, stats]) => ({
+      name,
+      "SLA Breached": stats.breached,
+      "At Risk": stats.atRisk,
+      "On Track": stats.onTrack,
     }));
-  }, []);
+  }, [reports]);
 
 
 
@@ -141,7 +183,7 @@ function AdminOverview({ reports, users }: { reports: Report[], users: User[] })
         <Card className="p-6 bg-white shadow-sm border border-gray-200 col-span-1 lg:col-span-2">
           <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-2">
             <h3 className="text-lg font-bold text-[#1A4331] font-serif flex items-center gap-2">
-              <Map className="w-5 h-5 text-[#2E7D32]" /> Global Live Map (Nanded)
+              <MapIcon className="w-5 h-5 text-[#2E7D32]" /> Global Live Map (Nanded)
             </h3>
             <div className="flex gap-3 text-xs font-medium text-gray-500">
                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> High</span>
@@ -266,12 +308,14 @@ function StatCard({ title, value, icon: Icon, color, bg }: { title: string, valu
 }
 
 function IssuesManagement({ reports, users }: { reports: Report[], users: User[] }) {
+  const { deleteReport, updateReport, refreshReports } = useAppContext();
   const [search, setSearch] = useState("");
   const [filterArea, setFilterArea] = useState<string>("All");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterUrgency, setFilterUrgency] = useState<string>("All");
   const [filterDate, setFilterDate] = useState<string>("All");
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [editingStatus, setEditingStatus] = useState<string>("");
 
   const filtered = reports.filter(r => {
     if (filterArea !== "All" && r.area !== filterArea) return false;
@@ -289,6 +333,11 @@ function IssuesManagement({ reports, users }: { reports: Report[], users: User[]
 
   const selectedReport = reports.find(r => r.id === selectedIssueId);
   const assignedCoordinator = selectedReport?.coordinatorId ? users.find(u => u.id === selectedReport.coordinatorId) : null;
+
+  // Sync editingStatus when drawer opens
+  useEffect(() => {
+    if (selectedReport) setEditingStatus(selectedReport.status);
+  }, [selectedIssueId]);
 
   return (
     <div className="space-y-6 relative">
@@ -312,10 +361,9 @@ function IssuesManagement({ reports, users }: { reports: Report[], users: User[]
           </select>
           <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterArea} onChange={e => setFilterArea(e.target.value)}>
             <option value="All">All Areas</option>
-            <option value="North Area">North Area</option>
-            <option value="South Area">South Area</option>
-            <option value="East Area">East Area</option>
-            <option value="West Area">West Area</option>
+            {Array.from(new Set(reports.map(r => r.area))).filter(Boolean).map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
           </select>
           <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-serif" value={filterDate} onChange={e => setFilterDate(e.target.value)}>
             <option value="All">All Time</option>
@@ -450,9 +498,35 @@ function IssuesManagement({ reports, users }: { reports: Report[], users: User[]
                  )}
                  
                  <div className="pt-4 flex gap-2">
-                    <Button className="w-full bg-[#1A4331] hover:bg-[#112d21]">Edit Status</Button>
-                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
-                 </div>
+                     <select
+                       value={editingStatus}
+                       onChange={e => setEditingStatus(e.target.value)}
+                       className="flex-1 h-10 rounded-md border border-input bg-background px-3 text-sm font-serif"
+                     >
+                       <option value="Reported">Reported</option>
+                       <option value="In Progress">In Progress</option>
+                       <option value="Completed">Completed</option>
+                     </select>
+                     <Button
+                       className="bg-[#1A4331] hover:bg-[#112d21]"
+                       onClick={async () => {
+                         if (selectedReport && editingStatus !== selectedReport.status) {
+                           await updateReport(selectedReport.id, { status: editingStatus as any });
+                           toast.success("Status updated!");
+                         }
+                       }}
+                     >Update</Button>
+                     <Button
+                       variant="outline"
+                       className="text-red-600 border-red-200 hover:bg-red-50"
+                       onClick={() => {
+                         if (selectedReport && window.confirm("Delete this complaint permanently?")) {
+                           deleteReport(selectedReport.id);
+                           setSelectedIssueId(null);
+                         }
+                       }}
+                     ><Trash2 className="w-4 h-4" /></Button>
+                  </div>
               </div>
             </motion.div>
           </>
@@ -522,74 +596,245 @@ function CoordinatorManagement({ users, reports }: { users: User[], reports: Rep
   )
 }
 
-function SettingsManagement() {
+function SystemManagement() {
+  const { areas, categories, refreshMasterData } = useAppContext();
+  const [showAreaForm, setShowAreaForm] = useState(false);
+  const [showCatForm, setShowCatForm] = useState(false);
+  
+  const [newArea, setNewArea] = useState({ name: "", city: "Nanded", centerLat: 19.15, centerLng: 77.31 });
+  const [newCat, setNewCat] = useState({ name: "", description: "", defaultSlaHours: 72 });
+
+  const handleAddArea = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("/api/areas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(newArea)
+      });
+      if (res.ok) {
+        toast.success("Area added successfully");
+        setShowAreaForm(false);
+        refreshMasterData();
+      } else {
+        const err = await res.json();
+        toast.error(err.message || "Failed to add area");
+      }
+    } catch (e) {
+      toast.error("Network error");
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(newCat)
+      });
+      if (res.ok) {
+        toast.success("Category added successfully");
+        setShowCatForm(false);
+        refreshMasterData();
+      } else {
+        const err = await res.json();
+        toast.error(err.message || "Failed to add category");
+      }
+    } catch (e) {
+      toast.error("Network error");
+    }
+  };
+
+  const handleDeleteArea = async (id: number) => {
+    if (!window.confirm("Soft delete this area? This will hide it from new reports but keep old ones intact.")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`/api/areas/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success("Area soft deleted");
+        refreshMasterData();
+      }
+    } catch (e) { toast.error("Delete failed"); }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!window.confirm("Soft delete this category? This will hide it from new reports but keep old ones intact.")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success("Category soft deleted");
+        refreshMasterData();
+      }
+    } catch (e) { toast.error("Delete failed"); }
+  };
+
   return (
-    <div className="space-y-8 max-w-5xl">
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* SLA Configuration Matrix */}
-          <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-             <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
-                <Settings className="w-5 h-5 text-gray-500" /> SLA Configuration Matrix
-             </h3>
-             <p className="text-sm text-gray-500 mb-6 font-serif">Define hours-to-resolve targets for automatic SLA breach warnings.</p>
-             
-             <div className="space-y-4">
-                {[
-                  { cat: "Infrastructure (Potholes, Roads)", hours: 72 },
-                  { cat: "Sanitation (Garbage, Waste)", hours: 48 },
-                  { cat: "Utilities (Water, Power)", hours: 24 },
-                  { cat: "General Nuisance", hours: 96 }
-                ].map((rule, idx) => (
-                   <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-sm border border-gray-100">
-                      <span className="text-sm font-medium text-gray-700">{rule.cat}</span>
-                      <div className="flex items-center gap-2">
-                         <Input type="number" defaultValue={rule.hours} className="w-20 h-8 text-right" />
-                         <span className="text-sm text-gray-500">hrs</span>
-                      </div>
-                   </div>
-                ))}
-                <Button className="w-full bg-[#1A4331] hover:bg-[#112d21] mt-2">Save SLA Rules</Button>
-             </div>
-          </Card>
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Area Management */}
+        <Card className="p-6 bg-white border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-[#1A4331] font-serif flex items-center gap-2">
+              <MapIcon className="w-5 h-5 text-emerald-600" /> Manage City Areas
+            </h3>
+            <Button size="sm" onClick={() => setShowAreaForm(!showAreaForm)} variant="outline">
+              {showAreaForm ? "Cancel" : "Add Area"}
+            </Button>
+          </div>
 
-          {/* Broadcast Tool */}
-          <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-             <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
-                <Megaphone className="w-5 h-5 text-blue-500" /> System Broadcast
-             </h3>
-             <p className="text-sm text-gray-500 mb-6 font-serif">Send a global push notification to specific user groups.</p>
+          <AnimatePresence>
+            {showAreaForm && (
+              <motion.form 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                onSubmit={handleAddArea}
+                className="space-y-3 mb-6 p-4 bg-emerald-50 rounded-md border border-emerald-100 overflow-hidden"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Area Name</label>
+                    <Input placeholder="e.g. Taroda Naka" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Center Lat</label>
+                    <Input type="number" step="0.0001" value={newArea.centerLat} onChange={e => setNewArea({...newArea, centerLat: parseFloat(e.target.value)})} required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Center Lng</label>
+                    <Input type="number" step="0.0001" value={newArea.centerLng} onChange={e => setNewArea({...newArea, centerLng: parseFloat(e.target.value)})} required />
+                  </div>
+                </div>
+                <Button size="sm" className="w-full bg-[#1A4331]">Save New Area</Button>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
-             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Broadcast sent successfully!"); }}>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {areas.map(area => (
+              <div key={area.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-sm border border-gray-100 group">
                 <div>
-                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Target Audience</label>
-                   <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm font-serif">
-                     <option>All Users (Citizens & Coordinators)</option>
-                     <option>Coordinators Only</option>
-                     <option>Citizens Only</option>
-                   </select>
+                  <span className="text-sm font-bold text-gray-700 block">{area.name}</span>
+                  <span className="text-[10px] text-gray-400">{area.centerLat}, {area.centerLng}</span>
                 </div>
-                <div>
-                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Title</label>
-                   <Input placeholder="e.g. System Maintenance Notice" required />
-                </div>
-                <div>
-                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Body</label>
-                   <Textarea placeholder="Type your announcement here..." rows={4} required />
-                </div>
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2">
-                   <Megaphone className="w-4 h-4" /> Send Broadcast
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDeleteArea(area.id)}>
+                  <Trash2 className="w-4 h-4" />
                 </Button>
-             </form>
-          </Card>
-       </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Category Management */}
+        <Card className="p-6 bg-white border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-[#1A4331] font-serif flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-600" /> Issue Categories & SLA
+            </h3>
+            <Button size="sm" onClick={() => setShowCatForm(!showCatForm)} variant="outline">
+              {showCatForm ? "Cancel" : "Add Category"}
+            </Button>
+          </div>
+
+          <AnimatePresence>
+            {showCatForm && (
+              <motion.form 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                onSubmit={handleAddCategory}
+                className="space-y-3 mb-6 p-4 bg-blue-50 rounded-md border border-blue-100 overflow-hidden"
+              >
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Category Name</label>
+                  <Input placeholder="e.g. ANIMAL_WELFARE" value={newCat.name} onChange={e => setNewCat({...newCat, name: e.target.value.toUpperCase()})} required />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Default SLA (Hours)</label>
+                  <Input type="number" value={newCat.defaultSlaHours} onChange={e => setNewCat({...newCat, defaultSlaHours: parseInt(e.target.value)})} required />
+                </div>
+                <Button size="sm" className="w-full bg-[#1A4331]">Save Category</Button>
+              </motion.form>
+            )}
+          </AnimatePresence>
+
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {categories.map(cat => (
+              <div key={cat.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-sm border border-gray-100 group">
+                <div>
+                  <span className="text-sm font-bold text-gray-700 block">{cat.name}</span>
+                  <span className="text-[10px] text-gray-400">Resolution Target: {cat.defaultSlaHours} hrs</span>
+                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDeleteCategory(cat.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <BroadcastTool />
     </div>
-  )
+  );
+}
+
+function BroadcastTool() {
+  return (
+    <Card className="p-6 bg-white border border-gray-200 shadow-sm max-w-2xl">
+      <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
+        <Megaphone className="w-5 h-5 text-[#2E7D32]" /> System Broadcast
+      </h3>
+      <p className="text-sm text-gray-500 mb-6 font-serif">Send a global push notification to specific user groups.</p>
+
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Broadcast sent successfully!"); }}>
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Target Audience</label>
+          <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm font-serif">
+            <option>All Users (Citizens & Coordinators)</option>
+            <option>Coordinators Only</option>
+            <option>Citizens Only</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Title</label>
+          <Input placeholder="e.g. System Maintenance Notice" required />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Content</label>
+          <Textarea placeholder="Write your announcement here..." className="min-h-[100px]" required />
+        </div>
+        <Button className="bg-[#1A4331] hover:bg-[#112d21] text-white font-serif">
+          <Zap className="w-4 h-4 mr-2" /> Launch Broadcast
+        </Button>
+      </form>
+    </Card>
+  );
 }
 
 function ApplicationsManagement() {
-  const { applications, updateApplicationStatus } = useAppContext();
+  const { applications, updateApplicationStatus, areas } = useAppContext();
   const pendingApps = applications.filter(a => a.status === "pending");
+  const [selectedAreas, setSelectedAreas] = useState<Record<string, number>>({});
+
+  const handleApprove = (appId: string) => {
+    const areaId = selectedAreas[appId];
+    if (!areaId) {
+      toast.error("Please select an area to assign this coordinator to.");
+      return;
+    }
+    updateApplicationStatus(appId, "approved", areaId);
+  };
 
   return (
     <div className="space-y-4">
@@ -628,13 +873,27 @@ function ApplicationsManagement() {
                 </div>
               </div>
               
-              <div className="flex justify-end gap-3 mt-auto pt-4 border-t border-gray-100">
-                <Button variant="outline" onClick={() => updateApplicationStatus(app.id, "rejected")} className="text-red-600 hover:bg-red-50 hover:text-red-700">
-                  <X className="w-4 h-4 mr-1" /> Reject
-                </Button>
-                <Button onClick={() => updateApplicationStatus(app.id, "approved")} className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white">
-                  <Check className="w-4 h-4 mr-1" /> Approve
-                </Button>
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-auto pt-4 border-t border-gray-100">
+                <div className="w-full sm:w-auto flex-1">
+                  <select 
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm font-serif focus:ring-2 focus:ring-[#2E7D32]"
+                    value={selectedAreas[app.id] || ""}
+                    onChange={(e) => setSelectedAreas({...selectedAreas, [app.id]: Number(e.target.value)})}
+                  >
+                    <option value="" disabled>Select Area to Assign...</option>
+                    {areas.map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={() => updateApplicationStatus(app.id, "rejected")} className="flex-1 sm:flex-none text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200">
+                    <X className="w-4 h-4 mr-1" /> Reject
+                  </Button>
+                  <Button onClick={() => handleApprove(app.id)} className="flex-1 sm:flex-none bg-[#2E7D32] hover:bg-[#1b5e20] text-white">
+                    <Check className="w-4 h-4 mr-1" /> Approve
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -762,7 +1021,7 @@ function SpamManagement() {
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant="destructive" className="uppercase text-[10px] tracking-wider">{spam.targetType}</Badge>
                   <span className="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-sm">Target ID: {spam.targetId}</span>
-                  <span className="text-xs text-gray-400 ml-2">{new Date(spam.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-gray-400 ml-2">{spam.createdAt ? new Date(spam.createdAt).toLocaleDateString() : "Pending Date"}</span>
                 </div>
                 <p className="text-[#1A4331] font-serif">Reported by <span className="font-bold">{spam.reporterName}</span></p>
                 <p className="text-gray-600 text-sm mt-2 bg-red-50 p-2 rounded-sm border border-red-100 flex items-start gap-2">

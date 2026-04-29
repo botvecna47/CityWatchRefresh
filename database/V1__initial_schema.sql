@@ -69,6 +69,7 @@ CREATE TABLE areas (
     boundary_lng_max DOUBLE PRECISION,
     center_lat       DOUBLE PRECISION NOT NULL,
     center_lng       DOUBLE PRECISION NOT NULL,
+    deleted          BOOLEAN        DEFAULT FALSE,
     created_at       TIMESTAMP      DEFAULT NOW()
 );
 
@@ -105,6 +106,7 @@ CREATE TABLE sla_config (
     category   VARCHAR(30)  UNIQUE NOT NULL
                             CHECK (category IN ('POTHOLE', 'GARBAGE', 'STREETLIGHT', 'DRAINAGE', 'OTHER')),
     sla_hours  INTEGER      NOT NULL,
+    deleted    BOOLEAN      DEFAULT FALSE,
     created_by VARCHAR(12)  REFERENCES users(id),   -- admin who set it (nullable)
     updated_at TIMESTAMP    DEFAULT NOW()
 );
@@ -132,6 +134,7 @@ CREATE TABLE complaints (
     sla_deadline            TIMESTAMP,
     escalation_level        INTEGER      DEFAULT 0,
     reopen_count            INTEGER      DEFAULT 0,
+    deleted                 BOOLEAN      DEFAULT FALSE,
     created_at              TIMESTAMP    DEFAULT NOW(),
     updated_at              TIMESTAMP    DEFAULT NOW(),
     closed_at               TIMESTAMP

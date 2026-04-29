@@ -1,6 +1,5 @@
 package com.citywatch.entity;
 
-import com.citywatch.enums.Category;
 import com.citywatch.enums.ComplaintStatus;
 import com.citywatch.enums.Priority;
 import jakarta.persistence.*;
@@ -43,9 +42,12 @@ public class Complaint {
     @JoinColumn(name = "area_id", nullable = false)
     private Area area;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    @Column(nullable = true, length = 100)
+    private String title;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
@@ -112,6 +114,8 @@ public class Complaint {
     public void setArea(Area area) { this.area = area; }
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public List<String> getImageUrls() { return imageUrls; }
@@ -152,6 +156,7 @@ public class Complaint {
         public ComplaintBuilder citizen(User citizen) { c.setCitizen(citizen); return this; }
         public ComplaintBuilder area(Area area) { c.setArea(area); return this; }
         public ComplaintBuilder category(Category category) { c.setCategory(category); return this; }
+        public ComplaintBuilder title(String title) { c.setTitle(title); return this; }
         public ComplaintBuilder description(String description) { c.setDescription(description); return this; }
         public ComplaintBuilder imageUrls(List<String> imageUrls) { c.setImageUrls(imageUrls); return this; }
         public ComplaintBuilder upvotedCitizenIds(Set<String> ids) { c.setUpvotedCitizenIds(ids); return this; }

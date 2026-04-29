@@ -9,18 +9,27 @@ import com.citywatch.repository.NotificationRepository;
 import com.citywatch.repository.UserRepository;
 import com.citywatch.util.CwIdGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final CwIdGenerator idGenerator;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository,
+                               CwIdGenerator idGenerator, SimpMessagingTemplate messagingTemplate) {
+        this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
+        this.idGenerator = idGenerator;
+        this.messagingTemplate = messagingTemplate;
+    }
 
     public void create(User user, String title, String message, NotificationType type, String referenceId) {
         Notification notification = Notification.builder()
@@ -32,11 +41,19 @@ public class NotificationService {
                 .referenceId(referenceId)
                 .build();
         notificationRepository.save(notification);
+        
+        // Push to WebSocket
+        messagingTemplate.convertAndSend(
+                "/topic/notifications/" + user.getId(), 
+                toResponse(notification)
+        );
     }
 
     public void notifyCoordinatorsInArea(com.citywatch.entity.Area area, String title, String message, String referenceId) {
         List<User> coordinators = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.COORDINATOR && area.equals(u.getArea()))
+                .filter(u -> u.getRole() == Role.COORDINATOR
+                        && u.getArea() != null
+                        && area.getId().equals(u.getArea().getId()))  // ID equality — safe for JPA proxies
                 .collect(Collectors.toList());
 
         for (User coordinator : coordinators) {

@@ -19,10 +19,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/complaints")
-@RequiredArgsConstructor
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+
+    public ComplaintController(ComplaintService complaintService) {
+        this.complaintService = complaintService;
+    }
 
     // ── Submit a complaint (Citizen only) ────────────────────────────────────
     @PostMapping
@@ -79,7 +82,12 @@ public class ComplaintController {
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable String id,
             @RequestBody Map<String, String> body) {
-        ComplaintStatus newStatus = ComplaintStatus.valueOf(body.get("status").toUpperCase());
+        String statusStr = body.get("status");
+        if (statusStr == null || statusStr.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "'status' field is required in request body");
+        }
+        ComplaintStatus newStatus = ComplaintStatus.valueOf(statusStr.toUpperCase());
         return ResponseEntity.ok(complaintService.updateStatus(principal.getUser(), id, newStatus));
     }
 
@@ -103,12 +111,22 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.citizenResolve(principal.getUser(), id, body.get("accepted")));
     }
 
-    // ── Citizen Upvote ───────────────────────────────────────────────────────
+    // ── Citizen Upvote (Citizens only — coordinators and admins cannot vote) ─
     @PostMapping("/{id}/upvote")
     @PreAuthorize("hasRole('CITIZEN')")
     public ResponseEntity<ComplaintResponse> upvote(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable String id) {
         return ResponseEntity.ok(complaintService.upvote(principal.getUser(), id));
+    }
+
+    // ── Admin assign coordinator ──────────────────────────────────────────────
+    @PatchMapping("/{id}/assign")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ComplaintResponse> assign(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(complaintService.assignCoordinatorManually(principal.getUser(), id, body.get("coordinatorId")));
     }
 }

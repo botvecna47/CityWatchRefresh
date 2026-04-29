@@ -1,0 +1,52 @@
+classDiagram
+    class User {
+        -String id
+        -String username
+        -String email
+        -String passwordHash
+        -Role role
+        +String getId()
+        +String getUsername()
+    }
+
+    class Area {
+        -Long id
+        -String name
+        -String city
+        -Double centerLat
+        -Double centerLng
+        +Long getId()
+        +String getName()
+    }
+
+    class Complaint {
+        -String id
+        -String title
+        -String description
+        -ComplaintStatus status
+        -Priority priority
+        -LocalDateTime slaDeadline
+        +User getCitizen()
+        +Area getArea()
+    }
+
+    class ComplaintService {
+        -ComplaintRepository complaintRepository
+        -UserRepository userRepository
+        -AreaRepository areaRepository
+        +createComplaint(ComplaintRequest) ComplaintResponse
+        +assignCoordinator(String, String) void
+        +updateStatus(String, ComplaintStatus) void
+    }
+
+    class ComplaintController {
+        -ComplaintService complaintService
+        +createComplaint(ComplaintRequest) ResponseEntity
+        +getAllComplaints() ResponseEntity
+    }
+
+    Complaint "*" --> "1" User : citizen
+    Complaint "*" --> "1" Area : area
+    Complaint "*" --> "0..1" User : assignedCoordinator
+    ComplaintController --> ComplaintService : uses
+    ComplaintService --> Complaint : manages

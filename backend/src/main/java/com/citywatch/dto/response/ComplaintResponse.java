@@ -7,6 +7,7 @@ public class ComplaintResponse {
 
     private String id;           // CMP-DDMMYY-000001
     private String category;
+    private String title;
     private String description;
     private List<String> imageUrls;
     private String locationText;
@@ -37,6 +38,9 @@ public class ComplaintResponse {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
@@ -110,6 +114,7 @@ public class ComplaintResponse {
         private ComplaintResponse c = new ComplaintResponse();
         public ComplaintResponseBuilder id(String id) { c.setId(id); return this; }
         public ComplaintResponseBuilder category(String category) { c.setCategory(category); return this; }
+        public ComplaintResponseBuilder title(String title) { c.setTitle(title); return this; }
         public ComplaintResponseBuilder description(String description) { c.setDescription(description); return this; }
         public ComplaintResponseBuilder imageUrls(List<String> imageUrls) { c.setImageUrls(imageUrls); return this; }
         public ComplaintResponseBuilder locationText(String locationText) { c.setLocationText(locationText); return this; }

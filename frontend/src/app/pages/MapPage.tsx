@@ -91,22 +91,15 @@ export function MapPage() {
           <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2 font-serif">By Area</label>
-              <div className="flex flex-wrap gap-2">
+              <select
+                value={activeArea}
+                onChange={(e) => setActiveArea(e.target.value as Area | "All")}
+                className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#1A4331] text-[#1A4331] font-serif cursor-pointer shadow-sm"
+              >
                 {availableAreas.map((area) => (
-                  <button
-                    key={area}
-                    onClick={() => setActiveArea(area as any)}
-                    className={cn(
-                      "px-3 py-1 text-xs font-medium rounded-sm border transition-colors font-serif",
-                      activeArea === area 
-                        ? "bg-[#1A4331] text-white border-[#1A4331]" 
-                        : "bg-white/50 text-[#1A4331] border-gray-200 hover:bg-gray-100"
-                    )}
-                  >
-                    {area}
-                  </button>
+                  <option key={area} value={area}>{area}</option>
                 ))}
-              </div>
+              </select>
             </div>
 
             <div>

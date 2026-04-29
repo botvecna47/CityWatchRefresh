@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
-import { MessageSquare, ArrowBigUp, ArrowBigDown, MapPin, Search, Filter } from "lucide-react";
+import { MessageSquare, ArrowBigUp, ArrowBigDown, MapPin, Search, Filter, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext, Report, Status, Area } from "../store";
 import { Card, Badge, cn, Button, Input, Skeleton } from "../components/ui";
@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
 
 export function Home() {
-  const { reports, currentUser, loading, handleVote: voteOnServer } = useAppContext();
+  const { reports, currentUser, loading, handleVote: voteOnServer, updateReport } = useAppContext();
   const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
   const navigate = useNavigate();
   const [filterArea, setFilterArea] = useState<Area | "All">(localStorage.getItem("feed_filterArea") || "All");
@@ -221,7 +221,13 @@ export function Home() {
                   <Card className="flex hover:border-[#2E7D32]/30 transition-colors bg-white overflow-hidden shadow-sm">
                     {/* Voting Sidebar */}
                     <div className="w-14 bg-gray-50 flex flex-col items-center py-4 border-r border-gray-100 gap-1 flex-shrink-0">
-                      <button onClick={() => handleVoteAction(report.id, 'up')} className="p-1 text-gray-400 hover:text-[#2E7D32] transition-colors rounded hover:bg-gray-200">
+                      <button 
+                        onClick={() => handleVoteAction(report.id, 'up')} 
+                        className={cn(
+                          "p-1 transition-colors rounded hover:bg-gray-200",
+                          currentUser && report.upvotedCitizenIds?.includes(currentUser.id) ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]"
+                        )}
+                      >
                         <ArrowBigUp className="w-6 h-6" />
                       </button>
                       <span className="text-sm font-bold text-[#1A4331]">{report.upvotes}</span>
@@ -263,8 +269,14 @@ export function Home() {
                         </p>
                         
                         {report.image && (
-                          <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100">
+                          <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100 relative group">
                             <img src={report.image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            {report.additionalImages && report.additionalImages.length > 0 && (
+                              <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                                <Camera className="w-3 h-3" />
+                                +{report.additionalImages.length} MORE PHOTOS
+                              </div>
+                            )}
                           </div>
                         )}
                       </button>

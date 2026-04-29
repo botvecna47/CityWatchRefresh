@@ -1,0 +1,90 @@
+erDiagram
+    users {
+        VARCHAR(12) id PK
+        VARCHAR(50) username
+        VARCHAR(100) email
+        VARCHAR(20) role
+    }
+    user_settings {
+        BIGSERIAL id PK
+        VARCHAR(12) user_id FK
+        BOOLEAN email_notifications
+    }
+    areas {
+        BIGSERIAL id PK
+        VARCHAR(100) name
+        DOUBLE_PRECISION center_lat
+        DOUBLE_PRECISION center_lng
+    }
+    categories {
+        BIGSERIAL id PK
+        VARCHAR(100) name
+        INTEGER default_sla_hours
+    }
+    complaints {
+        VARCHAR(17) id PK
+        VARCHAR(12) citizen_id FK
+        BIGINT area_id FK
+        BIGINT category_id FK
+        VARCHAR(30) status
+        VARCHAR(10) priority
+    }
+    comments {
+        VARCHAR(17) id PK
+        VARCHAR(17) complaint_id FK
+        VARCHAR(12) user_id FK
+        TEXT content
+    }
+    votes {
+        VARCHAR(17) id PK
+        VARCHAR(17) complaint_id FK
+        VARCHAR(12) coordinator_id FK
+        VARCHAR(20) decision
+    }
+    proofs {
+        VARCHAR(17) id PK
+        VARCHAR(17) complaint_id FK
+        VARCHAR(12) coordinator_id FK
+        VARCHAR(500) image_url
+    }
+    escalations {
+        VARCHAR(17) id PK
+        VARCHAR(17) complaint_id FK
+        INTEGER level
+    }
+    notifications {
+        VARCHAR(17) id PK
+        VARCHAR(12) user_id FK
+        TEXT message
+    }
+    spam_reports {
+        VARCHAR(17) id PK
+        VARCHAR(12) reporter_id FK
+        VARCHAR(17) target_id
+    }
+    coordinator_applications {
+        VARCHAR(17) id PK
+        VARCHAR(12) user_id FK
+        VARCHAR(20) status
+    }
+    audit_logs {
+        VARCHAR(17) id PK
+        VARCHAR(12) user_id FK
+        VARCHAR(50) action
+    }
+
+    users ||--o{ complaints : "submits"
+    users ||--o{ comments : "writes"
+    users ||--o{ votes : "casts"
+    users ||--o{ proofs : "provides"
+    users ||--o{ notifications : "receives"
+    users ||--o{ audit_logs : "triggers"
+    users ||--o{ spam_reports : "submits"
+    users ||--|| user_settings : "has"
+    users ||--o| coordinator_applications : "applies_for"
+    areas ||--o{ complaints : "contains"
+    categories ||--o{ complaints : "categorizes"
+    complaints ||--o{ comments : "has"
+    complaints ||--o{ votes : "has"
+    complaints ||--o{ proofs : "has"
+    complaints ||--o{ escalations : "triggers"

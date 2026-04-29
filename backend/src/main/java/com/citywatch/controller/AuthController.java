@@ -25,7 +25,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 @Transactional
 public class AuthController {
 
@@ -34,6 +33,15 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CwIdGenerator idGenerator;
+
+    public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils,
+                          UserRepository userRepository, PasswordEncoder passwordEncoder, CwIdGenerator idGenerator) {
+        this.authenticationManager = authenticationManager;
+        this.jwtUtils = jwtUtils;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.idGenerator = idGenerator;
+    }
 
     // ─── POST /api/auth/login ───────────────────────────────────────────
     @PostMapping("/login")

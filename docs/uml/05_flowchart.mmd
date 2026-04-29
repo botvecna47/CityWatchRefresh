@@ -1,0 +1,20 @@
+graph TD
+    A["User Lands on App"] --> B{"Is Authenticated?"}
+    B -- "No" --> C["Login/Register"]
+    B -- "Yes" --> D["Dashboard View"]
+    C --> D
+    
+    D --> E{"Action?"}
+    E -- "View Feed" --> F["Browse Map/List of Complaints"]
+    E -- "Submit Report" --> G["Fill out Complaint Details"]
+    E -- "Apply Coordinator" --> H["Submit Application"]
+    
+    G --> I["Complaint Added to DB"]
+    I --> J["System Auto-assigns Coordinator (if available)"]
+    J --> K{"Is Coordinator Assigned?"}
+    K -- "Yes" --> L["Coordinator Reviews & Updates Status"]
+    K -- "No" --> M["Admin Manually Assigns"]
+    M --> L
+    
+    L --> N["Coordinator Submits Proof of Resolution"]
+    N --> O["Complaint Status: COMPLETED"]

@@ -118,6 +118,20 @@ public class CwIdGenerator {
         return buildEventId("AUD", "cw_audit_seq");
     }
 
+    // ── Application ID ───────────────────────────────────────────────────────
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public String nextApplicationId() {
+        return buildEventId("APP", "cw_application_seq");
+    }
+
+    // ── Spam ID ──────────────────────────────────────────────────────────────
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public String nextSpamId() {
+        return buildEventId("SPM", "cw_spam_seq");
+    }
+
     // ── Internal helpers ─────────────────────────────────────────────────────
 
     private String buildEventId(String prefix, String seqName) {

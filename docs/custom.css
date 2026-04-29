@@ -1,0 +1,40 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    font-size: 32px;
+}
+
+h2 {
+    page-break-before: always;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    color: #1A4331;
+    border-bottom: 2px solid #1A4331;
+    padding-bottom: 10px;
+}
+
+/* Ensure the first h2 doesn't trigger a page break */
+h1 + h2 {
+    page-break-before: avoid;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    /* Force images to be as large as possible within the page */
+    object-fit: contain;
+}
+
+/* Add a page break after each image block to ensure one diagram per page */
+p {
+    page-break-inside: avoid;
+}

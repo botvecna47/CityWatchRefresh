@@ -16,10 +16,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/complaints/{complaintId}/comments")
-@RequiredArgsConstructor
 public class CommentController {
 
     private final CommentService commentService;
+
+    public CommentController(CommentService commentService) {
+        this.commentService = commentService;
+    }
 
     @GetMapping
     public ResponseEntity<List<CommentResponse>> getComments(@PathVariable String complaintId) {

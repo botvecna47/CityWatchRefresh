@@ -9,11 +9,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
     private final CwIdGenerator idGenerator;
+
+    public AuditService(AuditLogRepository auditLogRepository, CwIdGenerator idGenerator) {
+        this.auditLogRepository = auditLogRepository;
+        this.idGenerator = idGenerator;
+    }
 
     public void log(User actor, String action, Complaint complaint) {
         AuditLog log = AuditLog.builder()

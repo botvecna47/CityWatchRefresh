@@ -1,0 +1,32 @@
+graph TD
+    subgraph Instances
+        U1["citizen1: User
+        ------------------
+        id = 'MH16C0000001'
+        username = 'citizen1'
+        role = 'CITIZEN'"]
+        
+        A1["area_vazirabad: Area
+        ------------------
+        id = 3
+        name = 'Vazirabad'
+        city = 'Nanded'"]
+        
+        C1["complaint_001: Complaint
+        ------------------
+        id = 'CMP-100426-000001'
+        title = 'Large pothole'
+        status = 'IN_PROGRESS'
+        priority = 'HIGH'"]
+        
+        M1["coord_ravi: User
+        ------------------
+        id = 'MH16M0000001'
+        username = 'ravi_p'
+        role = 'COORDINATOR'"]
+    end
+    
+    U1 -->|"submits"| C1
+    C1 -->|"located in"| A1
+    C1 -->|"assigned to"| M1
+    M1 -->|"manages"| A1

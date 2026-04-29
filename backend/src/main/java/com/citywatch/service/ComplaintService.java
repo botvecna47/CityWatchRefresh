@@ -19,7 +19,6 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
@@ -30,6 +29,28 @@ public class ComplaintService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final CwIdGenerator idGenerator;
+    private final CategoryRepository categoryRepository;
+
+    public ComplaintService(
+            ComplaintRepository complaintRepository,
+            AreaRepository areaRepository,
+            UserRepository userRepository,
+            SlaConfigRepository slaConfigRepository,
+            ProofRepository proofRepository,
+            NotificationService notificationService,
+            AuditService auditService,
+            CwIdGenerator idGenerator,
+            CategoryRepository categoryRepository) {
+        this.complaintRepository = complaintRepository;
+        this.areaRepository = areaRepository;
+        this.userRepository = userRepository;
+        this.slaConfigRepository = slaConfigRepository;
+        this.proofRepository = proofRepository;
+        this.notificationService = notificationService;
+        this.auditService = auditService;
+        this.idGenerator = idGenerator;
+        this.categoryRepository = categoryRepository;
+    }
 
     private static final double NEARBY_DELTA = 0.005; // ~500m
 
@@ -42,11 +63,11 @@ public class ComplaintService {
 
         Area area = findNearestArea(req.getLatitude(), req.getLongitude());
 
-        Category category;
-        try {
-            category = Category.valueOf(req.getCategory().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            category = Category.OTHER;
+        com.citywatch.entity.Category category = categoryRepository.findByName(req.getCategory().toUpperCase())
+                .orElseGet(() -> categoryRepository.findByName("OTHER").orElse(null));
+
+        if (category == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category and default OTHER not found");
         }
 
         Complaint complaint = Complaint.builder()
@@ -54,6 +75,7 @@ public class ComplaintService {
                 .citizen(citizen)
                 .area(area)
                 .category(category)
+                .title(req.getTitle())
                 .description(req.getDescription())
                 .imageUrls(req.getImageUrls() != null ? req.getImageUrls() : new java.util.ArrayList<String>())
                 .latitude(req.getLatitude())
@@ -67,7 +89,7 @@ public class ComplaintService {
         notificationService.notifyCoordinatorsInArea(
                 area,
                 "New complaint needs review",
-                "A new " + category.name().toLowerCase() + " complaint was submitted in your area.",
+                "A new " + category.getName().toLowerCase() + " complaint was submitted in your area.",
                 complaint.getId()
         );
 
@@ -113,6 +135,11 @@ public class ComplaintService {
         ComplaintStatus old = complaint.getStatus();
         complaint.setStatus(newStatus);
 
+        // Auto-assign coordinator when they accept a complaint (IN_PROGRESS)
+        if (newStatus == ComplaintStatus.IN_PROGRESS && complaint.getAssignedCoordinator() == null) {
+            complaint.setAssignedCoordinator(coordinator);
+        }
+
         if (newStatus == ComplaintStatus.CLOSED) {
             complaint.setClosedAt(LocalDateTime.now());
         }
@@ -152,8 +179,10 @@ public class ComplaintService {
     public ComplaintResponse submitProof(User coordinator, String id, ProofRequest req) {
         Complaint complaint = findOrThrow(id);
 
-        if (complaint.getAssignedCoordinator() == null ||
-                !complaint.getAssignedCoordinator().getId().equals(coordinator.getId())) {
+        // Auto-assign coordinator if not yet assigned (when they accepted via status update)
+        if (complaint.getAssignedCoordinator() == null) {
+            complaint.setAssignedCoordinator(coordinator);
+        } else if (!complaint.getAssignedCoordinator().getId().equals(coordinator.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not assigned to this complaint");
         }
 
@@ -219,10 +248,13 @@ public class ComplaintService {
 
     @Transactional
     public void assignCoordinator(Complaint complaint) {
+        // Use area ID equality (not object reference) to avoid JPA proxy mismatch
+        Long areaId = complaint.getArea() != null ? complaint.getArea().getId() : null;
         List<User> coordinators = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.COORDINATOR
                         && u.getStatus() == UserStatus.ACTIVE
-                        && complaint.getArea().equals(u.getArea()))
+                        && u.getArea() != null
+                        && u.getArea().getId().equals(areaId))
                 .collect(Collectors.toList());
 
         if (coordinators.isEmpty()) return;
@@ -231,9 +263,7 @@ public class ComplaintService {
         complaint.setAssignedCoordinator(assigned);
         complaint.setStatus(ComplaintStatus.ASSIGNED);
 
-        slaConfigRepository.findByCategory(complaint.getCategory()).ifPresent(sla ->
-                complaint.setSlaDeadline(LocalDateTime.now().plusHours(sla.getSlaHours()))
-        );
+        complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
 
         complaintRepository.save(complaint);
 
@@ -244,6 +274,36 @@ public class ComplaintService {
                 NotificationType.COMPLAINT_UPDATE,
                 complaint.getId()
         );
+    }
+
+    @Transactional
+    public ComplaintResponse assignCoordinatorManually(User admin, String id, String coordinatorId) {
+        Complaint complaint = findOrThrow(id);
+        User coordinator = userRepository.findById(coordinatorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coordinator not found"));
+                
+        if (coordinator.getRole() != Role.COORDINATOR) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not a coordinator");
+        }
+        
+        complaint.setAssignedCoordinator(coordinator);
+        complaint.setStatus(ComplaintStatus.ASSIGNED);
+        if (complaint.getSlaDeadline() == null) {
+            complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
+        }
+        
+        complaintRepository.save(complaint);
+        auditService.logAction(admin, "MANUAL_ASSIGNMENT", "COMPLAINT", id, "NONE", coordinatorId);
+        
+        notificationService.create(
+                coordinator,
+                "Complaint manually assigned to you",
+                "An admin has manually assigned a complaint to you.",
+                NotificationType.COMPLAINT_UPDATE,
+                complaint.getId()
+        );
+        
+        return toResponse(complaint);
     }
 
     public void recalculateIntensity(Complaint complaint) {
@@ -278,7 +338,8 @@ public class ComplaintService {
                 : String.format("%.4f, %.4f", c.getLatitude(), c.getLongitude());
         return ComplaintResponse.builder()
                 .id(c.getId())
-                .category(c.getCategory().name())
+                .category(c.getCategory() != null ? c.getCategory().getName() : "OTHER")
+                .title(c.getTitle())
                 .description(c.getDescription())
                 .imageUrls(c.getImageUrls())
                 .locationText(locText)
@@ -319,19 +380,31 @@ public class ComplaintService {
     }
 
     private void validateTransition(ComplaintStatus current, ComplaintStatus next) {
+        // Permit coordinator to move any "pending/assigned" state to IN_PROGRESS
+        // and any "in progress" state to COMPLETED
         boolean valid = switch (current) {
-            case PENDING_REVIEW -> next == ComplaintStatus.APPROVED || next == ComplaintStatus.REJECTED;
-            case APPROVED -> next == ComplaintStatus.ASSIGNED;
-            case ASSIGNED -> next == ComplaintStatus.IN_PROGRESS;
-            case IN_PROGRESS -> next == ComplaintStatus.COMPLETED || next == ComplaintStatus.DELAYED;
-            case COMPLETED -> next == ComplaintStatus.CLOSED || next == ComplaintStatus.REOPENED;
-            case REOPENED -> next == ComplaintStatus.ASSIGNED;
-            case DELAYED -> next == ComplaintStatus.IN_PROGRESS || next == ComplaintStatus.ESCALATED;
+            case DRAFT ->
+                next == ComplaintStatus.PENDING_REVIEW;
+            case PENDING_REVIEW ->
+                next == ComplaintStatus.APPROVED || next == ComplaintStatus.REJECTED
+                || next == ComplaintStatus.IN_PROGRESS; // allow direct accept
+            case APPROVED ->
+                next == ComplaintStatus.ASSIGNED || next == ComplaintStatus.IN_PROGRESS;
+            case ASSIGNED ->
+                next == ComplaintStatus.IN_PROGRESS;
+            case IN_PROGRESS ->
+                next == ComplaintStatus.COMPLETED || next == ComplaintStatus.DELAYED;
+            case COMPLETED ->
+                next == ComplaintStatus.CLOSED || next == ComplaintStatus.REOPENED;
+            case REOPENED ->
+                next == ComplaintStatus.ASSIGNED || next == ComplaintStatus.IN_PROGRESS;
+            case DELAYED ->
+                next == ComplaintStatus.IN_PROGRESS || next == ComplaintStatus.ESCALATED;
             default -> false;
         };
         if (!valid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Invalid status transition: " + current + " → " + next);
+                    "Invalid status transition: " + current + " \u2192 " + next);
         }
     }
 }

@@ -12,14 +12,12 @@ import { toast } from "sonner";
 
 export function Dashboard() {
   const { currentUser, reports, loading } = useAppContext();
-
   if (loading) return <DashboardSkeleton />;
-
   if (!currentUser) return <div className="p-8 text-center text-gray-500 font-serif min-h-[60vh] flex items-center justify-center">Please log in to view your dashboard.</div>;
-
   if (currentUser.role === "citizen") return <CitizenDashboard reports={reports.filter(r => r.authorId === currentUser.id)} />;
-  if (currentUser.role === "coordinator") return <CoordinatorDashboard reports={reports.filter(r => r.area === currentUser.area)} />;
-  return <div className="p-8 text-center text-gray-500 font-serif">Select Citizen or Coordinator role to view this dashboard. Admins use the Admin Panel.</div>;
+  // Coordinators see all unassigned reports PLUS their own assigned ones
+  if (currentUser.role === "coordinator") return <CoordinatorDashboard reports={reports} />;
+  return <div className="p-8 text-center text-gray-500 font-serif">Admins use the Admin Panel.</div>;
 }
 
 function CitizenDashboard({ reports }: { reports: Report[] }) {
@@ -132,27 +130,38 @@ function CitizenDashboard({ reports }: { reports: Report[] }) {
 }
 
 function CoordinatorDashboard({ reports }: { reports: Report[] }) {
-  const { currentUser, updateReport } = useAppContext();
+  const { currentUser, updateReport, submitProof } = useAppContext();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [proofImage, setProofImage] = useState<string | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const assigned = reports.filter(r => r.coordinatorId === currentUser?.id && r.status !== "Completed");
-  const available = reports.filter(r => !r.coordinatorId && r.status === "Reported");
+  // Split reports correctly by coordinator assignment and status
+  const areaReports = reports.filter(r => r.area === currentUser?.area);
+  const available = areaReports.filter(r => !r.coordinatorId && r.status === "Reported");
+  const assigned  = reports.filter(r => r.coordinatorId === currentUser?.id && (r.status === "In Progress" || r.status === "Reported"));
   const completed = reports.filter(r => r.coordinatorId === currentUser?.id && r.status === "Completed");
 
-  const handleResolve = (e: React.FormEvent) => {
+  const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (resolvingId && proofImage && location) {
-      updateReport(resolvingId, { status: "Completed", proofImage, resolutionLocation: location });
-      setResolvingId(null);
-      setProofImage(null);
-      setLocation(null);
-      toast.success("Issue marked as completed!");
-    } else {
-      toast.error("Both photo and location are required.");
+    if (!resolvingId || !location) {
+      toast.error("Location is required.");
+      return;
     }
+    if (!proofImage) {
+      toast.error("Photo proof is required.");
+      return;
+    }
+    setIsSubmitting(true);
+    // Use the blob URL as imageUrl (for demo; in production, upload to storage first)
+    await submitProof(resolvingId, proofImage, location.lat, location.lng);
+    setIsSubmitting(false);
+    setResolvingId(null);
+    setProofImage(null);
+    setProofFile(null);
+    setLocation(null);
   };
 
   const getLocation = () => {
@@ -260,8 +269,8 @@ function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             {available.map(r => (
               <div key={r.id} className="relative group">
                 <ReportSummaryCard report={r} />
-                <Button 
-                  onClick={() => updateReport(r.id, { coordinatorId: currentUser?.id, status: "In Progress" })}
+                <Button
+                  onClick={() => updateReport(r.id, { status: "In Progress", coordinatorId: currentUser?.id })}
                   size="sm"
                   className="absolute bottom-4 right-4 bg-[#1A4331] hover:bg-[#112d21] text-white"
                 >
@@ -285,7 +294,7 @@ function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                   <Badge className="bg-red-100 text-red-800">{r.urgency} Urgency</Badge>
                 </div>
                 <p className="text-sm text-gray-500 mb-4 flex items-center gap-1 font-serif">
-                  <Clock className="w-4 h-4" /> Time Elapsed: {formatDistanceToNow(new Date(r.createdAt))}
+                  <Clock className="w-4 h-4" /> Time Elapsed: {r.createdAt ? formatDistanceToNow(new Date(r.createdAt)) : "Unknown"}
                 </p>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                   <div className="flex gap-2 items-center">
@@ -369,7 +378,7 @@ function ReportSummaryCard({ report }: { report: Report }) {
       <div className="flex items-center gap-4 text-xs text-gray-500 font-medium font-serif flex-wrap">
         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-500" /> {report.area}</span>
         <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {report.comments.length} Comments</span>
-        <span>{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}</span>
+        <span>{report.createdAt ? formatDistanceToNow(new Date(report.createdAt), { addSuffix: true }) : "Recent"}</span>
       </div>
     </Card>
   );

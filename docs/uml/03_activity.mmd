@@ -1,0 +1,19 @@
+graph TD
+    Start(["Start"]) --> Step1["Login to CityWatch"]
+    Step1 --> Step2["Navigate to Submit Report Page"]
+    Step2 --> Step3["Click on Map to Set Location"]
+    Step3 --> Step4{"Is Location within City bounds?"}
+    Step4 -- "Yes" --> Step5["Select Category and Area"]
+    Step4 -- "No" --> Step3a["Show Error: Out of bounds"]
+    Step3a --> Step3
+    Step5 --> Step6{"Are Category & Area data loaded?"}
+    Step6 -- "No" --> Step6a["Wait for Backend Data"]
+    Step6a --> Step6
+    Step6 -- "Yes" --> Step7["Enter Title and Description"]
+    Step7 --> Step8["Upload Optional Photo Evidence"]
+    Step8 --> Step9["Review Details"]
+    Step9 --> Step10["Submit Report"]
+    Step10 --> Step11{"Does Backend Validate Data?"}
+    Step11 -- "No" --> Step11a["Display Validation Error"]
+    Step11a --> Step7
+    Step11 -- "Yes" --> End(["Report Submitted Successfully"])

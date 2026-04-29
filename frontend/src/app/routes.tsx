@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 import { AppLayout } from "./components/Layout";
 import { useAppContext } from "./store";
+import { RouteErrorBoundary } from "./components/ErrorBoundary";
 
 const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
 const SubmitReport = lazy(() => import("./pages/SubmitReport").then(m => ({ default: m.SubmitReport })));
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <SuspenseLayout><Home /></SuspenseLayout> },
       { path: "report/:id", element: <SuspenseLayout><ReportDetail /></SuspenseLayout> },

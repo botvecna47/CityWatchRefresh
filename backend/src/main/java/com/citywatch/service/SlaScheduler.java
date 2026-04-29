@@ -17,15 +17,23 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class SlaScheduler {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SlaScheduler.class);
 
     private final ComplaintRepository complaintRepository;
     private final EscalationRepository escalationRepository;
     private final NotificationService notificationService;
     private final CwIdGenerator idGenerator;
+
+    public SlaScheduler(ComplaintRepository complaintRepository, EscalationRepository escalationRepository,
+                        NotificationService notificationService, CwIdGenerator idGenerator) {
+        this.complaintRepository = complaintRepository;
+        this.escalationRepository = escalationRepository;
+        this.notificationService = notificationService;
+        this.idGenerator = idGenerator;
+    }
 
     // Runs every hour
     @Scheduled(cron = "0 0 * * * *")
@@ -35,6 +43,14 @@ public class SlaScheduler {
         log.info("SLA check: found {} overdue complaints", overdue.size());
 
         for (Complaint complaint : overdue) {
+            // Skip complaints already in a terminal state — they should never be set to DELAYED
+            ComplaintStatus current = complaint.getStatus();
+            if (current == ComplaintStatus.COMPLETED || current == ComplaintStatus.CLOSED
+                    || current == ComplaintStatus.REJECTED || current == ComplaintStatus.ESCALATED) {
+                log.info("SLA check: skipping {} — already in terminal state {}", complaint.getId(), current);
+                continue;
+            }
+
             complaint.setStatus(ComplaintStatus.DELAYED);
             complaint.setEscalationLevel(complaint.getEscalationLevel() + 1);
 
@@ -48,10 +64,11 @@ public class SlaScheduler {
 
             escalationRepository.save(escalation);
 
+            String areaName = (complaint.getArea() != null) ? complaint.getArea().getName() : "Unknown Area";
             notificationService.notifyAdmins(
                     "SLA Breach — Complaint #" + complaint.getId(),
-                    "Complaint in " + complaint.getArea().getName() + " has exceeded its SLA deadline.",
-                    complaint.getId()  // String complaint ID
+                    "Complaint in " + areaName + " has exceeded its SLA deadline.",
+                    complaint.getId()
             );
 
             if (complaint.getAssignedCoordinator() != null) {

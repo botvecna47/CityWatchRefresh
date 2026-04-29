@@ -2,6 +2,7 @@ import { useParams, Link, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowLeft, ArrowBigUp, MapPin, Share2, MessageSquare, AlertTriangle, CheckCircle2, X, Trash2 } from "lucide-react";
+import { ImageLightbox } from "../components/ImageLightbox";
 import { useAppContext, Comment, Report } from "../store";
 import { Card, Button, Input, Textarea, Badge, Skeleton, cn } from "../components/ui";
 
@@ -15,14 +16,28 @@ import L from 'leaflet';
 export function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer } = useAppContext();
+  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer, users, assignCoordinatorToReport } = useAppContext();
+  const isCitizen = currentUser?.role === 'citizen';
+  const isCoordinator = currentUser?.role === 'coordinator';
+  const isAdmin = currentUser?.role === 'admin';
 
   const report = reports.find(r => r.id === id);
+  // Upvote state derived from server data — automatically correct on refresh
+  const hasUpvoted = !!(isCitizen && currentUser && report?.upvotedCitizenIds?.includes(currentUser.id));
+
+  const coordinators = users.filter(u => u.role === 'coordinator');
+  const [selectedCoordinatorId, setSelectedCoordinatorId] = useState("");
 
   const [commentText, setCommentText] = useState("");
-  const [hasUpvoted, setHasUpvoted] = useState(false);
   const [showSpamModal, setShowSpamModal] = useState(false);
   const [spamReason, setSpamReason] = useState("");
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Build ordered image array: main image first, then additional images
+  const allImages = [
+    ...(report?.image ? [report.image] : []),
+    ...(report?.additionalImages || []),
+  ].filter(Boolean);
 
   // Fix for default Leaflet icons
   useEffect(() => {
@@ -49,12 +64,9 @@ export function ReportDetail() {
 
   const handleVote = async (type: 'up' | 'down') => {
     if (!currentUser) { toast.error("Please sign in to upvote."); navigate("/auth"); return; }
-    if (currentUser.role === "admin") { toast.error("Admins cannot upvote complaints."); return; }
+    if (!isCitizen) { toast.error("Only citizens can upvote complaints."); return; }
     if (type !== 'up') return;
-    if (hasUpvoted) { toast.info("You have already upvoted this complaint."); return; }
     await voteOnServer(report.id);
-    setHasUpvoted(true);
-    toast.success("Upvote recorded — thank you for your support!");
   };
 
   const handleAddComment = (e: React.FormEvent) => {
@@ -143,16 +155,20 @@ export function ReportDetail() {
             <div className="flex flex-col md:flex-row">
               {/* Upvote Sidebar */}
               <div className="hidden md:flex w-16 bg-gray-50 flex-col items-center py-6 border-r border-gray-100 gap-2">
-                <button
-                  onClick={() => handleVote('up')}
-                  className={cn(
-                    "p-2 transition-colors rounded hover:bg-gray-200",
-                    hasUpvoted ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]"
-                  )}
-                  title={hasUpvoted ? "Already upvoted" : "Upvote this complaint"}
-                >
-                  <ArrowBigUp className="w-8 h-8" />
-                </button>
+                {isCitizen ? (
+                  <button
+                    onClick={() => handleVote('up')}
+                    className={cn(
+                      "p-2 transition-colors rounded hover:bg-gray-200",
+                      hasUpvoted ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]"
+                    )}
+                    title={hasUpvoted ? "Click to remove upvote" : "Upvote this complaint"}
+                  >
+                    <ArrowBigUp className="w-8 h-8" />
+                  </button>
+                ) : (
+                  <ArrowBigUp className="w-8 h-8 text-gray-300" />
+                )}
                 <span className="text-lg font-bold text-[#1A4331]">{report.upvotes}</span>
                 <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">votes</span>
               </div>
@@ -170,21 +186,55 @@ export function ReportDetail() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {currentUser?.role === 'admin' && (
-                      <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 border-red-200 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4 mr-1" /> Delete
-                      </Button>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        {report.status !== 'Completed' && report.status !== 'Closed' && (
+                          <>
+                            <select 
+                              className="h-8 rounded-sm border border-input bg-background px-2 text-xs font-serif focus:ring-2 focus:ring-[#2E7D32]"
+                              value={selectedCoordinatorId}
+                              onChange={(e) => setSelectedCoordinatorId(e.target.value)}
+                            >
+                              <option value="" disabled>Assign Coordinator...</option>
+                              {coordinators.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            <Button 
+                              size="sm" 
+                              onClick={() => assignCoordinatorToReport(report.id, selectedCoordinatorId)}
+                              disabled={!selectedCoordinatorId}
+                              className="h-8 bg-[#1A4331] text-white hover:bg-[#112d21]"
+                            >
+                              Assign
+                            </Button>
+                          </>
+                        )}
+                        <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 border-red-200 hover:bg-red-50 h-8">
+                          <Trash2 className="w-4 h-4 mr-1" /> Delete
+                        </Button>
+                      </div>
                     )}
-                    {currentUser?.role === 'coordinator' && report.status === 'Reported' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => updateReport(report.id, { status: "In Progress", coordinatorId: currentUser.id })}
-                        className="bg-[#1A4331] text-white hover:bg-[#112d21]"
-                      >
-                        Mark In Progress
-                      </Button>
+                    {isCoordinator && (
+                      // Show accept/progress button for any non-terminal, non-completed status
+                      // This covers ASSIGNED, PENDING_REVIEW, APPROVED, REOPENED states
+                      (() => {
+                        const isTerminal = report.status === 'Completed';
+                        const isAlreadyMine = report.coordinatorId === currentUser?.id;
+                        const canAccept = !isTerminal && (isAlreadyMine || !report.coordinatorId);
+                        if (!canAccept) return null;
+                        return (
+                          <Button
+                            size="sm"
+                            onClick={() => updateReport(report.id, { status: "In Progress", coordinatorId: currentUser!.id })}
+                            className="bg-[#1A4331] text-white hover:bg-[#112d21]"
+                          >
+                            {report.status === 'Reported' ? 'Accept & Start' : 'Mark In Progress'}
+                          </Button>
+                        );
+                      })()
                     )}
-                    {currentUser?.role === 'coordinator' && (
+                    {isCoordinator && (
                       <Button variant="outline" size="sm" onClick={handleReportSpam} className="text-red-600 border-red-200 hover:bg-red-50">
                         <AlertTriangle className="w-4 h-4 mr-1" /> Flag Spam
                       </Button>
@@ -204,13 +254,29 @@ export function ReportDetail() {
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
                   {report.image && (
-                    <div className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner col-span-2 md:col-span-3">
-                      <img src={report.image} alt={report.title} className="w-full h-auto object-cover max-h-[400px]" />
+                    <div
+                      className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner col-span-2 md:col-span-3 cursor-zoom-in group relative"
+                      onClick={() => setLightboxIndex(0)}
+                      title="Click to view full image"
+                    >
+                      <img
+                        src={report.image}
+                        alt={report.title}
+                        className="w-full h-auto object-cover max-h-[400px] group-hover:brightness-90 transition-all duration-300"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="bg-black/50 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">Click to expand</span>
+                      </div>
                     </div>
                   )}
                   {report.additionalImages?.map((img, i) => (
-                    <div key={i} className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner">
-                      <img src={img} alt={`Additional ${i}`} className="w-full h-32 md:h-48 object-cover hover:scale-105 transition-transform duration-500 cursor-zoom-in" />
+                    <div
+                      key={i}
+                      className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner cursor-zoom-in group relative"
+                      onClick={() => setLightboxIndex(i + (report.image ? 1 : 0))}
+                      title="Click to view full image"
+                    >
+                      <img src={img} alt={`Additional ${i}`} className="w-full h-32 md:h-48 object-cover group-hover:brightness-90 transition-all duration-300" />
                     </div>
                   ))}
                 </div>
@@ -288,10 +354,11 @@ export function ReportDetail() {
                   <div className="space-y-6 mb-8">
                     {report.comments.map(comment => (
                       <div key={comment.id} className="flex gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[#1A4331]/10 flex items-center justify-center flex-shrink-0 border border-[#1A4331]/20">
-                          <span className="font-bold text-[#1A4331] text-sm">{comment.authorName.charAt(0)}</span>
+                        <div className="w-10 h-10 rounded-full bg-[#1A4331] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <span className="font-bold text-sm">{comment.authorName.charAt(0).toUpperCase()}</span>
                         </div>
-                        <div className="flex-1 bg-[#FDFDF7] p-4 rounded-sm border border-gray-100 shadow-sm">
+                        <div className="flex-1 bg-[#FDFDF7] p-4 rounded-md border border-[#1A4331]/10 shadow-sm relative">
+                          <div className="absolute top-4 -left-2 w-4 h-4 bg-[#FDFDF7] border-l border-t border-[#1A4331]/10 rotate-[-45deg]"></div>
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-semibold text-[#1A4331]">{comment.authorName}</span>
                             <span className="text-xs text-gray-500">
@@ -328,6 +395,17 @@ export function ReportDetail() {
               </div>
             </div>
           </Card>
+
+          {/* Image Lightbox */}
+          <AnimatePresence>
+            {lightboxIndex !== null && allImages.length > 0 && (
+              <ImageLightbox
+                images={allImages}
+                initialIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+              />
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {showSpamModal && (

@@ -1,0 +1,20 @@
+sequenceDiagram
+    actor Citizen
+    participant ReactClient as React Frontend
+    participant ComplaintController as ComplaintController
+    participant ComplaintService as ComplaintService
+    participant ComplaintRepo as ComplaintRepository
+    participant Database as PostgreSQL DB
+
+    Citizen->>ReactClient: Fills out report form & clicks Submit
+    ReactClient->>ComplaintController: POST /api/complaints
+    ComplaintController->>ComplaintService: createComplaint(requestDTO)
+    ComplaintService->>ComplaintService: Validate SLA deadline
+    ComplaintService->>ComplaintService: Set Initial Status (REPORTED)
+    ComplaintService->>ComplaintRepo: save(complaintEntity)
+    ComplaintRepo->>Database: INSERT INTO complaints
+    Database-->>ComplaintRepo: Return saved row
+    ComplaintRepo-->>ComplaintService: Return ComplaintEntity
+    ComplaintService-->>ComplaintController: Return mapped DTO
+    ComplaintController-->>ReactClient: 201 Created (JSON)
+    ReactClient-->>Citizen: Show Success Toast & Redirect to Feed

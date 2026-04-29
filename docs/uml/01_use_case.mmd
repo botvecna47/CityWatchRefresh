@@ -1,0 +1,41 @@
+graph TD
+    subgraph System["CityWatch Platform"]
+        %% Citizen Use Cases
+        UC_Register["Register Account"]
+        UC_SubmitReport["Submit a Report"]
+        UC_Vote["Vote on Reports"]
+        UC_Comment["Add a Comment"]
+        UC_ApplyCoordinator["Apply for Coordinator"]
+
+        %% Coordinator Use Cases
+        UC_ReviewReport["Review Assigned Report"]
+        UC_SubmitProof["Submit Resolution Proof"]
+        UC_MarkProgress["Update Report Status"]
+        UC_Validate["Validate Other Coordinators' Proofs"]
+        UC_ViewDashboard["View Area Dashboard"]
+
+        %% Admin Use Cases
+        UC_ManageUsers["Manage Users (Ban/Unban)"]
+        UC_ApproveApplication["Approve Coordinator Apps"]
+        UC_AssignArea["Assign Area to Coordinator"]
+        UC_ManageCategories["Manage Categories & SLAs"]
+        UC_SystemBroadcast["Send System Broadcast"]
+    end
+
+    Citizen["Citizen"] --> UC_Register
+    Citizen --> UC_SubmitReport
+    Citizen --> UC_Vote
+    Citizen --> UC_Comment
+    Citizen --> UC_ApplyCoordinator
+
+    Coordinator["Coordinator"] --> UC_ReviewReport
+    Coordinator --> UC_SubmitProof
+    Coordinator --> UC_MarkProgress
+    Coordinator --> UC_Validate
+    Coordinator --> UC_ViewDashboard
+
+    Admin["Admin"] --> UC_ManageUsers
+    Admin --> UC_ApproveApplication
+    Admin --> UC_AssignArea
+    Admin --> UC_ManageCategories
+    Admin --> UC_SystemBroadcast

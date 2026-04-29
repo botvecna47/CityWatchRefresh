@@ -27,10 +27,12 @@ public class Vote {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "complaint_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Complaint complaint;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "coordinator_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User coordinator;
 
     @Enumerated(EnumType.STRING)

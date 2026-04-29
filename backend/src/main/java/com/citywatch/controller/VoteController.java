@@ -18,12 +18,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/complaints/{complaintId}/votes")
-@RequiredArgsConstructor
 public class VoteController {
 
     private final VoteService voteService;
     private final VoteRepository voteRepository;
     private final ComplaintRepository complaintRepository;
+
+    public VoteController(VoteService voteService, VoteRepository voteRepository, ComplaintRepository complaintRepository) {
+        this.voteService = voteService;
+        this.voteRepository = voteRepository;
+        this.complaintRepository = complaintRepository;
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('COORDINATOR')")

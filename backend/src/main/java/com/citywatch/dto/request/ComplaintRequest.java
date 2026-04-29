@@ -12,8 +12,12 @@ public class ComplaintRequest {
     @NotBlank(message = "Category is required")
     private String category;
 
+    @NotBlank(message = "Title is required")
+    @Size(max = 100, message = "Title cannot exceed 100 characters")
+    private String title;
+
     @NotBlank(message = "Description is required")
-    @Size(min = 30, message = "Description must be at least 30 characters")
+    @Size(min = 10, message = "Description must be at least 10 characters")
     private String description;
 
     @Size(max = 5, message = "Maximum 5 images allowed")
@@ -33,6 +37,9 @@ public class ComplaintRequest {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

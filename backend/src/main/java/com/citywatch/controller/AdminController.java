@@ -21,13 +21,20 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('ADMIN')")
-@RequiredArgsConstructor
 public class AdminController {
 
     private final UserRepository userRepository;
     private final ComplaintRepository complaintRepository;
     private final EscalationRepository escalationRepository;
     private final ComplaintService complaintService;
+
+    public AdminController(UserRepository userRepository, ComplaintRepository complaintRepository,
+                           EscalationRepository escalationRepository, ComplaintService complaintService) {
+        this.userRepository = userRepository;
+        this.complaintRepository = complaintRepository;
+        this.escalationRepository = escalationRepository;
+        this.complaintService = complaintService;
+    }
 
     @GetMapping("/users")
     public ResponseEntity<List<UserSummaryResponse>> getAllUsers() {

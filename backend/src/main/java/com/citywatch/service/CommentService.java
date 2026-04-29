@@ -18,12 +18,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class CommentService {
 
     private final CommentRepository commentRepository;
     private final ComplaintRepository complaintRepository;
     private final CwIdGenerator idGenerator;
+
+    public CommentService(CommentRepository commentRepository, ComplaintRepository complaintRepository, CwIdGenerator idGenerator) {
+        this.commentRepository = commentRepository;
+        this.complaintRepository = complaintRepository;
+        this.idGenerator = idGenerator;
+    }
 
     public List<CommentResponse> getComments(String complaintId) {
         Complaint complaint = findComplaint(complaintId);

@@ -5,7 +5,7 @@ import { useAppContext, Report } from "../store";
 import { Card, Button, Input, Textarea, cn } from "../components/ui";
 import { motion } from "motion/react";
 import { supabase } from "../supabase";
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -26,10 +26,19 @@ const initLeaflet = () => {
   icons = { Reported: createCustomIcon('text-red-600') };
 };
 
+function LocationPicker({ position, setPosition }: { position: [number, number], setPosition: (pos: [number, number]) => void }) {
+  useMapEvents({
+    click(e) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return <Marker position={position} icon={icons?.Reported} draggable={true} eventHandlers={{ dragend: (e) => { const marker = e.target; setPosition([marker.getLatLng().lat, marker.getLatLng().lng]); } }} />;
+}
+
 const MAX_IMAGES = 5;
 
 export function SubmitReport() {
-  const { addReport, currentUser, reports, updateReport } = useAppContext();
+  const { addReport, currentUser, reports, updateReport, areas, categories, refreshMasterData } = useAppContext();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
@@ -50,8 +59,28 @@ export function SubmitReport() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [area, setArea] = useState("Shivajinagar");
-  const [category, setCategory] = useState("POTHOLE");
+  const [area, setArea] = useState("");
+  const [category, setCategory] = useState("");
+  const [customArea, setCustomArea] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+
+  const displayAreas = areas.length > 0 ? areas : [
+    { id: 901, name: "Shivajinagar" },
+    { id: 902, name: "Vazirabad" }
+  ];
+
+  const displayCategories = categories.length > 0 ? categories : [
+    { id: 801, name: "POTHOLE" },
+    { id: 802, name: "STREETLIGHT" },
+    { id: 803, name: "GARBAGE" },
+    { id: 804, name: "WATER_SUPPLY" }
+  ];
+
+  // Sync initial values when master data loads
+  useEffect(() => {
+    if (!area) setArea(displayAreas[0].name);
+    if (!category) setCategory(displayCategories[0].name);
+  }, [areas, categories]);
   const [images, setImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,25 +93,30 @@ export function SubmitReport() {
           setLocationLatLong([pos.coords.latitude, pos.coords.longitude]);
           setLocation(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
           setIsDetecting(false);
-
-          const nearby = reports.filter(r => r.area === area && r.status !== "Completed").slice(0, 2);
-          if (nearby.length > 0) {
-            setNearbyIssues(nearby);
-          } else {
-            setStep(2);
-          }
+          // Don't auto advance, let the user verify the map
         },
         () => {
           // Fallback with Nanded center
           setLocation("Shivajinagar, Nanded");
           setLocationLatLong([19.155, 77.307]);
           setIsDetecting(false);
-          setStep(2);
         }
       );
     } else {
       setLocation("Shivajinagar, Nanded");
       setIsDetecting(false);
+    }
+  };
+
+  const handleConfirmLocation = async () => {
+    // Safety-net: re-trigger master data fetch if not yet loaded
+    if (areas.length === 0 || categories.length === 0) {
+      await refreshMasterData();
+    }
+    const nearby = reports.filter(r => r.area === area && r.status !== "Completed").slice(0, 2);
+    if (nearby.length > 0) {
+      setNearbyIssues(nearby);
+    } else {
       setStep(2);
     }
   };
@@ -160,20 +194,17 @@ export function SubmitReport() {
       }
     }
 
-    const mainImageUrl = uploadedUrls.length > 0
-      ? uploadedUrls[0]
-      : "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=600&auto=format&fit=crop";
-
     const newReport: Report = {
       id: Math.random().toString(36).substr(2, 9),
       title,
+      category: category === "OTHER" ? (customCategory || "OTHER") : category,
       description,
-      image: mainImageUrl,
+      image: uploadedUrls.length > 0 ? uploadedUrls[0] : "",
       additionalImages: uploadedUrls.slice(1),
       locationText: location,
-      lat: locationLatLong[0] + (Math.random() - 0.5) * 0.002,
-      lng: locationLatLong[1] + (Math.random() - 0.5) * 0.002,
-      area: area as any,
+      lat: locationLatLong[0],
+      lng: locationLatLong[1],
+      area: (area === "OTHER" ? (customArea || "OTHER") : area) as any,
       status: "Reported",
       authorId: currentUser?.id || "u1",
       authorName: currentUser?.name || "Anonymous",
@@ -227,13 +258,18 @@ export function SubmitReport() {
             </div>
 
             {location && isClient && (
-              <div className="w-full h-48 bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200">
-                <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }}>
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <Marker position={locationLatLong} icon={icons?.Reported} />
-                </MapContainer>
-                <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
-                  <MapPin className="w-4 h-4 text-[#2E7D32]" /> {location}
+              <div>
+                <p className="text-xs text-amber-600 mb-2 font-medium flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Pinpoint accuracy is important. You can drag the pin or click on the map to adjust your exact location.
+                </p>
+                <div className="w-full h-48 bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200">
+                  <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <LocationPicker position={locationLatLong} setPosition={setLocationLatLong} />
+                  </MapContainer>
+                  <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
+                    <MapPin className="w-4 h-4 text-[#2E7D32]" /> {locationLatLong[0].toFixed(5)}, {locationLatLong[1].toFixed(5)}
+                  </div>
                 </div>
               </div>
             )}
@@ -310,7 +346,7 @@ export function SubmitReport() {
 
             {!nearbyIssues.length && location && (
               <div className="flex justify-end pt-4">
-                <Button onClick={() => setStep(2)} className="gap-2">Continue <ArrowRight className="w-4 h-4" /></Button>
+                <Button onClick={handleConfirmLocation} className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white">Confirm Location & Continue <ArrowRight className="w-4 h-4" /></Button>
               </div>
             )}
           </div>
@@ -325,28 +361,54 @@ export function SubmitReport() {
                   <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Issue Category</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      if (e.target.value !== "OTHER") setCustomCategory("");
+                    }}
                     className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
                   >
-                    <option value="POTHOLE">Pothole / Road Damage</option>
-                    <option value="GARBAGE">Garbage / Sanitation</option>
-                    <option value="STREETLIGHT">Street Light Outage</option>
-                    <option value="DRAINAGE">Drainage / Waterlogging</option>
-                    <option value="OTHER">Other</option>
+                    {displayCategories.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {c.name.charAt(0) + c.name.slice(1).toLowerCase().replace(/_/g, ' ')}
+                      </option>
+                    ))}
+                    <option value="OTHER">Other (Please specify)</option>
                   </select>
+                  {category === "OTHER" && (
+                    <Input
+                      required
+                      placeholder="Specify issue category..."
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">City Area</label>
                   <select
                     value={area}
-                    onChange={(e) => setArea(e.target.value)}
+                    onChange={(e) => {
+                      setArea(e.target.value);
+                      if (e.target.value !== "OTHER") setCustomArea("");
+                    }}
                     className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
                   >
-                    {["Shivajinagar","CIDCO Colony","Vazirabad","Asarjan","Vishnupuri","Naganpura","New Nanded","Degloor Naka","Kasba","Huzur"].map(a => (
-                      <option key={a} value={a}>{a}</option>
+                    {displayAreas.map(a => (
+                      <option key={a.id} value={a.name}>{a.name}</option>
                     ))}
+                    <option value="OTHER">Other (Please specify)</option>
                   </select>
+                  {area === "OTHER" && (
+                    <Input
+                      required
+                      placeholder="Specify city area..."
+                      value={customArea}
+                      onChange={(e) => setCustomArea(e.target.value)}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -408,9 +470,16 @@ export function SubmitReport() {
 
             <div className="flex justify-between pt-4">
               <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
-              <Button type="button" onClick={() => setStep(3)} className="gap-2" disabled={!title || !description}>
-                Review Details <ArrowRight className="w-4 h-4" />
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="gap-2"
+                  disabled={!title || !description || (category === "OTHER" && !customCategory) || (area === "OTHER" && !customArea)}
+                >
+                  Review Details <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </form>
         )}
@@ -424,8 +493,8 @@ export function SubmitReport() {
                 <div className="space-y-3 text-sm">
                   <p><strong className="text-gray-700 font-serif">Title:</strong> {title}</p>
                   <p><strong className="text-gray-700 font-serif">Location:</strong> {location}</p>
-                  <p><strong className="text-gray-700 font-serif">Area:</strong> {area}</p>
-                  <p><strong className="text-gray-700 font-serif">Category:</strong> {category.replace("_", " ")}</p>
+                  <p><strong className="text-gray-700 font-serif">Area:</strong> {area === "OTHER" ? customArea : area}</p>
+                  <p><strong className="text-gray-700 font-serif">Category:</strong> {(category === "OTHER" ? customCategory : category).replace("_", " ")}</p>
                   <p><strong className="text-gray-700 font-serif">Description:</strong><br /><span className="text-gray-600 font-serif">{description}</span></p>
                 </div>
                 {images.length > 0 && (
