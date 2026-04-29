@@ -57,11 +57,17 @@ public class ComplaintService {
     @Transactional
     public ComplaintResponse submit(User citizen, ComplaintRequest req) {
         long recentCount = complaintRepository.countByCitizenSince(citizen, LocalDateTime.now().minusHours(24));
-        if (recentCount >= 3) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You can submit at most 3 complaints per day.");
+        if (recentCount >= 10) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You can submit at most 10 complaints per day.");
         }
 
-        Area area = findNearestArea(req.getLatitude(), req.getLongitude());
+        Area area;
+        if (req.getAreaName() != null && !req.getAreaName().equals("OTHER") && !req.getAreaName().trim().isEmpty()) {
+            area = areaRepository.findByName(req.getAreaName())
+                    .orElseGet(() -> findNearestArea(req.getLatitude(), req.getLongitude()));
+        } else {
+            area = findNearestArea(req.getLatitude(), req.getLongitude());
+        }
 
         com.citywatch.entity.Category category = categoryRepository.findByName(req.getCategory().toUpperCase())
                 .orElseGet(() -> categoryRepository.findByName("OTHER").orElse(null));

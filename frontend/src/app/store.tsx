@@ -414,6 +414,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           latitude: reportReq.lat,
           longitude: reportReq.lng,
           locationText: reportReq.locationText,
+          areaName: reportReq.area,
         }),
       });
       if (res.ok) {

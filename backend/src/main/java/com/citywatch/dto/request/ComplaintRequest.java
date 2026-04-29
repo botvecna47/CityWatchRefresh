@@ -33,6 +33,8 @@ public class ComplaintRequest {
 
     private String locationText;
 
+    private String areaName;
+
     public ComplaintRequest() {}
 
     public String getCategory() { return category; }
@@ -55,4 +57,7 @@ public class ComplaintRequest {
 
     public String getLocationText() { return locationText; }
     public void setLocationText(String locationText) { this.locationText = locationText; }
+
+    public String getAreaName() { return areaName; }
+    public void setAreaName(String areaName) { this.areaName = areaName; }
 }
