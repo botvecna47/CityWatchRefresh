@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
-    private final AreaRepository areaRepository;
+    private final AreaService areaService;
     private final UserRepository userRepository;
     private final SlaConfigRepository slaConfigRepository;
     private final ProofRepository proofRepository;
@@ -33,7 +33,7 @@ public class ComplaintService {
 
     public ComplaintService(
             ComplaintRepository complaintRepository,
-            AreaRepository areaRepository,
+            AreaService areaService,
             UserRepository userRepository,
             SlaConfigRepository slaConfigRepository,
             ProofRepository proofRepository,
@@ -42,7 +42,7 @@ public class ComplaintService {
             CwIdGenerator idGenerator,
             CategoryRepository categoryRepository) {
         this.complaintRepository = complaintRepository;
-        this.areaRepository = areaRepository;
+        this.areaService = areaService;
         this.userRepository = userRepository;
         this.slaConfigRepository = slaConfigRepository;
         this.proofRepository = proofRepository;
@@ -52,7 +52,7 @@ public class ComplaintService {
         this.categoryRepository = categoryRepository;
     }
 
-    private static final double NEARBY_DELTA = 0.005; // ~500m
+    private static final double NEARBY_DELTA = 0.00025; // ~25m radius (50m diameter)
 
     @Transactional
     public ComplaintResponse submit(User citizen, ComplaintRequest req) {
@@ -61,13 +61,8 @@ public class ComplaintService {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You can submit at most 10 complaints per day.");
         }
 
-        Area area;
-        if (req.getAreaName() != null && !req.getAreaName().equals("OTHER") && !req.getAreaName().trim().isEmpty()) {
-            area = areaRepository.findByName(req.getAreaName())
-                    .orElseGet(() -> findNearestArea(req.getLatitude(), req.getLongitude()));
-        } else {
-            area = findNearestArea(req.getLatitude(), req.getLongitude());
-        }
+        // Auto-assign Area strictly by Live Location
+        Area area = areaService.findNearestArea(req.getLatitude(), req.getLongitude());
 
         com.citywatch.entity.Category category = categoryRepository.findByName(req.getCategory().toUpperCase())
                 .orElseGet(() -> categoryRepository.findByName("OTHER").orElse(null));
@@ -108,8 +103,7 @@ public class ComplaintService {
     }
 
     public List<ComplaintResponse> getByArea(Long areaId) {
-        Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Area not found"));
+        Area area = areaService.getById(areaId);
         return complaintRepository.findByAreaOrderByCreatedAtDesc(area)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
@@ -195,7 +189,10 @@ public class ComplaintService {
         double dLat = Math.abs(req.getLatitude() - complaint.getLatitude());
         double dLng = Math.abs(req.getLongitude() - complaint.getLongitude());
         double distance = Math.sqrt(dLat * dLat + dLng * dLng);
-        boolean locationValid = distance <= NEARBY_DELTA * 2;
+        if (distance > NEARBY_DELTA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You must be within 25 meters of the complaint location to complete it.");
+        }
+        boolean locationValid = true;
 
         Proof proof = Proof.builder()
                 .id(idGenerator.nextProofId())
@@ -375,15 +372,7 @@ public class ComplaintService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
     }
 
-    private Area findNearestArea(Double lat, Double lng) {
-        return areaRepository.findAll().stream()
-                .min((a, b) -> {
-                    double da = Math.abs(a.getCenterLat() - lat) + Math.abs(a.getCenterLng() - lng);
-                    double db = Math.abs(b.getCenterLat() - lat) + Math.abs(b.getCenterLng() - lng);
-                    return Double.compare(da, db);
-                })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "No areas configured"));
-    }
+
 
     private void validateTransition(ComplaintStatus current, ComplaintStatus next) {
         // Permit coordinator to move any "pending/assigned" state to IN_PROGRESS

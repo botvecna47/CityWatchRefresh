@@ -7,17 +7,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "messages")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Comment {
+public class Message {
 
-    /**
-     * 17-char ID: CMT-{DDMMYY}-{6-digit-seq}
-     * Example: CMT-090426-000001
-     */
     @Id
     @Column(name = "id", length = 17, updatable = false, nullable = false)
     private String id;
@@ -28,21 +24,12 @@ public class Comment {
     private Complaint complaint;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "sender_id", nullable = false)
     @com.fasterxml.jackson.annotation.JsonIgnore
-    private User user;
+    private User sender;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Comment parent;
-
-    @Builder.Default
-    @Column(name = "is_moderated")
-    private Boolean isModerated = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

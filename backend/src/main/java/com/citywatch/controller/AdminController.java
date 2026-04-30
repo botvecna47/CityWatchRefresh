@@ -27,13 +27,16 @@ public class AdminController {
     private final ComplaintRepository complaintRepository;
     private final EscalationRepository escalationRepository;
     private final ComplaintService complaintService;
+    private final com.citywatch.service.NotificationService notificationService;
 
     public AdminController(UserRepository userRepository, ComplaintRepository complaintRepository,
-                           EscalationRepository escalationRepository, ComplaintService complaintService) {
+                           EscalationRepository escalationRepository, ComplaintService complaintService,
+                           com.citywatch.service.NotificationService notificationService) {
         this.userRepository = userRepository;
         this.complaintRepository = complaintRepository;
         this.escalationRepository = escalationRepository;
         this.complaintService = complaintService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/users")
@@ -84,6 +87,20 @@ public class AdminController {
     @GetMapping("/escalations")
     public ResponseEntity<List<Escalation>> getAllEscalations() {
         return ResponseEntity.ok(escalationRepository.findAll());
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<Map<String, String>> broadcast(@RequestBody Map<String, String> payload) {
+        String message = payload.get("message");
+        if (message == null || message.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Message cannot be empty"));
+        }
+        
+        userRepository.findAll().forEach(user -> {
+            notificationService.create(user, "System Broadcast", message, com.citywatch.enums.NotificationType.SYSTEM, null);
+        });
+        
+        return ResponseEntity.ok(Map.of("message", "Broadcast sent to all users"));
     }
 
     private UserSummaryResponse toUserSummary(User u) {

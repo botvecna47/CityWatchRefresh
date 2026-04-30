@@ -8,6 +8,11 @@ echo   URL: http://localhost:8081
 echo   Log: backend\backend.log
 echo ============================================
 echo.
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8081" ^| findstr "LISTENING" 2^>nul') do (
+    echo [CityWatch] Force killing process on port 8081 (PID %%p)
+    taskkill /PID %%p /F /T >nul 2>&1
+)
+echo.
 .\\apache-maven-3.9.6\bin\mvn.cmd spring-boot:run
 echo.
 if %ERRORLEVEL% NEQ 0 (

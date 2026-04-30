@@ -34,6 +34,11 @@ echo [CityWatch] Preparing backend launcher...
     echo echo   Log: backend\backend.log
     echo echo ============================================
     echo echo.
+    echo for /f "tokens=5" %%%%p in ^('netstat -ano ^^^| findstr ":8081" ^^^| findstr "LISTENING" 2^^^>nul'^) do ^(
+    echo     echo [CityWatch] Force killing process on port 8081 ^(PID %%%%p^)
+    echo     taskkill /PID %%%%p /F /T ^>nul 2^>^&1
+    echo ^)
+    echo echo.
     echo .\\apache-maven-3.9.6\bin\mvn.cmd spring-boot:run
     echo echo.
     echo if %%ERRORLEVEL%% NEQ 0 (

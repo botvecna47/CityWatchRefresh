@@ -44,6 +44,7 @@ public class Proof {
     @Column(name = "distance_from_complaint")
     private Double distanceFromComplaint;
 
+    @Builder.Default
     @Column(name = "is_location_valid")
     private Boolean isLocationValid = false;
 

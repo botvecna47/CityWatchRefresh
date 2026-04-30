@@ -37,6 +37,7 @@ public class Escalation {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Builder.Default
     @Column(name = "is_resolved")
     private Boolean isResolved = false;
 

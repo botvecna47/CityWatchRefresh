@@ -24,6 +24,8 @@ export function ReportSidebarOverlay() {
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [showSpamModal, setShowSpamModal] = useState(false);
   const [spamReason, setSpamReason] = useState("");
+  const [activeTab, setActiveTab] = useState<'comments' | 'messages'>('comments');
+  const [messageText, setMessageText] = useState("");
 
   useEffect(() => {
     // Fix default Leaflet icon URLs
@@ -39,6 +41,8 @@ export function ReportSidebarOverlay() {
   useEffect(() => {
     setHasUpvoted(false);
     setCommentText("");
+    setMessageText("");
+    setActiveTab('comments');
   }, [selectedReportId]);
 
   if (!report) return null;
@@ -47,7 +51,7 @@ export function ReportSidebarOverlay() {
     if (!currentUser) { toast.error("Please sign in to upvote."); navigate("/auth"); return; }
     if (currentUser.role === "admin") { toast.error("Admins cannot upvote complaints."); return; }
     if (hasUpvoted) { toast.info("You have already upvoted this complaint."); return; }
-    await voteOnServer(report.id);
+    await voteOnServer(report.id, currentUser.id);
     setHasUpvoted(true);
     toast.success("Upvote recorded — thank you!");
   };
@@ -76,7 +80,19 @@ export function ReportSidebarOverlay() {
     toast.success("Spam report submitted.");
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageText.trim()) return;
+    try {
+      await useAppContext().sendMessage(report.id, messageText);
+      setMessageText("");
+    } catch (e) {}
+  };
+
   const canUpvote = !!currentUser && currentUser.role !== "admin";
+  const isCitizenAssigned = currentUser?.role === 'citizen' && currentUser.id === report.authorId && report.coordinatorId;
+  const isCoordinatorAssigned = currentUser?.role === 'coordinator' && currentUser.id === report.coordinatorId;
+  const showMessagesTab = isCitizenAssigned || isCoordinatorAssigned || currentUser?.role === 'admin';
 
   return (
     <>
@@ -210,48 +226,88 @@ export function ReportSidebarOverlay() {
 
             {/* Divider */}
             <div className="border-t border-gray-100 pt-4">
-              <h3 className="text-sm font-bold text-[#1A4331] mb-3 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[#2E7D32]" />
-                Comments
-                <span className="ml-auto text-xs font-normal text-gray-400">{report.comments.length}</span>
-              </h3>
-
-              <div className="space-y-3 mb-4">
-                {report.comments.map(comment => (
-                  <div key={comment.id} className="flex gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-[#1A4331]/10 flex items-center justify-center flex-shrink-0 text-[#1A4331] font-bold text-xs border border-[#1A4331]/10">
-                      {comment.authorName.charAt(0)}
-                    </div>
-                    <div className="flex-1 bg-gray-50 p-2.5 rounded-sm border border-gray-100 text-sm">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-semibold text-[#1A4331] text-xs">{comment.authorName}</span>
-                        <span className="text-[10px] text-gray-400">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
-                      </div>
-                      <p className="text-gray-600 leading-relaxed">{comment.text}</p>
-                    </div>
-                  </div>
-                ))}
-                {report.comments.length === 0 && (
-                  <p className="text-gray-400 text-xs text-center py-3 italic bg-gray-50 rounded-sm">No comments yet.</p>
+              <div className="flex items-center gap-4 border-b border-gray-100 mb-4 pb-2">
+                <button 
+                  onClick={() => setActiveTab('comments')}
+                  className={cn("text-sm font-bold flex items-center gap-2", activeTab === 'comments' ? "text-[#1A4331] border-b-2 border-[#1A4331] pb-2 -mb-[9px]" : "text-gray-400")}
+                >
+                  <MessageSquare className="w-4 h-4" /> Comments
+                </button>
+                {showMessagesTab && (
+                  <button 
+                    onClick={() => { setActiveTab('messages'); useAppContext().fetchMessages(report.id); }}
+                    className={cn("text-sm font-bold flex items-center gap-2", activeTab === 'messages' ? "text-[#1A4331] border-b-2 border-[#1A4331] pb-2 -mb-[9px]" : "text-gray-400")}
+                  >
+                    Direct Messages
+                  </button>
                 )}
               </div>
 
-              {currentUser ? (
-                <form onSubmit={handleAddComment} className="flex flex-col gap-2">
-                  <Textarea
-                    placeholder="Add a comment..."
-                    value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
-                    rows={3}
-                    className="resize-none text-sm"
-                  />
-                  <Button type="submit" size="sm" className="self-end" disabled={!commentText.trim()}>Post Comment</Button>
-                </form>
+              {activeTab === 'comments' ? (
+                <>
+                  <div className="space-y-3 mb-4">
+                    {report.comments.map(comment => (
+                      <div key={comment.id} className="flex gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-[#1A4331]/10 flex items-center justify-center flex-shrink-0 text-[#1A4331] font-bold text-xs border border-[#1A4331]/10">
+                          {comment.authorName.charAt(0)}
+                        </div>
+                        <div className="flex-1 bg-gray-50 p-2.5 rounded-sm border border-gray-100 text-sm">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-semibold text-[#1A4331] text-xs">{comment.authorName}</span>
+                            <span className="text-[10px] text-gray-400">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+                          </div>
+                          <p className="text-gray-600 leading-relaxed">{comment.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {report.comments.length === 0 && (
+                      <p className="text-gray-400 text-xs text-center py-3 italic bg-gray-50 rounded-sm">No comments yet.</p>
+                    )}
+                  </div>
+
+                  {currentUser ? (
+                    <form onSubmit={handleAddComment} className="flex flex-col gap-2">
+                      <Textarea
+                        placeholder="Add a comment..."
+                        value={commentText}
+                        onChange={e => setCommentText(e.target.value)}
+                        rows={3}
+                        className="resize-none text-sm"
+                      />
+                      <Button type="submit" size="sm" className="self-end" disabled={!commentText.trim()}>Post Comment</Button>
+                    </form>
+                  ) : (
+                    <div className="p-3 bg-gray-50 border border-gray-100 text-center rounded-sm">
+                      <p className="text-gray-500 text-xs mb-2">Sign in to leave a comment.</p>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>Sign In</Button>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 text-center rounded-sm">
-                  <p className="text-gray-500 text-xs mb-2">Sign in to leave a comment.</p>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>Sign In</Button>
-                </div>
+                <>
+                  <div className="space-y-3 mb-4">
+                    {report.messages?.map(message => (
+                      <div key={message.id} className={cn("flex flex-col max-w-[85%] rounded-sm p-3", message.senderId === currentUser?.id ? "ml-auto bg-[#1A4331] text-white" : "bg-gray-100 text-[#1A4331]")}>
+                        <div className="flex justify-between items-end gap-4 mb-1">
+                          <span className="font-bold text-xs">{message.senderName} <span className="opacity-70 font-normal">({message.senderRole})</span></span>
+                          <span className="text-[10px] opacity-70">{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</span>
+                        </div>
+                        <p className="text-sm">{message.content}</p>
+                      </div>
+                    ))}
+                    {(!report.messages || report.messages.length === 0) && (
+                      <p className="text-gray-400 text-xs text-center py-3 italic bg-gray-50 rounded-sm">No messages yet. Say hello to the assigned coordinator.</p>
+                    )}
+                  </div>
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <Input 
+                      placeholder="Type a message..." 
+                      value={messageText} 
+                      onChange={e => setMessageText(e.target.value)} 
+                    />
+                    <Button type="submit" disabled={!messageText.trim()}>Send</Button>
+                  </form>
+                </>
               )}
             </div>
           </div>

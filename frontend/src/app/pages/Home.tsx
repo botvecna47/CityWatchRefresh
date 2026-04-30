@@ -35,7 +35,7 @@ export function Home() {
     if (!currentUser) { navigate('/auth'); return; }
     if (currentUser.role === 'admin') { toast.error("Admins cannot upvote complaints."); return; }
     if (type === 'up') {
-      await voteOnServer(id);
+      await voteOnServer(id, currentUser.id);
     } else {
       toast.info("Downvoting is coming soon!");
     }

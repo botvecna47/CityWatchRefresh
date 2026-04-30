@@ -25,6 +25,16 @@ public class AreaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Area not found"));
     }
 
+    public Area findNearestArea(Double lat, Double lng) {
+        return areaRepository.findAll().stream()
+                .min((a, b) -> {
+                    double da = Math.abs(a.getCenterLat() - lat) + Math.abs(a.getCenterLng() - lng);
+                    double db = Math.abs(b.getCenterLat() - lat) + Math.abs(b.getCenterLng() - lng);
+                    return Double.compare(da, db);
+                })
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "No areas configured"));
+    }
+
     @Transactional
     public Area create(Area area) {
         if (areaRepository.findByName(area.getName()).isPresent()) {
