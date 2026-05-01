@@ -1,3 +1,5 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -5,7 +7,7 @@ const getAuthHeader = () => {
 
 export const apiClient = {
   get: async (endpoint: string) => {
-    const res = await fetch(endpoint, {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: { ...getAuthHeader() },
     });
     if (!res.ok) throw new Error(`GET ${endpoint} failed: ${res.status}`);
@@ -13,7 +15,7 @@ export const apiClient = {
   },
 
   post: async (endpoint: string, body?: any) => {
-    const res = await fetch(endpoint, {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,7 +28,7 @@ export const apiClient = {
   },
 
   patch: async (endpoint: string, body?: any) => {
-    const res = await fetch(endpoint, {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -39,7 +41,7 @@ export const apiClient = {
   },
 
   delete: async (endpoint: string) => {
-    const res = await fetch(endpoint, {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "DELETE",
       headers: { ...getAuthHeader() },
     });
