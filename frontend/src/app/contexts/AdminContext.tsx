@@ -19,7 +19,8 @@ interface AdminContextType {
   unbanUser: (id: string) => void;
 }
 
-export const AdminContext = createContext<AdminContextType | undefined>(undefined);
+// AdminContext is kept internal — consumers use the useAdmin() hook
+const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);

@@ -10,7 +10,8 @@ interface NotificationContextType {
   addNotification: (notification: Omit<Notification, "id" | "createdAt" | "read">) => void;
 }
 
-export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+// NotificationContext is kept internal — consumers use the useNotification() hook
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);

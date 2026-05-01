@@ -13,7 +13,7 @@ interface ComplaintContextType {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   refreshMasterData: () => Promise<void>;
-  refreshReports: () => void;
+  refreshReports: (silent?: boolean) => void;
   addReport: (report: Partial<Report>) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => Promise<void>;
   submitProof: (id: string, imageUrl: string, lat: number, lng: number) => Promise<void>;
@@ -66,8 +66,9 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) { console.error("Failed to fetch master data:", error); }
   }, []);
 
-  const refreshReports = useCallback(() => {
-    setLoading(true);
+  // silent=true skips the loading spinner — used by background polling so pages don't flash
+  const refreshReports = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     complaintService.getAll().then((data: any[]) => {
       if (!Array.isArray(data)) return;
       const mapped: Report[] = data.map(r => ({
@@ -86,7 +87,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
           id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", text: c.content || "", createdAt: c.createdAt || new Date().toISOString(),
         })) : [],
       })).catch(() => ({ ...report, messages: [] })))).then(reportsWithComments => setReports(reportsWithComments));
-    }).catch(err => console.error("Failed to fetch reports:", err)).finally(() => setLoading(false));
+    }).catch(err => console.error("Failed to fetch reports:", err)).finally(() => { if (!silent) setLoading(false); });
   }, []);
 
   const addReport = async (reportReq: Partial<Report>) => {

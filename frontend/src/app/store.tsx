@@ -42,7 +42,7 @@ function DataFetcher({ children }: { children: ReactNode }) {
     }
 
     const interval = setInterval(() => {
-      refreshReports();
+      refreshReports(true); // silent: don't flash loading spinner during background refresh
       if (currentUser) {
         refreshNotifications();
         if (currentUser.role === "admin") {
