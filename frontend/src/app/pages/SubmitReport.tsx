@@ -84,7 +84,31 @@ export function SubmitReport() {
     if (areas.length === 0 || categories.length === 0) {
       await refreshMasterData();
     }
-    const nearby = reports.filter(r => r.area === area && r.status !== "Completed").slice(0, 2);
+
+    // Use Haversine distance to find truly nearby issues (within 500m of the pin)
+    // This avoids the bug of relying on the `area` dropdown which isn't set until Step 2
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const [userLat, userLng] = locationLatLong;
+    const nearby = reports
+      .filter(r =>
+        r.status !== "Completed" &&
+        r.lat != null &&
+        r.lng != null &&
+        haversineKm(userLat, userLng, r.lat, r.lng) <= 0.5  // within 500m
+      )
+      .slice(0, 2);
+
     if (nearby.length > 0) {
       setNearbyIssues(nearby);
     } else {
