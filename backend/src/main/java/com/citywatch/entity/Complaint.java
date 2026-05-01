@@ -18,7 +18,7 @@ import org.hibernate.annotations.SQLRestriction;
     @Index(name = "idx_complaint_area",    columnList = "area_id"),
     @Index(name = "idx_complaint_status",  columnList = "status"),
     @Index(name = "idx_complaint_citizen", columnList = "citizen_id"),
-    @Index(name = "idx_complaint_cat",     columnList = "category"),
+    @Index(name = "idx_complaint_cat",     columnList = "category_id"),
     @Index(name = "idx_complaint_priority", columnList = "priority")
 })
 @SQLRestriction("deleted = false")
