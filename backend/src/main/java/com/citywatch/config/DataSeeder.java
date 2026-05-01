@@ -17,15 +17,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 /**
  * DataSeeder — Idempotent startup seeder for CityWatch Nanded demo data.
  *
- * ► Runs on EVERY startup (safe — checks before inserting).
+ * ► Disabled by default to protect demo and testing data.
+ * ► To run, add `app.seed-data=true` in application.properties or run with `-Dapp.seed-data=true`.
  * ► ALWAYS force-resets demo-account passwords so they stay in sync with
  *   whatever BCrypt format the current Spring Security version uses.
  * ► All demo accounts: password = Admin@123
  */
 @Component
+@ConditionalOnProperty(name = "app.seed-data", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
