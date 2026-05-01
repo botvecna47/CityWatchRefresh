@@ -10,10 +10,11 @@ import { UserManagement } from "../components/admin/UserManagement";
 import { ApplicationsManagement } from "../components/admin/ApplicationsManagement";
 import { SpamManagement } from "../components/admin/SpamManagement";
 import { SystemManagement } from "../components/admin/SystemManagement";
+import { ServerMonitor } from "../components/admin/ServerMonitor";
 
 export function AdminPanel() {
   const { users, currentUser, reports, applications, spamReports } = useAppContext();
-  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "system">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "system" | "monitor">("overview");
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
@@ -29,7 +30,7 @@ export function AdminPanel() {
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">
-        {(["overview", "issues", "coordinators", "users", "applications", "spam", "system"] as const).map(tab => {
+        {(["overview", "issues", "coordinators", "users", "applications", "spam", "system", "monitor"] as const).map(tab => {
           let badgeCount = 0;
           if (tab === "applications") badgeCount = applications.filter(a => a.status === "pending").length;
           if (tab === "spam") badgeCount = spamReports.filter(s => s.status === "pending").length;
@@ -48,7 +49,7 @@ export function AdminPanel() {
                   : "border-transparent text-gray-500 hover:text-[#1A4331] hover:border-gray-300 hover:bg-gray-50"
               )}
             >
-              {tab === "system" ? "System Config" : tab}
+              {tab === "system" ? "System Config" : tab === "monitor" ? "🖥 Monitor" : tab}
               {badgeCount > 0 && (
                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full shadow-sm text-white", tab === 'issues' ? 'bg-amber-500' : 'bg-red-500')}>{badgeCount}</span>
               )}
@@ -74,6 +75,7 @@ export function AdminPanel() {
             {activeTab === "applications" && <ApplicationsManagement />}
             {activeTab === "spam" && <SpamManagement />}
             {activeTab === "system" && <SystemManagement />}
+            {activeTab === "monitor" && <ServerMonitor />}
           </motion.div>
         </AnimatePresence>
       </div>
