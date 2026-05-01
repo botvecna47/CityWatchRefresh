@@ -105,23 +105,23 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedCategories() {
         for (com.citywatch.enums.Category enumCat : com.citywatch.enums.Category.values()) {
-            categoryRepository.findByName(enumCat.name()).ifPresentOrElse(
-                c -> { /* already exists */ },
-                () -> {
-                    int hours = switch (enumCat) {
-                        case GARBAGE     -> 72;
-                        case POTHOLE     -> 168;
-                        case DRAINAGE    -> 96;
-                        case STREETLIGHT -> 48;
-                        case OTHER       -> 120;
-                    };
-                    categoryRepository.save(com.citywatch.entity.Category.builder()
-                        .name(enumCat.name())
-                        .description("Standard " + enumCat.name().toLowerCase() + " category")
-                        .defaultSlaHours(hours)
-                        .build());
-                }
-            );
+            Number count = (Number) em.createNativeQuery("SELECT count(*) FROM categories WHERE name = :name")
+                .setParameter("name", enumCat.name())
+                .getSingleResult();
+            if (count.longValue() == 0) {
+                int hours = switch (enumCat) {
+                    case GARBAGE     -> 72;
+                    case POTHOLE     -> 168;
+                    case DRAINAGE    -> 96;
+                    case STREETLIGHT -> 48;
+                    case OTHER       -> 120;
+                };
+                categoryRepository.save(com.citywatch.entity.Category.builder()
+                    .name(enumCat.name())
+                    .description("Standard " + enumCat.name().toLowerCase() + " category")
+                    .defaultSlaHours(hours)
+                    .build());
+            }
         }
     }
 
@@ -140,7 +140,10 @@ public class DataSeeder implements CommandLineRunner {
             new AreaTuple("Huzur",         19.172, 77.315)
         );
         for (AreaTuple a : areas) {
-            if (areaRepository.findByName(a.name()).isEmpty()) {
+            Number count = (Number) em.createNativeQuery("SELECT count(*) FROM areas WHERE name = :name")
+                .setParameter("name", a.name())
+                .getSingleResult();
+            if (count.longValue() == 0) {
                 areaRepository.save(
                     Area.builder()
                         .name(a.name()).city("Nanded")
@@ -288,22 +291,27 @@ public class DataSeeder implements CommandLineRunner {
     private void seedOrUpdate(String id, User citizen, Area area, com.citywatch.entity.Category category, String title, String desc,
                                double lat, double lng, ComplaintStatus status, User coordinator, Priority priority,
                                List<String> imageUrls) {
-        complaintRepository.findById(id).ifPresentOrElse(
-            c -> {
-                // Always update metadata so DB stays in sync with seeder
+        Number count = (Number) em.createNativeQuery("SELECT count(*) FROM complaints WHERE id = :id")
+                .setParameter("id", id)
+                .getSingleResult();
+        if (count.longValue() > 0) {
+            // Update metadata only if the complaint is still active (not soft-deleted)
+            complaintRepository.findById(id).ifPresent(c -> {
                 c.setArea(area);
                 c.setLatitude(lat);
                 c.setLongitude(lng);
-                c.setTitle(title);           // fix null titles
+                c.setTitle(title);
                 c.setDescription(desc);
                 c.setPriority(priority);
-                c.setStatus(status);         // keep demo status correct
+                c.setStatus(status);
                 c.setImageUrls(imageUrls);
                 c.setAssignedCoordinator(coordinator);
                 c.setIntensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5);
                 complaintRepository.save(c);
-            },
-            () -> complaintRepository.save(Complaint.builder()
+            });
+        } else {
+            // Does not exist at all, safe to insert
+            complaintRepository.save(Complaint.builder()
                 .id(id).citizen(citizen).area(area)
                 .category(category).title(title).description(desc)
                 .latitude(lat).longitude(lng)
@@ -312,7 +320,7 @@ public class DataSeeder implements CommandLineRunner {
                 .assignedCoordinator(coordinator)
                 .imageUrls(imageUrls)
                 .slaDeadline(LocalDateTime.now().plusDays(5))
-                .build())
-        );
+                .build());
+        }
     }
 }
