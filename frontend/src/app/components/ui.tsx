@@ -1,16 +1,18 @@
 import { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { Slot } from "@radix-ui/react-slot";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'default', size?: 'default' | 'sm' | 'lg' }>(
-  ({ className, variant = 'primary', size = 'default', ...props }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean, variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'default', size?: 'default' | 'sm' | 'lg' }>(
+  ({ className, variant = 'primary', size = 'default', asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
     return (
 
-      <button
+      <Comp
         ref={ref}
         className={cn(
           "inline-flex items-center justify-center text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-sm",
