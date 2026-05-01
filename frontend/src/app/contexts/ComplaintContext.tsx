@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "sonner";
 import { Report, AreaEntity, CategoryEntity, Area, Status, Comment } from "../types";
 import { complaintService, masterDataService } from "../api/services";
@@ -24,7 +24,8 @@ interface ComplaintContextType {
   fetchMessages: (reportId: string) => Promise<void>;
 }
 
-export const ComplaintContext = createContext<ComplaintContextType | undefined>(undefined);
+// ComplaintContext is kept internal — consumers use the useComplaint() hook
+const ComplaintContext = createContext<ComplaintContextType | undefined>(undefined);
 
 const mapStatus = (s: string): Status => {
   switch ((s || "").toUpperCase()) {
@@ -57,15 +58,15 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   const [categories, setCategories] = useState<CategoryEntity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refreshMasterData = async () => {
+  const refreshMasterData = useCallback(async () => {
     try {
       const [areasRes, categoriesRes] = await Promise.all([masterDataService.getAreas(), masterDataService.getCategories()]);
       setAreas(areasRes);
       setCategories(categoriesRes);
     } catch (error) { console.error("Failed to fetch master data:", error); }
-  };
+  }, []);
 
-  const refreshReports = () => {
+  const refreshReports = useCallback(() => {
     setLoading(true);
     complaintService.getAll().then((data: any[]) => {
       if (!Array.isArray(data)) return;
@@ -79,14 +80,14 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
         createdAt: r.createdAt || new Date().toISOString(), urgency: mapPriority(r.priority), coordinatorId: r.coordinatorId ? String(r.coordinatorId) : undefined,
       }));
       Promise.all(mapped.map(report => complaintService.getComments(report.id).then((comments: any[]) => ({
-        ...report, 
+        ...report,
         messages: [], // Fetched on demand when opening chat
         comments: Array.isArray(comments) ? comments.map((c: any) => ({
           id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", text: c.content || "", createdAt: c.createdAt || new Date().toISOString(),
         })) : [],
       })).catch(() => ({ ...report, messages: [] })))).then(reportsWithComments => setReports(reportsWithComments));
     }).catch(err => console.error("Failed to fetch reports:", err)).finally(() => setLoading(false));
-  };
+  }, []);
 
   const addReport = async (reportReq: Partial<Report>) => {
     try {

@@ -1,30 +1,14 @@
-import { createContext, useContext, ReactNode, useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 export * from "./types";
+export { useAppContext } from "./useAppContext"; // re-exported for backwards compat
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ComplaintProvider, useComplaint } from "./contexts/ComplaintContext";
 import { AdminProvider, useAdmin } from "./contexts/AdminContext";
 import { NotificationProvider, useNotification } from "./contexts/NotificationContext";
 
-// Export the hook that combines all contexts to maintain backwards compatibility
-// with existing components that call useAppContext()
-export const useAppContext = () => {
-  const auth = useAuth();
-  const complaint = useComplaint();
-  const admin = useAdmin();
-  const notification = useNotification();
-
-  // Combine all context values into a single God Object for legacy components
-  return {
-    ...auth,
-    ...complaint,
-    ...admin,
-    ...notification
-  };
-};
-
 // The new root provider that wraps the app with the specific domain providers
-export const AppProvider = ({ children }: { children: ReactNode }) => {
+export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <ComplaintProvider>
@@ -36,10 +20,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       </ComplaintProvider>
     </AuthProvider>
   );
-};
+}
 
 // A small component to handle the periodic refreshing of data based on auth state
-const DataFetcher = ({ children }: { children: ReactNode }) => {
+function DataFetcher({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
   const { refreshMasterData, refreshReports } = useComplaint();
   const { refreshUsers, refreshApplications, refreshSpamReports } = useAdmin();
@@ -69,7 +53,7 @@ const DataFetcher = ({ children }: { children: ReactNode }) => {
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;
-};
+}

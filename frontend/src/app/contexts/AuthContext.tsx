@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { User, Role } from "../types";
 import { authService } from "../api/services";
 
@@ -8,7 +8,8 @@ interface AuthContextType {
   updateUserSettings: (settings: Partial<User["settings"]>) => void;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// AuthContext is kept internal — consumers use the useAuth() hook
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -45,8 +46,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (settings.theme !== undefined) localStorage.setItem("settings_theme", settings.theme);
   };
 
+  // Stabilize the context value so that consumers don't re-render
+  // just because the provider re-renders (e.g. after a local state update)
+  const value = useMemo(
+    () => ({ currentUser, setCurrentUser, updateUserSettings }),
+    // updateUserSettings closes over currentUser, so it changes when currentUser changes.
+    // Including currentUser here is intentional and safe — it only triggers when the
+    // user object *actually* changes (login/logout), not on every render.
+    [currentUser] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, updateUserSettings }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
