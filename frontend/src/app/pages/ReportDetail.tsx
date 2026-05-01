@@ -6,7 +6,7 @@ import { ImageLightbox } from "../components/ImageLightbox";
 import { useAppContext, Comment } from "../store";
 import { Card, Button, Badge, Skeleton, cn } from "../components/ui";
 
-import { StatusBadge } from "./Home";
+import { StatusBadge } from "../components/feed/FeedItem";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';

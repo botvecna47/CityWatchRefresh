@@ -39,3 +39,12 @@ desktop.ini
 # Misc
 *.bak
 *.tmp
+
+# Ignored Debloat Artifacts
+/docs/node_modules/
+/tools/documentation/Reference/frontend_old/node_modules/
+/reference_repo/
+diff.txt
+diff_ascii.txt
+skills-lock.json
+test.bat

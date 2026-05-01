@@ -1,27 +1,82 @@
 # CityWatch Civic Reporting App (Revive Version)
 
-A sophisticated, modern Civic Reporting platform allowing citizens to intuitively report civic issues to city coordinators using a mobile-responsive interface, integrated map workflows, and real-time Supabase PostgreSQL backend synchronization.
+A sophisticated, modern Civic Reporting platform allowing citizens to intuitively report civic issues to city coordinators using a mobile-responsive interface, integrated map workflows, and real-time backend synchronization.
+
+## 🤖 AI-Powered Setup
+If you are using an AI-capable IDE (like Cursor, Windsurf, or VS Code with an AI agent), you can automate the entire setup process.
+**[Copy the prompt from AI_IDE_PROMPT.md](AI_IDE_PROMPT.md)** and paste it into your AI chat to have it install dependencies, configure the database, and start the servers for you.
 
 ## 📁 Repository Structure
-* **`frontend/`** - The active React (Vite/TypeScript) codebase. Configured to interface securely with Supabase databases and a Spring Boot intermediary.
-* **`backend/`** - The active Spring Boot API serving database interactions, user roles, and security implementations.
-* **`database/`** - Schema definitions and setup references for Supabase/PostgreSQL.
-* **`docs/`** - Startup guides, architecture models, implementation plans, and Figma Prompts.
-* **`Reference/`** - Stale, mock, or deprecated architectures stored safely away from active execution paths.
-* **`Report/` / `Diary/`** - Developer tracking and analysis output directories.
+* **`frontend/`** - React (Vite/TypeScript) codebase.
+* **`backend/`** - Spring Boot API (Java 23).
+* **`database/`** - Schema definitions and SQL migrations.
+* **`docs/`** - Architecture, planning, and design assets.
 
-## 🚀 Quick Start
-A dedicated batch script has been provided to effortlessly spin up both service layers at once on Windows environments. Make sure you have JDK 23 and Node.js installed.
+## 🚀 Quick Start (Windows)
+A dedicated batch script effortlessly spins up both service layers at once on Windows environments. Make sure you have JDK 23 and Node.js installed.
 
 1. Ensure your `.env` contains valid Supabase configurations inside `frontend/`.
-2. Ensure your backend holds active properties.
-3. Double-click or run:
+2. Double-click or run:
 ```bash
 run_project.bat
 ```
+
 *(This automatically runs Maven Spring-Boot execution for the backend and Vite Dev Server for the frontend simultaneously in new windows.)*
 
-## 🗺️ React-Leaflet Integration (Planned)
-The frontend is actively targeted for mapping migrations:
-* Interactive maps using `react-leaflet` for precision reporting.
-* Auto-generating Geolocation capabilities for Coordinators' Resolution Proofs.
+## 🛠️ Manual Startup Guide
+
+### Prerequisites
+| Tool | Required Version | Check Command |
+|------|-----------------|---------------|
+| **Java JDK** | 17–23 (NOT 25) | `java -version` |
+| **PostgreSQL** | 12+ | `psql --version` |
+| **Node.js** | 18+ | `node -v` |
+
+> ⚠️ **JDK 25 is NOT compatible** with this project. Use JDK 23 or lower.
+
+### 1. Database Setup
+```sql
+CREATE DATABASE citywatch;
+```
+The backend connects with user `postgres`, password `botvecna` on port `5432`. To change this, edit: `backend/src/main/resources/application.properties`
+
+### 2. Backend (Spring Boot on port 8081)
+```powershell
+cd backend
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-23"
+.\apache-maven-3.9.6\bin\mvn spring-boot:run
+```
+*On first run, it auto-creates all database tables and seeds demo users.*
+
+### 3. Frontend (Vite on port 5173)
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+## 🔑 Test Accounts
+All passwords: **`Admin@123`** (Reset automatically on startup)
+
+| Role | Username / Email |
+|------|------------------|
+| 🛡️ Admin | `admin` / `admin@nanded.gov.in` |
+| 🔧 Coordinator (Vazirabad) | `coord_vazirabad` / `vazirabad@nanded.gov.in` |
+| 🔧 Coordinator (Taroda) | `coord_taroda` / `taroda@nanded.gov.in` |
+| 🧑 Citizen | `citizen1` / `citizen1@example.com` |
+
+## 🐞 Debugging & Performance Profiling
+
+Since adding heavy monitoring libraries to the frontend bundle negatively impacts performance, the best way to profile memory leaks and optimize your React application is by using **Chrome DevTools**.
+
+### How to Catch Memory Leaks
+1. Open Chrome DevTools (`F12`), click the **Memory** tab.
+2. Select **Heap snapshot** and take a snapshot.
+3. *Perform an action in your app* (e.g., navigate to a report, upload an image, then navigate back).
+4. Take a **second snapshot** and change the view filter to **"Comparison"**.
+5. Compare the two to see if objects (detached DOM nodes, unmounted React components) failed to garbage collect.
+
+### Common React Memory Leak Culprits
+- **Event Listeners**: Adding `window.addEventListener` inside a `useEffect` without `return () => window.removeEventListener(...)`.
+- **SetInterval/SetTimeout**: Forgetting to `clearInterval()`.
+- **Leaflet Maps**: Not properly destroying map instances.

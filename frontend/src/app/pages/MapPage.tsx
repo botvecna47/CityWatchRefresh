@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MapPin, X, Layers, Filter } from "lucide-react";
 import { useAppContext, Area, Status, Report } from "../store";
 import { cn, Button } from "../components/ui";
-import { StatusBadge } from "./Home";
+import { StatusBadge } from "../components/feed/FeedItem";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';

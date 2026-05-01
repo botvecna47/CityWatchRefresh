@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { MapPin, MessageSquare } from "lucide-react";
 import { Report } from "../../store";
 import { Card } from "../../components/ui";
-import { StatusBadge } from "../../pages/Home";
+import { StatusBadge } from "../feed/FeedItem";
 
 export function ReportSummaryCard({ report }: { report: Report }) {
   return (

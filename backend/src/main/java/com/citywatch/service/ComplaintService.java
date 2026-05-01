@@ -7,6 +7,7 @@ import com.citywatch.entity.*;
 import com.citywatch.enums.*;
 import com.citywatch.repository.*;
 import com.citywatch.util.CwIdGenerator;
+import com.citywatch.util.ComplaintMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
@@ -30,27 +32,7 @@ public class ComplaintService {
     private final AuditService auditService;
     private final CwIdGenerator idGenerator;
     private final CategoryRepository categoryRepository;
-
-    public ComplaintService(
-            ComplaintRepository complaintRepository,
-            AreaService areaService,
-            UserRepository userRepository,
-            SlaConfigRepository slaConfigRepository,
-            ProofRepository proofRepository,
-            NotificationService notificationService,
-            AuditService auditService,
-            CwIdGenerator idGenerator,
-            CategoryRepository categoryRepository) {
-        this.complaintRepository = complaintRepository;
-        this.areaService = areaService;
-        this.userRepository = userRepository;
-        this.slaConfigRepository = slaConfigRepository;
-        this.proofRepository = proofRepository;
-        this.notificationService = notificationService;
-        this.auditService = auditService;
-        this.idGenerator = idGenerator;
-        this.categoryRepository = categoryRepository;
-    }
+    private final ComplaintMapper complaintMapper;
 
     private static final double NEARBY_DELTA = 0.00025; // ~25m radius (50m diameter)
 
@@ -336,35 +318,7 @@ public class ComplaintService {
     }
 
     public ComplaintResponse toResponse(Complaint c) {
-        String locText = c.getArea() != null
-                ? c.getArea().getName() + ", Nanded"
-                : String.format("%.4f, %.4f", c.getLatitude(), c.getLongitude());
-        return ComplaintResponse.builder()
-                .id(c.getId())
-                .category(c.getCategory() != null ? c.getCategory().getName() : "OTHER")
-                .title(c.getTitle())
-                .description(c.getDescription())
-                .imageUrls(c.getImageUrls())
-                .locationText(locText)
-                .status(c.getStatus().name())
-                .priority(c.getPriority() != null ? c.getPriority().name() : "LOW")
-                .latitude(c.getLatitude())
-                .longitude(c.getLongitude())
-                .intensityScore(c.getIntensityScore())
-                .areaId(c.getArea() != null ? c.getArea().getId() : null)
-                .areaName(c.getArea() != null ? c.getArea().getName() : null)
-                .citizenId(c.getCitizen().getId())
-                .citizenName(c.getCitizen().getUsername())
-                .coordinatorId(c.getAssignedCoordinator() != null ? c.getAssignedCoordinator().getId() : null)
-                .coordinatorName(c.getAssignedCoordinator() != null ? c.getAssignedCoordinator().getUsername() : null)
-                .escalationLevel(c.getEscalationLevel())
-                .reopenCount(c.getReopenCount())
-                .upvotes(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds().size() : 0)
-                .upvotedCitizenIds(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds() : new java.util.HashSet<>())
-                .createdAt(c.getCreatedAt())
-                .slaDeadline(c.getSlaDeadline())
-                .closedAt(c.getClosedAt())
-                .build();
+        return complaintMapper.toResponse(c);
     }
 
     private Complaint findOrThrow(String id) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAppContext, Report } from "../store";
 import { Card } from "../components/ui";
-import { supabase } from "../supabase";
+import { storageClient } from "../storageClient";
 import { 
   initLeaflet, StepIndicator, LocationStep, DetailsStep, ReviewStep 
 } from "../components/submit-report/SubmitReportSteps";
@@ -149,7 +149,7 @@ export function SubmitReport() {
         const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
         const filePath = `reports/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await storageClient.storage
           .from('citywatch-images')
           .upload(filePath, file);
 
@@ -159,7 +159,7 @@ export function SubmitReport() {
           continue;
         }
 
-        const { data } = supabase.storage.from('citywatch-images').getPublicUrl(filePath);
+        const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(filePath);
         uploadedUrls.push(data.publicUrl);
       }
     }

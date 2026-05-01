@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
-import { MessageSquare, ArrowBigUp, ArrowBigDown, MapPin, Search, Filter, Camera } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { toast } from "sonner";
-import { useAppContext, Report, Status, Area } from "../store";
-import { Card, Badge, cn, Button, Input, Skeleton } from "../components/ui";
-import { formatDistanceToNow } from "date-fns";
+import { useAppContext, Status, Area } from "../store";
+import { Card, Button, cn, Skeleton } from "../components/ui";
 import { motion, AnimatePresence } from "motion/react";
+
+import { FeedFilters } from "../components/feed/FeedFilters";
+import { FeedItem } from "../components/feed/FeedItem";
 
 export function Home() {
   const { reports, currentUser, loading, handleVote: voteOnServer, updateReport } = useAppContext();
@@ -54,80 +56,14 @@ export function Home() {
         </Button>
 
         <div className={cn("space-y-4", !showFilters && "hidden md:block")}>
-          <Card className="p-4 bg-white border border-gray-200 shadow-sm">
-            <div className="hidden md:flex items-center gap-2 font-bold text-[#1A4331] mb-4 border-b border-gray-100 pb-2">
-              <Filter className="w-5 h-5" /> Filters
-            </div>
-            
-            <div className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Search</label>
-              <Input 
-                placeholder="Search issues..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-gray-50"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Status</label>
-              <select 
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as Status | "All")}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Reported">Reported</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Area</label>
-              <select 
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={filterArea}
-                onChange={(e) => setFilterArea(e.target.value as Area | "All")}
-              >
-                {availableAreas.map(area => (
-                  <option key={area} value={area}>{area === 'All' ? 'All Areas' : area}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Urgency</label>
-              <select 
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={filterUrgency}
-                onChange={(e) => setFilterUrgency(e.target.value as any)}
-              >
-                <option value="All">All Urgency Levels</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
-            
-            {(filterStatus !== 'All' || filterArea !== 'All' || filterUrgency !== 'All' || search !== '') && (
-              <Button 
-                variant="outline" 
-                className="w-full text-sm"
-                onClick={() => {
-                  setFilterStatus('All');
-                  setFilterArea('All');
-                  setFilterUrgency('All');
-                  setSearch('');
-                }}
-              >
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        </Card>
-      </div>
+          <FeedFilters 
+            search={search} setSearch={setSearch}
+            filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+            filterArea={filterArea} setFilterArea={setFilterArea}
+            filterUrgency={filterUrgency} setFilterUrgency={setFilterUrgency}
+            availableAreas={availableAreas}
+          />
+        </div>
       </div>
 
       <div className="flex-1 space-y-6 w-full">
@@ -218,84 +154,12 @@ export function Home() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
                 >
-                  <Card className="flex hover:border-[#2E7D32]/30 transition-colors bg-white overflow-hidden shadow-sm">
-                    {/* Voting Sidebar */}
-                    <div className="w-14 bg-gray-50 flex flex-col items-center py-4 border-r border-gray-100 gap-1 flex-shrink-0">
-                      <button 
-                        onClick={() => handleVoteAction(report.id, 'up')} 
-                        className={cn(
-                          "p-1 transition-colors rounded hover:bg-gray-200",
-                          currentUser && report.upvotedCitizenIds?.includes(currentUser.id) ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]"
-                        )}
-                      >
-                        <ArrowBigUp className="w-6 h-6" />
-                      </button>
-                      <span className="text-sm font-bold text-[#1A4331]">{report.upvotes}</span>
-                    </div>
-
-
-                    {/* Main Content */}
-                    <div className="flex-1 p-4 sm:p-5 flex flex-col">
-                      <div className="flex items-center gap-3 mb-3 flex-wrap">
-                        <img src={report.authorAvatar} alt={report.authorName} className="w-8 h-8 rounded-full border border-gray-200 object-cover" />
-                        <div>
-                          <span className="font-semibold text-[#1A4331] text-sm">{report.authorName}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}
-                          </span>
-                        </div>
-                        <div className="sm:ml-auto flex gap-2 w-full sm:w-auto items-center">
-                          {currentUser?.role === 'coordinator' && report.status === 'Reported' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={(e) => { e.preventDefault(); updateReport(report.id, { status: "In Progress", coordinatorId: currentUser.id }); }}
-                              className="h-6 text-xs px-2 border-[#1A4331] text-[#1A4331]"
-                            >
-                              Mark In Progress
-                            </Button>
-                          )}
-                          <StatusBadge status={report.status} />
-                          <Badge variant="outline" className="bg-[#1A4331]/5 text-[#1A4331] border-[#1A4331]/20">{report.area}</Badge>
-                        </div>
-                      </div>
-
-                      <button onClick={() => navigate(`/report/${report.id}`)} className="block group text-left w-full">
-                        <h2 className="text-xl font-bold mb-2 group-hover:text-[#2E7D32] transition-colors leading-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
-                          {report.title}
-                        </h2>
-                        <p className="text-gray-600 mb-4 line-clamp-2 text-sm font-serif">
-                          {report.description}
-                        </p>
-                        
-                        {report.image && (
-                          <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100 relative group">
-                            <img src={report.image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            {report.additionalImages && report.additionalImages.length > 0 && (
-                              <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
-                                <Camera className="w-3 h-3" />
-                                +{report.additionalImages.length} MORE PHOTOS
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </button>
-
-                      <div className="flex flex-wrap items-center gap-y-2 gap-x-6 mt-auto pt-4 border-t border-gray-100">
-                        <button onClick={() => navigate(`/report/${report.id}`)} className="flex items-center gap-2 text-gray-500 hover:text-[#1A4331] text-sm font-medium transition-colors">
-                          <MessageSquare className="w-4 h-4" />
-                          {report.comments.length} Comments
-                        </button>
-                        <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-                          <MapPin className="w-4 h-4" />
-                          <span className="truncate max-w-[200px]">{report.locationText}</span>
-                        </div>
-                        {report.urgency === 'High' && (
-                          <Badge className="ml-auto bg-red-100 text-red-700 hover:bg-red-100 border-0">High Urgency</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
+                  <FeedItem 
+                    report={report} 
+                    currentUser={currentUser} 
+                    handleVoteAction={handleVoteAction} 
+                    updateReport={updateReport} 
+                  />
                 </motion.div>
               ))}
             </div>
@@ -303,19 +167,5 @@ export function Home() {
         </AnimatePresence>
       </div>
     </div>
-  );
-}
-
-export function StatusBadge({ status }: { status: Status }) {
-  const colors = {
-    "Reported": "bg-blue-100 text-blue-800 border-blue-200",
-    "In Progress": "bg-amber-100 text-amber-800 border-amber-200",
-    "Completed": "bg-green-100 text-green-800 border-green-200"
-  };
-
-  return (
-    <Badge className={cn("font-medium border shadow-sm", colors[status])}>
-      {status}
-    </Badge>
   );
 }

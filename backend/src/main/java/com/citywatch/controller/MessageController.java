@@ -15,13 +15,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/complaints/{complaintId}/messages")
+@RequiredArgsConstructor
 public class MessageController {
 
     private final MessageService messageService;
-
-    public MessageController(MessageService messageService) {
-        this.messageService = messageService;
-    }
 
     @GetMapping
     public ResponseEntity<List<MessageResponse>> getMessages(

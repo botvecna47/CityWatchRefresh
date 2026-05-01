@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@RequiredArgsConstructor
 public class VoteService {
 
     private final VoteRepository voteRepository;
@@ -29,17 +30,6 @@ public class VoteService {
     private final ComplaintService complaintService;
     private final CwIdGenerator idGenerator;
 
-    public VoteService(VoteRepository voteRepository, ComplaintRepository complaintRepository,
-                       UserRepository userRepository, NotificationService notificationService,
-                       AuditService auditService, ComplaintService complaintService, CwIdGenerator idGenerator) {
-        this.voteRepository = voteRepository;
-        this.complaintRepository = complaintRepository;
-        this.userRepository = userRepository;
-        this.notificationService = notificationService;
-        this.auditService = auditService;
-        this.complaintService = complaintService;
-        this.idGenerator = idGenerator;
-    }
 
     @Transactional
     public void castVote(User coordinator, String complaintId, VoteRequest req) {

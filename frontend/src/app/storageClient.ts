@@ -9,4 +9,4 @@ if (!supabaseKey) {
   console.error("VITE_SUPABASE_ANON_KEY is missing from the environment variables! Image uploads will fail. Please add it to your .env file.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey || 'MISSING_ANON_KEY');
+export const storageClient = createClient(supabaseUrl, supabaseKey || 'MISSING_ANON_KEY');

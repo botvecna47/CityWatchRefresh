@@ -26,6 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @Transactional
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -33,15 +34,6 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CwIdGenerator idGenerator;
-
-    public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils,
-                          UserRepository userRepository, PasswordEncoder passwordEncoder, CwIdGenerator idGenerator) {
-        this.authenticationManager = authenticationManager;
-        this.jwtUtils = jwtUtils;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.idGenerator = idGenerator;
-    }
 
     // ─── POST /api/auth/login ───────────────────────────────────────────
     @PostMapping("/login")
@@ -56,16 +48,7 @@ public class AuthController {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User user = userDetails.getUser();
 
-            LoginResponse response = LoginResponse.builder()
-                    .token(jwt)
-                    .id(user.getId())
-                    .username(user.getUsername())
-                    .name(user.getUsername())
-                    .email(user.getEmail())
-                    .role(user.getRole().name())
-                    .status(user.getStatus().name())
-                    .area(user.getArea() != null ? user.getArea().getName() : null)
-                    .build();
+            LoginResponse response = buildLoginResponse(user, jwt);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -120,16 +103,7 @@ public class AuthController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        LoginResponse response = LoginResponse.builder()
-                .token(jwt)
-                .id(user.getId())
-                .username(user.getUsername())
-                .name(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .status(user.getStatus().name())
-                .area(null)
-                .build();
+        LoginResponse response = buildLoginResponse(user, jwt);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -148,7 +122,14 @@ public class AuthController {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         User user = userDetails.getUser();
 
-        LoginResponse response = LoginResponse.builder()
+        LoginResponse response = buildLoginResponse(user, null);
+
+        return ResponseEntity.ok(response);
+    }
+
+    private LoginResponse buildLoginResponse(User user, String jwt) {
+        return LoginResponse.builder()
+                .token(jwt)
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getUsername())
@@ -157,13 +138,5 @@ public class AuthController {
                 .status(user.getStatus().name())
                 .area(user.getArea() != null ? user.getArea().getName() : null)
                 .build();
-
-        return ResponseEntity.ok(response);
-    }
-
-    // ─── GET /api/auth/debug_users ───────────────────────────────────────────────
-    @GetMapping("/debug_users")
-    public ResponseEntity<?> debugUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
     }
 }
