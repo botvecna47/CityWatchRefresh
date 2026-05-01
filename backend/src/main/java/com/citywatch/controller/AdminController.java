@@ -91,14 +91,15 @@ public class AdminController {
 
     @PostMapping("/broadcast")
     public ResponseEntity<Map<String, String>> broadcast(@RequestBody Map<String, String> payload) {
+        String title   = payload.getOrDefault("title", "System Broadcast");
         String message = payload.get("message");
         if (message == null || message.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Message cannot be empty"));
         }
         
-        userRepository.findAll().forEach(user -> {
-            notificationService.create(user, "System Broadcast", message, com.citywatch.enums.NotificationType.SYSTEM, null);
-        });
+        userRepository.findAll().forEach(user ->
+            notificationService.create(user, title, message, com.citywatch.enums.NotificationType.SYSTEM, null)
+        );
         
         return ResponseEntity.ok(Map.of("message", "Broadcast sent to all users"));
     }

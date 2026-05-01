@@ -28,7 +28,8 @@ export const complaintService = {
 export const adminService = {
   getUsers: () => apiClient.get("/api/admin/users"),
   banUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/ban`),
-  unbanUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/unban`)
+  unbanUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/unban`),
+  broadcast: (title: string, message: string) => apiClient.post("/api/admin/broadcast", { title, message })
 };
 
 export const applicationService = {

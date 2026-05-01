@@ -4,7 +4,7 @@ import { Trash2, Map as MapIcon, Layers, Megaphone, Zap } from "lucide-react";
 import { useAppContext } from "../../store";
 import { Card, Button, Input, Textarea } from "../../components/ui";
 import { toast } from "sonner";
-import { masterDataService } from "../../api/services";
+import { masterDataService, adminService } from "../../api/services";
 import { apiClient } from "../../api/apiClient";
 
 export function SystemManagement() {
@@ -114,7 +114,7 @@ export function SystemManagement() {
         <Card className="p-6 bg-white border border-gray-200 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-[#1A4331] font-serif flex items-center gap-2">
-              <Layers className="w-5 h-5 text-blue-600" /> Issue Categories & SLA
+              <Layers className="w-5 h-5 text-blue-600" /> Issue Categories &amp; SLA
             </h3>
             <Button size="sm" onClick={() => setShowCatForm(!showCatForm)} variant="outline">
               {showCatForm ? "Cancel" : "Add Category"}
@@ -165,32 +165,62 @@ export function SystemManagement() {
 }
 
 function BroadcastTool() {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  const handleBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !message.trim()) return;
+    setIsSending(true);
+    try {
+      await adminService.broadcast(title.trim(), message.trim());
+      toast.success("Broadcast sent to all users successfully!");
+      setTitle("");
+      setMessage("");
+    } catch {
+      toast.error("Failed to send broadcast. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <Card className="p-6 bg-white border border-gray-200 shadow-sm max-w-2xl">
       <h3 className="text-lg font-bold text-[#1A4331] mb-2 font-serif flex items-center gap-2">
         <Megaphone className="w-5 h-5 text-[#2E7D32]" /> System Broadcast
       </h3>
-      <p className="text-sm text-gray-500 mb-6 font-serif">Send a global push notification to specific user groups.</p>
+      <p className="text-sm text-gray-500 mb-6 font-serif">
+        Send a global push notification to all registered users. Each user will see it in their notification bell.
+      </p>
 
-      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Broadcast sent successfully!"); }}>
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Target Audience</label>
-          <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm font-serif">
-            <option>All Users (Citizens & Coordinators)</option>
-            <option>Coordinators Only</option>
-            <option>Citizens Only</option>
-          </select>
-        </div>
+      <form className="space-y-4" onSubmit={handleBroadcast}>
         <div>
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Title</label>
-          <Input placeholder="e.g. System Maintenance Notice" required />
+          <Input
+            placeholder="e.g. System Maintenance Notice"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            required
+          />
         </div>
         <div>
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Content</label>
-          <Textarea placeholder="Write your announcement here..." className="min-h-[100px]" required />
+          <Textarea
+            placeholder="Write your announcement here..."
+            className="min-h-[100px]"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            required
+          />
         </div>
-        <Button className="bg-[#1A4331] hover:bg-[#112d21] text-white font-serif">
-          <Zap className="w-4 h-4 mr-2" /> Launch Broadcast
+        <Button
+          type="submit"
+          disabled={isSending || !title.trim() || !message.trim()}
+          className="bg-[#1A4331] hover:bg-[#112d21] text-white font-serif"
+        >
+          <Zap className="w-4 h-4 mr-2" />
+          {isSending ? "Sending..." : "Launch Broadcast"}
         </Button>
       </form>
     </Card>
