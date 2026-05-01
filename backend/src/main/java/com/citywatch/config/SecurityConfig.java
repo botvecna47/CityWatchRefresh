@@ -83,7 +83,7 @@ public class SecurityConfig {
                 // Actuator endpoints for health and metrics
                 .requestMatchers("/actuator/**").permitAll()
                 // Complaints listing and individual complaint pages are public
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/complaints", "/api/complaints/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/complaints", "/api/complaints/**", "/api/categories", "/api/areas").permitAll()
                 .anyRequest().authenticated()
             );
 
