@@ -79,32 +79,38 @@ public class ComplaintService {
         return toResponse(complaint);
     }
 
+    @Transactional(readOnly = true)
     public List<ComplaintResponse> getAll() {
         return complaintRepository.findAllByOrderByCreatedAtDesc()
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ComplaintResponse> getByArea(Long areaId) {
         Area area = areaService.getById(areaId);
         return complaintRepository.findByAreaOrderByCreatedAtDesc(area)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ComplaintResponse> getMyCitizen(User citizen) {
         return complaintRepository.findByCitizenOrderByCreatedAtDesc(citizen)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ComplaintResponse> getAssigned(User coordinator) {
         return complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(coordinator)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ComplaintResponse> getNearby(Double lat, Double lng) {
         return complaintRepository.findNearby(lat, lng, NEARBY_DELTA)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ComplaintResponse getById(String id) {
         return toResponse(findOrThrow(id));
     }
