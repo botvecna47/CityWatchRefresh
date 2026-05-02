@@ -163,6 +163,10 @@ export function SubmitReport() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !location) return;
+    if (description.length < 10) {
+      import("sonner").then(({ toast }) => toast.error("Description must be at least 10 characters long"));
+      return;
+    }
 
     setIsSubmitting(true);
     let uploadedUrls: string[] = [];

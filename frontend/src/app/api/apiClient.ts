@@ -23,7 +23,12 @@ export const apiClient = {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(`POST ${endpoint} failed: ${res.status}`);
+    if (!res.ok) {
+      let errorData;
+      try { errorData = await res.json(); } catch { errorData = await res.text(); }
+      console.error(`POST ${endpoint} failed:`, errorData);
+      throw new Error(typeof errorData === "object" ? JSON.stringify(errorData) : `POST ${endpoint} failed: ${res.status}`);
+    }
     return res.json().catch(() => ({})); // some POSTs might return 200 OK without JSON
   },
 
