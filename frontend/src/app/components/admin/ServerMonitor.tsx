@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { Activity, Cpu, Database, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Server, Wifi } from "lucide-react";
 import { Card } from "../../components/ui";
 
-const ACTUATOR = "http://localhost:8081/actuator";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
+const ACTUATOR = API_BASE.replace(/\/api\/?$/, "") + "/actuator";
 
 interface HealthStatus {
   status: "UP" | "DOWN" | "UNKNOWN";
@@ -138,7 +139,7 @@ export function ServerMonitor() {
             <Server className="w-5 h-5" /> Server Health Monitor
           </h2>
           <p className="text-sm text-gray-500 font-serif mt-1">
-            Live JVM metrics via Spring Boot Actuator · <code className="text-xs bg-gray-100 px-1 rounded">http://localhost:8081/actuator</code>
+            Live JVM metrics via Spring Boot Actuator · <code className="text-xs bg-gray-100 px-1 rounded">{ACTUATOR}</code>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -261,7 +262,7 @@ export function ServerMonitor() {
           {["health", "metrics", "info", "env", "loggers"].map(ep => (
             <a
               key={ep}
-              href={`http://localhost:8081/actuator/${ep}`}
+              href={`${ACTUATOR}/${ep}`}
               target="_blank"
               rel="noreferrer"
               className="text-xs font-mono bg-white border border-gray-200 px-3 py-1.5 rounded-sm hover:border-[#1A4331] hover:text-[#1A4331] transition-colors"
