@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import { useAppContext, Report } from "../../store";
 import { Card, Button, Badge } from "../../components/ui";
 import { ReportSummaryCard } from "./ReportSummaryCard";
+import { storageClient } from "../../storageClient";
 
 export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
   const { currentUser, updateReport, submitProof } = useAppContext();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
-  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,14 +27,39 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
   const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resolvingId || !location) { toast.error("Location is required."); return; }
-    if (!proofImage) { toast.error("Photo proof is required."); return; }
+    if (!proofImageFile) { toast.error("Photo proof is required."); return; }
     
     setIsSubmitting(true);
-    await submitProof(resolvingId, proofImage, location.lat, location.lng);
-    setIsSubmitting(false);
-    setResolvingId(null);
-    setProofImage(null);
-    setLocation(null);
+    
+    try {
+      // 1. Upload the image to Supabase
+      const fileExt = proofImageFile.name.split('.').pop();
+      const fileName = `proofs/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await storageClient.storage
+        .from('citywatch-images')
+        .upload(fileName, proofImageFile);
+
+      if (uploadError) {
+        throw new Error('Failed to upload image to storage');
+      }
+
+      const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
+
+      // 2. Submit the proof to the backend
+      await submitProof(resolvingId, publicUrl, location.lat, location.lng);
+      
+      setResolvingId(null);
+      setProofImageFile(null);
+      setProofImagePreview(null);
+      setLocation(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Proof submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getLocation = () => {
@@ -46,13 +73,15 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
         },
         (error) => {
           console.error(error);
-          setLocation({ lat: 40.7128, lng: -74.0060 });
+          const targetReport = reports.find(r => r.id === resolvingId);
+          setLocation({ lat: targetReport?.lat || 19.155, lng: targetReport?.lng || 77.307 });
           setGettingLocation(false);
           toast.success("Location simulated for demo purposes");
         }
       );
     } else {
-      setLocation({ lat: 40.7128, lng: -74.0060 });
+      const targetReport = reports.find(r => r.id === resolvingId);
+      setLocation({ lat: targetReport?.lat || 19.155, lng: targetReport?.lng || 77.307 });
       setGettingLocation(false);
     }
   };
@@ -166,15 +195,20 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             
             <form onSubmit={handleResolve} className="space-y-4">
               <div className="border-2 border-dashed border-gray-300 rounded-sm h-48 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors cursor-pointer bg-white group">
-                {proofImage ? (
-                  <img src={proofImage} alt="Proof" className="w-full h-full object-cover rounded-sm" />
+                {proofImagePreview ? (
+                  <img src={proofImagePreview} alt="Proof" className="w-full h-full object-cover rounded-sm" />
                 ) : (
                   <>
                     <Upload className="w-10 h-10 text-gray-400 group-hover:text-green-500 transition-colors mb-2" />
                     <span className="text-sm text-gray-500 font-serif">Take live photo</span>
                   </>
                 )}
-                <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { if (e.target.files?.[0]) setProofImage(URL.createObjectURL(e.target.files[0])); }} required />
+                <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { 
+                  if (e.target.files?.[0]) {
+                    setProofImageFile(e.target.files[0]);
+                    setProofImagePreview(URL.createObjectURL(e.target.files[0]));
+                  }
+                }} required />
               </div>
 
               <div className="flex items-center gap-3">
@@ -186,8 +220,8 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
               {location && <p className="text-xs text-green-600 font-medium">✓ Location verified: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</p>}
               
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <Button type="button" variant="outline" onClick={() => { setResolvingId(null); setProofImage(null); setLocation(null); }}>Cancel</Button>
-                <Button type="submit" disabled={!proofImage || !location || isSubmitting} className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                <Button type="button" variant="outline" onClick={() => { setResolvingId(null); setProofImageFile(null); setProofImagePreview(null); setLocation(null); }}>Cancel</Button>
+                <Button type="submit" disabled={!proofImageFile || !location || isSubmitting} className="bg-green-600 hover:bg-green-700 text-white gap-2">
                   <CheckCircle2 className="w-4 h-4" /> {isSubmitting ? "Confirming..." : "Confirm Resolution"}
                 </Button>
               </div>
