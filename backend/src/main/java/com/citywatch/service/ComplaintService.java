@@ -110,7 +110,9 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse updateStatus(User coordinator, String id, ComplaintStatus newStatus) {
+    public ComplaintResponse updateStatus(User detachedCoordinator, String id, ComplaintStatus newStatus) {
+        User coordinator = userRepository.findById(detachedCoordinator.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coordinator not found"));
         Complaint complaint = findOrThrow(id);
         validateTransition(complaint.getStatus(), newStatus);
 
@@ -158,7 +160,9 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse submitProof(User coordinator, String id, ProofRequest req) {
+    public ComplaintResponse submitProof(User detachedCoordinator, String id, ProofRequest req) {
+        User coordinator = userRepository.findById(detachedCoordinator.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coordinator not found"));
         Complaint complaint = findOrThrow(id);
 
         // Auto-assign coordinator if not yet assigned (when they accepted via status update)
@@ -203,7 +207,9 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse citizenResolve(User citizen, String id, boolean accepted) {
+    public ComplaintResponse citizenResolve(User detachedCitizen, String id, boolean accepted) {
+        User citizen = userRepository.findById(detachedCitizen.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Citizen not found"));
         Complaint complaint = findOrThrow(id);
 
         if (!complaint.getCitizen().getId().equals(citizen.getId())) {

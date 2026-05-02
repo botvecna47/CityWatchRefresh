@@ -120,7 +120,8 @@ public class AuthController {
         }
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        User user = userDetails.getUser();
+        User user = userRepository.findById(userDetails.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         LoginResponse response = buildLoginResponse(user, null);
 
