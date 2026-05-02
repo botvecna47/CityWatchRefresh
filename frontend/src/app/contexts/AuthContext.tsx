@@ -6,6 +6,7 @@ interface AuthContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   updateUserSettings: (settings: Partial<User["settings"]>) => void;
+  isAuthLoading: boolean;
 }
 
 // AuthContext is kept internal — consumers use the useAuth() hook
@@ -13,10 +14,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setIsAuthLoading(false);
+      return;
+    }
     authService.getMe()
       .then(data => {
         setCurrentUser({
@@ -34,7 +39,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         });
       })
-      .catch(() => localStorage.removeItem("token"));
+      .catch((err) => {
+        // Only wipe the token on a real 401 Unauthorized — NOT on network errors
+        // (i.e. when the backend is simply down/unreachable)
+        const message = err?.message || "";
+        if (message.includes("401")) {
+          localStorage.removeItem("token");
+        }
+        // If backend is unreachable, keep the token so the user stays "logged in"
+        // and can retry once the server comes back up
+      })
+      .finally(() => {
+        setIsAuthLoading(false);
+      });
   }, []);
 
   const updateUserSettings = (settings: Partial<User["settings"]>) => {
@@ -49,11 +66,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Stabilize the context value so that consumers don't re-render
   // just because the provider re-renders (e.g. after a local state update)
   const value = useMemo(
-    () => ({ currentUser, setCurrentUser, updateUserSettings }),
+    () => ({ currentUser, setCurrentUser, updateUserSettings, isAuthLoading }),
     // updateUserSettings closes over currentUser, so it changes when currentUser changes.
     // Including currentUser here is intentional and safe — it only triggers when the
     // user object *actually* changes (login/logout), not on every render.
-    [currentUser] // eslint-disable-line react-hooks/exhaustive-deps
+    [currentUser, isAuthLoading] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   return (
