@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, forwardRef } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -8,7 +8,7 @@ interface ImageLightboxProps {
   onClose: () => void;
 }
 
-export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxProps) {
+export const ImageLightbox = forwardRef<HTMLDivElement, ImageLightboxProps>(({ images, initialIndex, onClose }, ref) => {
   const [index, setIndex] = useState(initialIndex);
   const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
   const [zoomed, setZoomed] = useState(false);
@@ -91,6 +91,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -207,4 +208,5 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
       )}
     </motion.div>
   );
-}
+});
+ImageLightbox.displayName = "ImageLightbox";
