@@ -179,8 +179,9 @@ export function SubmitReport() {
 
         if (uploadError) {
           console.error('Error uploading image:', uploadError);
-          import("sonner").then(({ toast }) => toast.error('Failed to upload image'));
-          continue;
+          import("sonner").then(({ toast }) => toast.error('Failed to upload image to storage. Please try again.'));
+          setIsSubmitting(false);
+          return; // Abort submission completely!
         }
 
         const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(filePath);
