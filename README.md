@@ -1,54 +1,42 @@
-# CityWatch Civic Reporting App (Revive Version)
+# CityWatch Civic Reporting Platform
 
-A sophisticated, modern Civic Reporting platform allowing citizens to intuitively report civic issues to city coordinators using a mobile-responsive interface, integrated map workflows, and real-time backend synchronization.
+A modern, mobile-responsive Civic Reporting platform designed to bridge the gap between citizens and municipal authorities. Built as a comprehensive full-stack project, CityWatch enables users to intuitively report civic issues (such as potholes, garbage accumulation, and streetlight failures) using map-based workflows, while providing city coordinators with a robust dashboard for issue tracking and resolution.
 
-## 🤖 AI-Powered Setup
-If you are using an AI-capable IDE (like Cursor, Windsurf, or VS Code with an AI agent), you can automate the entire setup process.
-**[Copy the prompt from AI_IDE_PROMPT.md](AI_IDE_PROMPT.md)** and paste it into your AI chat to have it install dependencies, configure the database, and start the servers for you.
+## 🌟 Key Features
 
-## 📁 Repository Structure
-* **`frontend/`** - React (Vite/TypeScript) codebase.
-* **`backend/`** - Spring Boot API (Java 23).
-* **`database/`** - Schema definitions and SQL migrations.
-* **`docs/`** - Architecture, planning, and design assets.
+* **Real-time Reporting**: Citizens can easily drop pins on an interactive map to report issues.
+* **Role-Based Access Control**: Distinct workflows for Citizens, Coordinators, and Administrators.
+* **Geospatial Proximity Voting**: Prevents duplicate reports by clustering nearby complaints and allowing users to upvote existing issues.
+* **SLA & Escalation Tracking**: Automated status updates and escalations when coordinators fail to resolve issues within the designated Service Level Agreement timeframe.
+* **Audit Logging**: Comprehensive, tamper-evident tracking of all critical system actions.
+
+## 🛠️ Technology Stack
+
+* **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Leaflet Maps
+* **Backend**: Java 23, Spring Boot 3.2, Spring Security (JWT-based Auth)
+* **Database**: PostgreSQL (hosted on Supabase)
+* **Storage**: Supabase Storage for complaint imagery
 
 ## 🚀 Quick Start (Windows)
-A dedicated batch script effortlessly spins up both service layers at once on Windows environments. Make sure you have JDK 23 and Node.js installed.
 
-1. Ensure your `.env` contains valid Supabase configurations inside `frontend/`.
-2. Double-click or run:
-```bash
-run_project.bat
-```
+Ensure you have **JDK 23** and **Node.js 18+** installed on your system.
 
-*(This automatically runs Maven Spring-Boot execution for the backend and Vite Dev Server for the frontend simultaneously in new windows.)*
+1. Configure your `.env` files in both the `frontend/` and `backend/` directories.
+2. Run the included batch script to launch both servers simultaneously:
+   ```bash
+   run_project.bat
+   ```
 
-## 🛠️ Manual Startup Guide
+### Manual Startup
 
-### Prerequisites
-| Tool | Required Version | Check Command |
-|------|-----------------|---------------|
-| **Java JDK** | 17–23 (NOT 25) | `java -version` |
-| **PostgreSQL** | 12+ | `psql --version` |
-| **Node.js** | 18+ | `node -v` |
-
-> ⚠️ **JDK 25 is NOT compatible** with this project. Use JDK 23 or lower.
-
-### 1. Database Setup
-```sql
-CREATE DATABASE citywatch;
-```
-The backend connects with user `postgres`, password `botvecna` on port `5432`. To change this, edit: `backend/src/main/resources/application.properties`
-
-### 2. Backend (Spring Boot on port 8081)
+**Backend (Spring Boot)**
 ```powershell
 cd backend
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-23"
 .\apache-maven-3.9.6\bin\mvn spring-boot:run
 ```
-*On first run, it auto-creates all database tables and seeds demo users.*
 
-### 3. Frontend (Vite on port 5173)
+**Frontend (Vite/React)**
 ```powershell
 cd frontend
 npm install
@@ -56,27 +44,21 @@ npm run dev
 ```
 
 ## 🔑 Test Accounts
-All passwords: **`Admin@123`** (Reset automatically on startup)
+
+The platform includes pre-seeded accounts for testing different role workflows. All default passwords are **`Admin@123`**.
 
 | Role | Username / Email |
 |------|------------------|
-| 🛡️ Admin | `admin` / `admin@nanded.gov.in` |
-| 🔧 Coordinator (Vazirabad) | `coord_vazirabad` / `vazirabad@nanded.gov.in` |
-| 🔧 Coordinator (Taroda) | `coord_taroda` / `taroda@nanded.gov.in` |
-| 🧑 Citizen | `citizen1` / `citizen1@example.com` |
+| 🛡️ Admin | `admin` / `admin@citywatch.in` |
+| 🔧 Coordinator | `ravi_p` / `ravi@citywatch.in` |
+| 🧑 Citizen | `citizen1` / `c1@gmail.com` |
 
-## 🐞 Debugging & Performance Profiling
+## 📁 Repository Structure
 
-Since adding heavy monitoring libraries to the frontend bundle negatively impacts performance, the best way to profile memory leaks and optimize your React application is by using **Chrome DevTools**.
+* **`frontend/`** - React UI application
+* **`backend/`** - Spring Boot RESTful API
+* **`database/`** - Schema definitions and initial database setup scripts
+* **`docs/`** - Additional project documentation and architecture design
 
-### How to Catch Memory Leaks
-1. Open Chrome DevTools (`F12`), click the **Memory** tab.
-2. Select **Heap snapshot** and take a snapshot.
-3. *Perform an action in your app* (e.g., navigate to a report, upload an image, then navigate back).
-4. Take a **second snapshot** and change the view filter to **"Comparison"**.
-5. Compare the two to see if objects (detached DOM nodes, unmounted React components) failed to garbage collect.
-
-### Common React Memory Leak Culprits
-- **Event Listeners**: Adding `window.addEventListener` inside a `useEffect` without `return () => window.removeEventListener(...)`.
-- **SetInterval/SetTimeout**: Forgetting to `clearInterval()`.
-- **Leaflet Maps**: Not properly destroying map instances.
+---
+*Developed as a full-stack engineering project demonstrating proficiency in Java Spring Boot, React, and PostgreSQL.*

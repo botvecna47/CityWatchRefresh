@@ -56,22 +56,9 @@ start "CityWatch Backend" /D "%PROJECT_ROOT%backend" cmd /k "run_backend.bat"
 echo [CityWatch] Waiting for backend to warm up (15 seconds)...
 ping -n 16 127.0.0.1 >nul
 
-:: ── Write run_frontend.bat ────────────────────────────────────────────────
-echo [CityWatch] Preparing frontend launcher...
-(
-    echo @echo off
-    echo echo.
-    echo echo ============================================
-    echo echo   CityWatch Frontend
-    echo echo   URL: http://localhost:5173
-    echo echo ============================================
-    echo echo.
-    echo npm run dev
-    echo pause
-) > "%PROJECT_ROOT%frontend\run_frontend.bat"
-
+:: ── Launch Frontend ────────────────────────────────────────────────────────
 echo [CityWatch] Starting Frontend...
-start "CityWatch Frontend" /D "%PROJECT_ROOT%frontend" cmd /k "run_frontend.bat"
+start "CityWatch Frontend" cmd /k "cd /d "%PROJECT_ROOT%frontend" && npm run dev"
 
 echo.
 echo [CityWatch] Both services launched.

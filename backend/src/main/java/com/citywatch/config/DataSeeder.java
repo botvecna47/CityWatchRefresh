@@ -236,60 +236,123 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        // --- ID 1: Pothole (Market) — HIGH ---
+        // --- ID 1: Pothole 1 ---
         seedOrUpdate(
             "CMP-100426-000001", citizen1, vazir, pothole,
-            "Large pothole in Vazirabad Market",
-            "Large pothole near Vazirabad main market has caused two motorcycle accidents this week. Road is broken near the junction.",
+            "Deep pothole on main market road",
+            "There's a massive pothole in the middle of Vazirabad market causing severe traffic jams.",
             19.1535, 77.3128, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("https://images.unsplash.com/photo-1594495024543-7496797a396e?w=600"))
+            new ArrayList<>(List.of("/uploads/Potholes1.jpg"))
         );
 
-        // --- ID 2: Garbage (Square) — HIGH ---
+        // --- ID 2: Garbage 1 ---
         seedOrUpdate(
             "CMP-100426-000002", citizen2, vazir, garbage,
-            "Overflowing garbage at Vazirabad Square",
-            "Garbage pile-up near Vazirabad Square main gate — bins not cleared for 6 days. Foul smell affecting the entire market block.",
+            "Garbage pile near square",
+            "Garbage not cleared for 6 days. Foul smell affecting everyone.",
             19.1542, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600"))
+            new ArrayList<>(List.of("/uploads/Garbage1.jpg"))
         );
 
-        // --- ID 3: Streetlight (Rear Lane) — MEDIUM ---
+        // --- ID 3: Drainage 1 ---
         seedOrUpdate(
-            "CMP-100426-000003", citizen3, vazir, street,
-            "Broken streetlights in residential lane",
-            "Entire lane behind the main residential complex has no working streetlights since last week. Safety risk at night.",
+            "CMP-100426-000003", citizen3, vazir, drainage,
+            "Water pipeline burst",
+            "Massive water leak near the rear residential lane. Clean water is being wasted.",
             19.1528, 77.3145, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=600"))
+            new ArrayList<>(List.of("/uploads/Waterleak1.jpg"))
         );
 
-        // --- ID 4: Drainage (Post Office) — HIGH ---
+        // --- ID 4: Garbage 2 ---
         seedOrUpdate(
-            "CMP-100426-000004", citizen1, vazir, drainage,
-            "Blocked storm drain near Post Office",
-            "Blocked storm drain near Vazirabad Post Office — stagnant water overflowing onto road. Residents are worried about health hazards.",
+            "CMP-100426-000004", citizen1, vazir, garbage,
+            "Dumpyard overflowing onto road",
+            "The community bin near the post office is overflowing onto the street.",
             19.1550, 77.3115, ComplaintStatus.ASSIGNED, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600"))
+            new ArrayList<>(List.of("/uploads/garbage2.jpg"))
         );
 
-        // --- ID 5: Shivajinagar Issue with LOCAL ICON ---
+        // --- ID 5: Pothole 2 ---
         seedOrUpdate(
-            "CMP-100426-000005", citizen1, shivaji, other,
-            "Local Image Test Issue",
-            "This complaint uses the local /favicon.png to test if local image loading works correctly.",
-            19.1555, 77.3075, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW,
-            new ArrayList<>(List.of("/favicon.png"))
+            "CMP-100426-000005", citizen2, shivaji, pothole,
+            "Broken road near school",
+            "Dangerous potholes right outside the primary school entrance.",
+            19.1555, 77.3075, ComplaintStatus.PENDING_REVIEW, null, Priority.HIGH,
+            new ArrayList<>(List.of("/uploads/Potholes2.jpg"))
         );
 
-        Complaint c1 = complaintRepository.findById("CMP-100426-000001").get();
-        if (ravi != null && commentRepository.count() == 0) {
+        // --- ID 6: Garbage 3 ---
+        seedOrUpdate(
+            "CMP-100426-000006", citizen3, shivaji, garbage,
+            "Plastic waste accumulation",
+            "Empty plot has become a dumping ground for plastic waste.",
+            19.1560, 77.3080, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
+            new ArrayList<>(List.of("/uploads/Garbage3.jpg"))
+        );
+
+        // --- ID 7: Pothole 3 ---
+        seedOrUpdate(
+            "CMP-100426-000007", citizen1, vazir, pothole,
+            "Road caved in",
+            "A section of the road has completely caved in near the junction.",
+            19.1565, 77.3135, ComplaintStatus.IN_PROGRESS, ravi, Priority.CRITICAL,
+            new ArrayList<>(List.of("/uploads/Pothole3.webp"))
+        );
+
+        // --- ID 8: Pothole 4 ---
+        seedOrUpdate(
+            "CMP-100426-000008", citizen2, vazir, pothole,
+            "Continuous stretch of bad roads",
+            "The entire street is filled with small and large potholes.",
+            19.1570, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.MEDIUM,
+            new ArrayList<>(List.of("/uploads/Pothole4.jpg"))
+        );
+
+        // --- ID 9: Pothole 5 ---
+        seedOrUpdate(
+            "CMP-100426-000009", citizen3, shivaji, pothole,
+            "Monsoon road damage",
+            "Recent rains washed away the top layer. Needs immediate tarring.",
+            19.1580, 77.3090, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW,
+            new ArrayList<>(List.of("/uploads/Potholes.jpg"))
+        );
+
+        // --- ID 10: Drainage 2 ---
+        seedOrUpdate(
+            "CMP-100426-000010", citizen1, vazir, drainage,
+            "Sewer line blocked",
+            "Blocked sewer line causing dirty water to back up onto the pavement.",
+            19.1590, 77.3150, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
+            new ArrayList<>(List.of("/uploads/waterleak3.jpg"))
+        );
+
+        // --- ID 11: Garbage 4 ---
+        seedOrUpdate(
+            "CMP-100426-000011", citizen2, shivaji, garbage,
+            "Construction debris dumped",
+            "Someone dumped construction debris illegally on the roadside.",
+            19.1595, 77.3100, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
+            new ArrayList<>(List.of("/uploads/garbabe4"))
+        );
+
+        // --- ID 12: Drainage 3 ---
+        seedOrUpdate(
+            "CMP-100426-000012", citizen3, vazir, drainage,
+            "Continuous water leakage",
+            "Underground pipe leak forming a puddle that breeds mosquitoes.",
+            19.1600, 77.3160, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
+            new ArrayList<>(List.of("/uploads/Waterleak2.jpg"))
+        );
+
+        Complaint c1 = complaintRepository.findById("CMP-100426-000001").orElse(null);
+        if (ravi != null && c1 != null && commentRepository.count() == 0) {
             commentRepository.save(Comment.builder()
                 .id("CMT-100426-000001").complaint(c1).user(ravi)
                 .content("Team dispatched to assess road damage. Repair work begins tomorrow morning.")
                 .build());
         }
 
-        log.info("DataSeeder: 5 sample complaints synchronized (4 Vazirabad, 1 Shivajinagar).");
+        log.info("DataSeeder: 12 sample complaints synchronized.");
     }
 
     private void seedOrUpdate(String id, User citizen, Area area, com.citywatch.entity.Category category, String title, String desc,
