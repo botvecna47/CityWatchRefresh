@@ -30,6 +30,7 @@ public class CommentService {
         this.idGenerator = idGenerator;
     }
 
+    @Transactional(readOnly = true)
     public List<CommentResponse> getComments(String complaintId) {
         Complaint complaint = findComplaint(complaintId);
         return commentRepository.findByComplaintAndIsModeratedFalseOrderByCreatedAtAsc(complaint)

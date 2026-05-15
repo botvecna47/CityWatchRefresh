@@ -38,4 +38,12 @@ public interface ComplaintRepository extends JpaRepository<Complaint, String> {
     // Rate limit check — count submissions by citizen in last 24h
     @Query("SELECT COUNT(c) FROM Complaint c WHERE c.citizen = :citizen AND c.createdAt > :since")
     long countByCitizenSince(@Param("citizen") User citizen, @Param("since") LocalDateTime since);
+
+    // Paginated Methods
+    org.springframework.data.domain.Page<Complaint> findAllByOrderByCreatedAtDesc(org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<Complaint> findByAreaOrderByCreatedAtDesc(Area area, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT c FROM Complaint c WHERE c.latitude >= :minLat AND c.latitude <= :maxLat AND c.longitude >= :minLng AND c.longitude <= :maxLng AND c.status NOT IN ('REJECTED', 'CLOSED') ORDER BY c.createdAt DESC")
+    List<Complaint> findInBoundingBox(@Param("minLat") Double minLat, @Param("maxLat") Double maxLat, @Param("minLng") Double minLng, @Param("maxLng") Double maxLng);
 }

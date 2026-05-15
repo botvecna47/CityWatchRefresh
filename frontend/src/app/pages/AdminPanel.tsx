@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { cn } from "../components/ui";
+import { RefreshCw } from "lucide-react";
+import { cn, Button } from "../components/ui";
 import { useAppContext } from "../store";
 
 import { AdminOverview } from "../components/admin/AdminOverview";
@@ -13,12 +14,21 @@ import { SystemManagement } from "../components/admin/SystemManagement";
 import { ServerMonitor } from "../components/admin/ServerMonitor";
 
 export function AdminPanel() {
-  const { users, currentUser, reports, applications, spamReports } = useAppContext();
+  const { users, usersLoading, currentUser, reports, applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports } = useAppContext();
   const [activeTab, setActiveTab] = useState<"overview" | "issues" | "coordinators" | "users" | "applications" | "spam" | "system" | "monitor">("overview");
+
+  // DataFetcher in store.tsx handles initial load and 15s polling.
+  // The manual refresh button below lets admins force a reload at any time.
 
   if (currentUser?.role !== "admin") {
     return <div className="p-8 text-center text-red-500 font-bold font-serif bg-red-50 border border-red-200 rounded-sm">Access Denied. Administrator privileges required.</div>;
   }
+
+  const handleRefreshAll = () => {
+    refreshUsers();
+    refreshApplications();
+    refreshSpamReports();
+  };
 
   return (
     <div className="space-y-6">
@@ -27,6 +37,15 @@ export function AdminPanel() {
           <h1 className="text-3xl font-bold text-[#1A4331] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Command Center</h1>
           <p className="text-gray-600 font-serif">City-level overview and tactical administration.</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={handleRefreshAll}
+          disabled={usersLoading}
+          className="gap-2 text-sm font-serif border-[#1A4331] text-[#1A4331] hover:bg-[#1A4331]/5"
+        >
+          <RefreshCw className={cn("w-4 h-4", usersLoading && "animate-spin")} />
+          {usersLoading ? "Loading..." : "Refresh Data"}
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-px">

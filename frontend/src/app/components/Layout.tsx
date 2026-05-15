@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Bell, Map, Home as HomeIcon, PlusCircle, LayoutDashboard, Settings, LogOut, Phone, Mail, ShieldAlert, LogIn, Menu, X } from "lucide-react";
+import { Bell, Map, Home as HomeIcon, PlusCircle, LayoutDashboard, Settings, LogOut, Phone, Mail, ShieldAlert, LogIn, Menu, X, MoreHorizontal } from "lucide-react";
 import { useAppContext } from "../store";
 import { cn, Button, Input, Textarea } from "./ui";
 import { useState, useEffect } from "react";
@@ -15,7 +15,7 @@ export function AppLayout() {
 
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     const theme = currentUser?.settings?.theme || localStorage.getItem("settings_theme") || "light";
@@ -47,6 +47,7 @@ export function AppLayout() {
     ...(currentUser ? [
       { name: "Report Issue", path: "/submit", icon: PlusCircle },
       { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { name: "Settings", path: "/settings", icon: Settings },
     ] : [])
   ];
 
@@ -81,22 +82,16 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDF7] text-[#1A4331] font-serif flex flex-col">
-      <nav className="sticky top-0 z-50 h-20 bg-[#1A4331]/95 backdrop-blur-md text-[#FDFDF7] shadow-sm flex items-center justify-between px-4 sm:px-6 border-b border-[#112d21]">
-        <div className="flex items-center gap-3">
-          <button 
-            className="md:hidden p-2 -ml-2 text-gray-300 hover:text-white"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-          <Link to="/" className="text-xl sm:text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-            <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
-            CityWatch
-          </Link>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2">
+    <div className="min-h-screen bg-[#FDFDF7] text-[#1A4331] font-serif flex flex-col md:flex-row">
+      
+      {/* PC Left Navigation Sidebar */}
+      <aside className="hidden md:flex flex-col w-72 lg:w-80 xl:w-[350px] h-screen sticky top-0 bg-[#1A4331] text-[#FDFDF7] border-r border-[#112d21] p-6 xl:pl-16 shadow-xl z-50">
+        <Link to="/" className="text-2xl lg:text-3xl font-bold tracking-tight hover:opacity-80 transition-opacity flex items-center gap-3 mb-8" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <img src={logo} className="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
+          CityWatch
+        </Link>
+        
+        <div className="flex flex-col gap-2 flex-1 mt-2">
           {navLinks.map((link) => {
             const isActive = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
             return (
@@ -104,140 +99,180 @@ export function AppLayout() {
                 key={link.name}
                 to={link.path}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-sm flex items-center gap-2 transition-colors",
-                  isActive ? "bg-[#2E7D32]/80 text-white" : "text-gray-300 hover:bg-[#1A4331] hover:text-white"
+                  "px-4 py-2.5 text-[17px] font-medium rounded-xl flex items-center gap-4 transition-all w-fit pr-6",
+                  isActive ? "bg-[#2E7D32]/80 text-white font-bold" : "text-gray-300 hover:bg-white/10 hover:text-white"
                 )}
               >
-                <link.icon className="w-4 h-4" />
+                <link.icon className="w-6 h-6" />
                 {link.name}
               </Link>
             );
           })}
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4">
-          {currentUser ? (
-            <>
-              <Link to="/notifications" className="p-2 text-gray-300 hover:text-white transition-colors relative">
-                <Bell className="w-5 h-5" />
+          {currentUser && (
+            <Link
+              to="/notifications"
+              className={cn(
+                "px-4 py-2.5 text-[17px] font-medium rounded-xl flex items-center gap-4 transition-all w-fit pr-6",
+                location.pathname === '/notifications' ? "bg-[#2E7D32]/80 text-white font-bold" : "text-gray-300 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <div className="relative">
+                <Bell className="w-6 h-6" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 text-[10px] flex items-center justify-center font-bold bg-red-500 text-white rounded-full">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] flex items-center justify-center font-bold bg-red-500 text-white rounded-full">
                     {unreadCount}
                   </span>
                 )}
-              </Link>
-              
-              <Link to="/settings" className="p-2 text-gray-300 hover:text-white transition-colors">
-                <Settings className="w-5 h-5" />
-              </Link>
-
-              <div className="flex items-center gap-2 bg-[#2E7D32]/20 px-3 py-1.5 rounded-sm transition-colors text-sm">
-                <img src={currentUser.avatar} alt="User Avatar" className="w-6 h-6 rounded-full object-cover border border-[#2E7D32]" />
-                <span className="hidden sm:inline font-medium">{currentUser.name}</span>
-                <Badge role={currentUser.role} />
               </div>
+              Notifications
+            </Link>
+          )}
 
-              <button onClick={() => setCurrentUser(null)} className="p-2 text-gray-300 hover:text-red-400 transition-colors" title="Logout">
-                <LogOut className="w-5 h-5" />
-              </button>
-
-
-            </>
-          ) : (
-            <Button asChild className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white gap-2">
-              <Link to="/auth">
-                <LogIn className="w-4 h-4" /> Sign In
-              </Link>
+          {/* Action Button */}
+          <Link to={currentUser ? "/submit" : "/auth"} className="w-full mt-4 pr-6">
+            <Button className="w-full bg-white text-[#1A4331] hover:bg-gray-100 text-base py-3 rounded-xl font-bold shadow-none flex gap-2">
+              <PlusCircle className="w-5 h-5" />
+              {currentUser ? "Report Issue" : "Get Started"}
             </Button>
+          </Link>
+
+        </div>
+
+        <div className="mt-auto pt-4 relative">
+          {currentUser ? (
+            <div 
+              className="flex items-center justify-between p-3 rounded-full hover:bg-white/10 transition-colors cursor-pointer w-full pr-4"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            >
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover border-2 border-[#2E7D32]" />
+                <div className="flex flex-col overflow-hidden text-left">
+                  <span className="font-bold text-sm truncate">{currentUser.name}</span>
+                  <span className="text-xs text-gray-400 capitalize">@{currentUser.role}</span>
+                </div>
+              </div>
+              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              
+              {/* Click Dropdown Menu */}
+              <div className={cn(
+                "absolute bottom-full left-0 mb-2 w-[calc(100%-1.5rem)] bg-[#1A4331] border border-[#2E7D32] rounded-xl shadow-lg transition-all flex flex-col overflow-hidden z-50",
+                isProfileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
+              )}>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setCurrentUser(null); }} 
+                  className="px-4 py-3 hover:bg-white/10 flex items-center gap-3 font-medium text-sm text-left transition-colors font-bold"
+                >
+                  <LogOut className="w-5 h-5"/> Log out @{currentUser.name.split(' ')[0]}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Link to="/auth" className="w-full block pr-6">
+              <Button className="w-full bg-[#2E7D32] border border-white/20 hover:bg-[#1b5e20] text-white text-base py-3 rounded-xl shadow-none">
+                Sign In
+              </Button>
+            </Link>
           )}
         </div>
+      </aside>
+
+      {/* Mobile Top Header */}
+      <header className="md:hidden sticky top-0 bg-[#1A4331]/95 backdrop-blur-md text-[#FDFDF7] z-50 flex justify-between items-center p-4 border-b border-[#112d21] shadow-sm">
+        <Link to="/" className="text-xl font-bold tracking-tight flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
+          CityWatch
+        </Link>
+        <div className="flex items-center gap-4">
+          {currentUser && (
+            <Link to="/notifications" className="relative text-gray-300 hover:text-white">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 text-[9px] flex items-center justify-center font-bold bg-red-500 text-white rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          {currentUser ? (
+             <Link to="/settings"><img src={currentUser.avatar} alt="User Avatar" className="w-7 h-7 rounded-full object-cover border border-[#2E7D32]" /></Link>
+          ) : (
+            <Link to="/auth" className="text-sm font-bold text-[#2E7D32] bg-white px-3 py-1 rounded-full">Sign In</Link>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0 relative">
+        <main className="w-full flex-1">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full w-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-[#1A4331] text-[#FDFDF7] py-12 px-6 mt-12 border-t-4 border-[#2E7D32]">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="text-2xl font-bold mb-4 font-serif flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
+                CityWatch
+              </h3>
+              <p className="text-sm text-gray-300 mb-4">
+                A premium civic issue reporting platform empowering citizens to maintain the beauty and functionality of their city.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
+              <div className="space-y-2 text-sm text-gray-300">
+                <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> 1-800-CITY-WTCH</p>
+                <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> contact@citywatch.org</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Join Our Team</h4>
+              <p className="text-sm text-gray-300 mb-4">
+                Are you passionate about improving the quality of your city for the greater good? Join our Coordinator team today!
+              </p>
+              {!currentUser ? (
+                <Button onClick={() => navigate('/auth')} className="bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-200">
+                  Log in to Apply
+                </Button>
+              ) : currentUser.role === 'citizen' ? (
+                <Button onClick={() => setIsJoinModalOpen(true)} className="bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-200">
+                  Apply to be a Coordinator
+                </Button>
+              ) : (
+                <p className="text-sm italic opacity-70">You are already part of our staff.</p>
+              )}
+            </div>
+          </div>
+          <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-[#2E7D32]/30 text-center text-sm text-gray-400">
+            © {new Date().getFullYear()} CityWatch. All rights reserved.
+          </div>
+        </footer>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 w-full bg-[#1A4331]/95 backdrop-blur-md text-[#FDFDF7] border-t border-[#112d21] z-50 flex justify-around items-center h-16 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-safe">
+        {navLinks.slice(0, 4).map((link) => {
+          const isActive = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
+          return (
+            <Link key={link.name} to={link.path} className={cn("flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "text-[#2E7D32] bg-white/10" : "text-gray-400 hover:text-gray-200")}>
+              <link.icon className={cn("w-6 h-6", isActive && "stroke-2")} />
+              <span className="text-[10px] font-medium">{link.name}</span>
+            </Link>
+          );
+        })}
       </nav>
-
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#1A4331] border-b border-[#112d21] overflow-hidden"
-          >
-            <div className="px-4 py-4 flex flex-col gap-2">
-              {navLinks.map((link) => {
-                const isActive = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
-                return (
-                  <Link
-                    key={link.name}
-                    to={link.path}
-                    className={cn(
-                      "px-4 py-3 text-sm font-medium rounded-sm flex items-center gap-3 transition-colors",
-                      isActive ? "bg-[#2E7D32]/80 text-white" : "text-gray-300 hover:bg-[#1A4331] hover:text-white"
-                    )}
-                  >
-                    <link.icon className="w-5 h-5" />
-                    {link.name}
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="max-w-6xl w-full mx-auto px-4 py-8 flex-1">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-[#1A4331] text-[#FDFDF7] py-12 px-6 mt-12 border-t-4 border-[#2E7D32]">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
-            <h3 className="text-2xl font-bold mb-4 font-serif flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-              <img src={logo} className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm bg-white" alt="CityWatch Logo" />
-              CityWatch
-            </h3>
-            <p className="text-sm text-gray-300 mb-4">
-              A premium civic issue reporting platform empowering citizens to maintain the beauty and functionality of their city.
-            </p>
-          </div>
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
-            <div className="space-y-2 text-sm text-gray-300">
-              <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> 1-800-CITY-WTCH</p>
-              <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> contact@citywatch.org</p>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Join Our Team</h4>
-            <p className="text-sm text-gray-300 mb-4">
-              Are you passionate about improving the quality of your city for the greater good? Join our Coordinator team today!
-            </p>
-            {!currentUser ? (
-              <Button onClick={() => navigate('/auth')} className="bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-200">
-                Log in to Apply
-              </Button>
-            ) : currentUser.role === 'citizen' ? (
-              <Button onClick={() => setIsJoinModalOpen(true)} className="bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-200">
-                Apply to be a Coordinator
-              </Button>
-            ) : (
-              <p className="text-sm italic opacity-70">You are already part of our staff.</p>
-            )}
-          </div>
-        </div>
-        <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-[#2E7D32]/30 text-center text-sm text-gray-400">
-          © {new Date().getFullYear()} CityWatch. All rights reserved.
-        </div>
-      </footer>
 
       {/* Join Coordinator Modal */}
       {isJoinModalOpen && (

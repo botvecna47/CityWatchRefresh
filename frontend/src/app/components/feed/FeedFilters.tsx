@@ -9,67 +9,58 @@ export function FeedFilters({
   availableAreas
 }: any) {
   return (
-    <Card className="p-4 bg-white border border-gray-200 shadow-sm">
-      <div className="hidden md:flex items-center gap-2 font-bold text-[#1A4331] mb-4 border-b border-gray-100 pb-2">
-        <Filter className="w-5 h-5" /> Filters
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Search</label>
+    <div className="bg-white border-y sm:border border-gray-100 p-2 sm:p-3 sm:rounded-sm shadow-sm mb-4">
+      <div className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-1 items-center">
+        <div className="flex items-center gap-2 text-[#1A4331] font-bold pl-1 pr-2 border-r border-gray-200">
+          <Filter className="w-4 h-4" />
+        </div>
+        
+        <div className="min-w-[120px] sm:min-w-[150px]">
           <Input 
-            placeholder="Search issues..." 
+            placeholder="Search..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-gray-50"
+            className="bg-gray-50 h-8 text-xs sm:text-sm"
           />
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Status</label>
-          <select 
-            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="All">All Statuses</option>
-            <option value="Reported">Reported</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-          </select>
-        </div>
+        <select 
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs sm:text-sm min-w-[110px]"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Reported">Reported</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
 
-        <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Area</label>
-          <select 
-            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filterArea}
-            onChange={(e) => setFilterArea(e.target.value)}
-          >
-            {availableAreas.map((area: string) => (
-              <option key={area} value={area}>{area === 'All' ? 'All Areas' : area}</option>
-            ))}
-          </select>
-        </div>
+        <select 
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs sm:text-sm min-w-[110px]"
+          value={filterArea}
+          onChange={(e) => setFilterArea(e.target.value)}
+        >
+          {availableAreas.map((area: string) => (
+            <option key={area} value={area}>{area === 'All' ? 'All Areas' : area}</option>
+          ))}
+        </select>
 
-        <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Urgency</label>
-          <select 
-            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={filterUrgency}
-            onChange={(e) => setFilterUrgency(e.target.value)}
-          >
-            <option value="All">All Urgency Levels</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-          </select>
-        </div>
+        <select 
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs sm:text-sm min-w-[110px]"
+          value={filterUrgency}
+          onChange={(e) => setFilterUrgency(e.target.value)}
+        >
+          <option value="All">All Urgency</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
         
         {(filterStatus !== 'All' || filterArea !== 'All' || filterUrgency !== 'All' || search !== '') && (
           <Button 
-            variant="outline" 
-            className="w-full text-sm"
+            variant="ghost" 
+            size="sm"
+            className="text-xs h-8 whitespace-nowrap text-red-500 hover:text-red-700 hover:bg-red-50"
             onClick={() => {
               setFilterStatus('All');
               setFilterArea('All');
@@ -77,10 +68,10 @@ export function FeedFilters({
               setSearch('');
             }}
           >
-            Clear Filters
+            Clear
           </Button>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

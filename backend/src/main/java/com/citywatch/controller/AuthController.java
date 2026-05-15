@@ -8,6 +8,7 @@ import com.citywatch.enums.Role;
 import com.citywatch.repository.UserRepository;
 import com.citywatch.security.CustomUserDetails;
 import com.citywatch.security.JwtUtils;
+import com.citywatch.service.EmailVerificationService;
 import com.citywatch.util.CwIdGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,8 +35,9 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CwIdGenerator idGenerator;
+    private final EmailVerificationService emailVerificationService;
 
-    // ─── POST /api/auth/login ───────────────────────────────────────────
+    // ─── POST /api/auth/login ───────────────────────────────────────────────
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
@@ -49,7 +51,6 @@ public class AuthController {
             User user = userDetails.getUser();
 
             LoginResponse response = buildLoginResponse(user, jwt);
-
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -57,7 +58,38 @@ public class AuthController {
         }
     }
 
-    // ─── POST /api/auth/register ────────────────────────────────────────
+    // ─── POST /api/auth/send-otp ────────────────────────────────────────────
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required."));
+        }
+        if (userRepository.existsByEmail(email.toLowerCase())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "An account with this email already exists."));
+        }
+        emailVerificationService.sendOtp(email.toLowerCase());
+        return ResponseEntity.ok(Map.of("message", "Verification code sent. Check your email (and the server console)."));
+    }
+
+    // ─── POST /api/auth/verify-otp ──────────────────────────────────────────
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String otp   = body.get("otp");
+        if (email == null || otp == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email and OTP are required."));
+        }
+        boolean valid = emailVerificationService.verifyOtp(email.toLowerCase(), otp);
+        if (!valid) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid or expired verification code. Please request a new one."));
+        }
+        return ResponseEntity.ok(Map.of("verified", true));
+    }
+
+    // ─── POST /api/auth/register ────────────────────────────────────────────
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
 
@@ -67,15 +99,16 @@ public class AuthController {
                     .body(Map.of("error", "An account with this email already exists."));
         }
 
-        // Generate structured user ID: {STATE}{RTO}{TYPE}{7-seq}
-        // Example: GJ05C0000001
-        String userId = idGenerator.nextUserId(
-                Role.CITIZEN,
-                registerRequest.getStateCode(),
-                registerRequest.getRtoCode()
-        );
+        // Resolve stateCode / rtoCode (frontend may not send them; default to MH/00)
+        String stateCode = (registerRequest.getStateCode() != null && !registerRequest.getStateCode().isBlank())
+                ? registerRequest.getStateCode().toUpperCase() : "MH";
+        String rtoCode   = (registerRequest.getRtoCode() != null && !registerRequest.getRtoCode().isBlank())
+                ? registerRequest.getRtoCode() : "00";
 
-        // Generate a username from the name (lowercase, no spaces)
+        // Generate structured user ID: {STATE}{RTO}{TYPE}{7-seq}
+        String userId = idGenerator.nextUserId(Role.CITIZEN, stateCode, rtoCode);
+
+        // Generate a unique username from the name (lowercase, underscores)
         String baseUsername = registerRequest.getName().toLowerCase().replaceAll("\\s+", "_");
         String username = baseUsername;
         int counter = 1;
@@ -83,16 +116,16 @@ public class AuthController {
             username = baseUsername + "_" + counter++;
         }
 
-        // Create the user
+        // Create and persist the user
         User user = User.builder()
                 .id(userId)
                 .username(username)
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .role(Role.CITIZEN)  // new signups are always citizens
+                .role(Role.CITIZEN)
                 .city(registerRequest.getCity())
-                .stateCode(registerRequest.getStateCode().toUpperCase())
-                .rtoCode(registerRequest.getRtoCode())
+                .stateCode(stateCode)
+                .rtoCode(rtoCode)
                 .build();
 
         user = userRepository.save(user);
@@ -104,11 +137,10 @@ public class AuthController {
         String jwt = jwtUtils.generateJwtToken(authentication);
 
         LoginResponse response = buildLoginResponse(user, jwt);
-
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // ─── GET /api/auth/me ───────────────────────────────────────────────
+    // ─── GET /api/auth/me ───────────────────────────────────────────────────
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -124,7 +156,6 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         LoginResponse response = buildLoginResponse(user, null);
-
         return ResponseEntity.ok(response);
     }
 

@@ -13,13 +13,14 @@ interface ComplaintContextType {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   refreshMasterData: () => Promise<void>;
-  refreshReports: (silent?: boolean) => void;
+  refreshReports: (silent?: boolean, page?: number, size?: number, bbox?: string) => Promise<any>;
   addReport: (report: Partial<Report>) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => Promise<void>;
   submitProof: (id: string, imageUrl: string, lat: number, lng: number) => Promise<void>;
   handleVote: (id: string, currentUserId?: string) => Promise<void>;
   deleteReport: (id: string, spamReportId?: string, resolveSpamReport?: (id: string) => void) => void;
   addComment: (reportId: string, comment: Comment) => void;
+  fetchComments: (reportId: string) => Promise<void>;
   sendMessage: (reportId: string, content: string) => Promise<void>;
   fetchMessages: (reportId: string) => Promise<void>;
 }
@@ -66,28 +67,37 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) { console.error("Failed to fetch master data:", error); }
   }, []);
 
-  // silent=true skips the loading spinner — used by background polling so pages don't flash
-  const refreshReports = useCallback((silent = false) => {
-    if (!silent) setLoading(true);
-    complaintService.getAll().then((data: any[]) => {
+  const refreshReports = useCallback(async (silent = false, page = 0, size = 10, bbox?: string) => {
+    if (!silent && page === 0) setLoading(true);
+    try {
+      const res: any = await complaintService.getAll(page, size, bbox);
+      const data = res.content || res; // Handle Pageable or List
       if (!Array.isArray(data)) return;
-      const mapped: Report[] = data.map(r => ({
+      
+      const mapped: Report[] = data.map((r: any) => ({
         id: String(r.id), title: r.title || (r.category ? r.category.replace(/_/g, " ") : "Reported Issue"),
         description: r.description || "", image: r.imageUrls?.length > 0 ? r.imageUrls[0] : "", additionalImages: r.imageUrls?.slice(1) || [],
         locationText: r.locationText || (r.areaName ? `${r.areaName}, Nanded` : "Nanded"), lat: r.latitude || 19.155, lng: r.longitude || 77.307,
         area: r.areaName as Area, status: mapStatus(r.status), authorId: String(r.citizenId), authorName: r.citizenName || "Citizen",
         authorAvatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(r.citizenName || "U")}`, upvotes: r.upvotes || 0,
-        downvotes: 0, upvotedCitizenIds: r.upvotedCitizenIds ? [...r.upvotedCitizenIds] : [], category: r.category, comments: [],
+        downvotes: 0, upvotedCitizenIds: r.upvotedCitizenIds ? [...r.upvotedCitizenIds] : [], category: r.category, comments: [], messages: [],
         createdAt: r.createdAt || new Date().toISOString(), urgency: mapPriority(r.priority), coordinatorId: r.coordinatorId ? String(r.coordinatorId) : undefined,
       }));
-      Promise.all(mapped.map(report => complaintService.getComments(report.id).then((comments: any[]) => ({
-        ...report,
-        messages: [], // Fetched on demand when opening chat
-        comments: Array.isArray(comments) ? comments.map((c: any) => ({
-          id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", text: c.content || "", createdAt: c.createdAt || new Date().toISOString(),
-        })) : [],
-      })).catch(() => ({ ...report, messages: [] })))).then(reportsWithComments => setReports(reportsWithComments));
-    }).catch(err => console.error("Failed to fetch reports:", err)).finally(() => { if (!silent) setLoading(false); });
+      
+      if (page === 0) {
+        setReports(mapped);
+      } else {
+        setReports(prev => {
+          const newReports = mapped.filter(m => !prev.some(p => p.id === m.id));
+          return [...prev, ...newReports];
+        });
+      }
+      return res; // return Page object for totalElements etc
+    } catch (err) {
+      console.error("Failed to fetch reports:", err);
+    } finally {
+      if (!silent && page === 0) setLoading(false);
+    }
   }, []);
 
   const addReport = async (reportReq: Partial<Report>) => {
@@ -144,6 +154,20 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
     } catch {}
   };
 
+  const fetchComments = async (reportId: string) => {
+    try {
+      const comments = await complaintService.getComments(reportId);
+      setReports(prev => prev.map(r => r.id === reportId ? { 
+        ...r, 
+        comments: Array.isArray(comments) ? comments.map((c: any) => ({
+          id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", text: c.content || "", createdAt: c.createdAt || new Date().toISOString()
+        })) : [] 
+      } : r));
+    } catch (e) {
+      console.error("Failed to fetch comments", e);
+    }
+  };
+
   const fetchMessages = async (reportId: string) => {
     try {
       const messages = await complaintService.getMessages(reportId);
@@ -166,7 +190,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, handleVote, deleteReport, addComment, sendMessage, fetchMessages }}>
+    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, handleVote, deleteReport, addComment, fetchComments, sendMessage, fetchMessages }}>
       {children}
     </ComplaintContext.Provider>
   );

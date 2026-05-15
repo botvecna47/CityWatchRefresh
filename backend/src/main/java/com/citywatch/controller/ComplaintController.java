@@ -38,19 +38,27 @@ public class ComplaintController {
 
     // ── List complaints ──────────────────────────────────────────────────────
     @GetMapping
-    public ResponseEntity<List<ComplaintResponse>> list(
+    public ResponseEntity<?> list(
             @RequestParam(required = false) Long areaId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lng) {
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double minLat,
+            @RequestParam(required = false) Double maxLat,
+            @RequestParam(required = false) Double minLng,
+            @RequestParam(required = false) Double maxLng,
+            org.springframework.data.domain.Pageable pageable) {
 
+        if (minLat != null && maxLat != null && minLng != null && maxLng != null) {
+            return ResponseEntity.ok(complaintService.getInBoundingBox(minLat, maxLat, minLng, maxLng));
+        }
         if (lat != null && lng != null) {
             return ResponseEntity.ok(complaintService.getNearby(lat, lng));
         }
         if (areaId != null) {
-            return ResponseEntity.ok(complaintService.getByArea(areaId));
+            return ResponseEntity.ok(complaintService.getByArea(areaId, pageable));
         }
-        return ResponseEntity.ok(complaintService.getAll());
+        return ResponseEntity.ok(complaintService.getAll(pageable));
     }
 
     // ── Get a single complaint ───────────────────────────────────────────────

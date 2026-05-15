@@ -21,7 +21,7 @@ export function FeedItem({ report, currentUser, handleVoteAction, updateReport }
   const navigate = useNavigate();
   
   return (
-    <Card className="flex hover:border-[#2E7D32]/30 transition-colors bg-white overflow-hidden shadow-sm">
+    <Card className="flex hover:border-[#2E7D32]/30 transition-colors bg-white overflow-hidden shadow-sm rounded-none border-x-0 sm:rounded-sm sm:border-x">
       {/* Voting Sidebar */}
       <div className="w-14 bg-gray-50 flex flex-col items-center py-4 border-r border-gray-100 gap-1 flex-shrink-0">
         <button 

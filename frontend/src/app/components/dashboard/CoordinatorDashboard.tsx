@@ -2,13 +2,21 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router";
 import { formatDistanceToNow } from "date-fns";
 import { motion } from "motion/react";
-import { CheckCircle2, Clock, AlertTriangle, Upload, MapPin } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, Upload, MapPin, Smartphone } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { toast } from "sonner";
 import { useAppContext, Report } from "../../store";
 import { Card, Button, Badge } from "../../components/ui";
 import { ReportSummaryCard } from "./ReportSummaryCard";
 import { storageClient } from "../../storageClient";
+
+// ─── Platform Detection (see SubmitReportSteps.tsx for full explanation) ────────────
+const isMobileDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+};
+const IS_MOBILE = isMobileDevice();
 
 export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
   const { currentUser, updateReport, submitProof } = useAppContext();
@@ -203,12 +211,28 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                     <span className="text-sm text-gray-500 font-serif">Take live photo</span>
                   </>
                 )}
-                <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { 
-                  if (e.target.files?.[0]) {
-                    setProofImageFile(e.target.files[0]);
-                    setProofImagePreview(URL.createObjectURL(e.target.files[0]));
-                  }
-                }} required />
+                {IS_MOBILE ? (
+                  // Mobile: strict camera-only — no accept= attribute means the OS only offers the camera
+                  <input
+                    type="file"
+                    capture="environment"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setProofImageFile(e.target.files[0]);
+                        setProofImagePreview(URL.createObjectURL(e.target.files[0]));
+                      }
+                    }}
+                    required
+                  />
+                ) : (
+                  // Desktop: block file picker entirely — proof must be a live camera photo
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/80 rounded-sm pointer-events-none">
+                    <Smartphone className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500 text-center px-4 font-serif">Live camera capture required</span>
+                    <span className="text-xs text-gray-400 text-center px-4 mt-1">Please use a mobile device to submit proof</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3">

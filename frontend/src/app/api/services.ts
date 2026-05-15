@@ -3,7 +3,9 @@ import { Report, User, CoordinatorApplication, SpamReport, Notification, Comment
 
 export const authService = {
   getMe: () => apiClient.get("/api/auth/me"),
-  updateSettings: (settings: any) => apiClient.patch("/api/settings/me", settings)
+  updateSettings: (settings: any) => apiClient.patch("/api/settings/me", settings),
+  sendOtp: (email: string) => apiClient.post("/api/auth/send-otp", { email }),
+  verifyOtp: (email: string, otp: string) => apiClient.post("/api/auth/verify-otp", { email, otp }),
 };
 
 export const masterDataService = {
@@ -12,7 +14,8 @@ export const masterDataService = {
 };
 
 export const complaintService = {
-  getAll: () => apiClient.get("/api/complaints"),
+  getAll: (page = 0, size = 10, bbox?: string) => 
+    apiClient.get(`/api/complaints?page=${page}&size=${size}${bbox ? `&${bbox}` : ''}`),
   getComments: (id: string) => apiClient.get(`/api/complaints/${id}/comments`),
   submit: (data: any) => apiClient.post("/api/complaints", data),
   updateStatus: (id: string, status: string) => apiClient.patch(`/api/complaints/${id}/status`, { status }),

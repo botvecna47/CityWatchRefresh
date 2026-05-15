@@ -40,6 +40,7 @@ public class AdminController {
     }
 
     @GetMapping("/users")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<List<UserSummaryResponse>> getAllUsers() {
         return ResponseEntity.ok(
                 userRepository.findAll().stream()
@@ -109,12 +110,12 @@ public class AdminController {
                 .id(u.getId())
                 .username(u.getUsername())
                 .email(u.getEmail())
-                .role(u.getRole().name())
-                .status(u.getStatus().name())
-                .trustLevel(u.getTrustLevel().name())
+                .role(u.getRole() != null ? u.getRole().name() : "CITIZEN")
+                .status(u.getStatus() != null ? u.getStatus().name() : "ACTIVE")
+                .trustLevel(u.getTrustLevel() != null ? u.getTrustLevel().name() : "NORMAL")
                 .areaName(u.getArea() != null ? u.getArea().getName() : null)
                 .city(u.getCity())
-                .strikeCount(u.getStrikeCount())
+                .strikeCount(u.getStrikeCount() != null ? u.getStrikeCount() : 0)
                 .createdAt(u.getCreatedAt())
                 .build();
     }

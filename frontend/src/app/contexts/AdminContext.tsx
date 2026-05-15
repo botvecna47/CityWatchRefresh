@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "sonner";
 import { User, CoordinatorApplication, SpamReport, Role } from "../types";
-import { adminService, applicationService, spamService } from "../api/services";
+import { adminService, applicationService, spamService, complaintService } from "../api/services";
 
 interface AdminContextType {
   users: User[];
+  usersLoading: boolean;
   applications: CoordinatorApplication[];
   spamReports: SpamReport[];
   refreshUsers: () => void;
@@ -24,21 +25,32 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [applications, setApplications] = useState<CoordinatorApplication[]>([]);
   const [spamReports, setSpamReports] = useState<SpamReport[]>([]);
 
   const refreshUsers = () => {
-    adminService.getUsers().then((data: any[]) => setUsers(data.map(u => ({
-      id: String(u.id), name: u.username || "Unknown", email: u.email, role: (u.role || "citizen").toLowerCase() as Role,
-      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.username || u.email)}`,
-      status: (u.status || "ACTIVE").toUpperCase() === "ACTIVE" ? "active" : "banned" as "active" | "banned",
-      area: u.areaName || undefined, settings: { emailNotifications: true, smsNotifications: false, theme: "system" as const }
-    })))).catch(console.error);
+    setUsersLoading(true);
+    adminService.getUsers()
+      .then((data: any[]) => setUsers(data.map(u => ({
+        id: String(u.id), name: u.username || "Unknown", email: u.email, role: (u.role || "citizen").toLowerCase() as Role,
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.username || u.email)}`,
+        status: (u.status || "ACTIVE").toUpperCase() === "ACTIVE" ? "active" : "banned" as "active" | "banned",
+        area: u.areaName || undefined, settings: { emailNotifications: true, smsNotifications: false, theme: "system" as const }
+      }))))
+      .catch((err) => {
+        console.error("[AdminContext] refreshUsers failed:", err);
+        toast.error("Failed to load users. Check backend connection.");
+      })
+      .finally(() => setUsersLoading(false));
   };
 
   const refreshApplications = () => {
     applicationService.getAll().then((data: any[]) => setApplications(data.map(a => ({
-      id: String(a.id), userId: String(a.userId || a.user?.id || ""), userName: a.userName || a.name || "",
+      id: String(a.id),
+      // Backend now returns userId (not the full user object) after the @JsonIgnore fix
+      userId: String(a.userId || ""),
+      userName: a.userName || a.name || "",
       email: a.email || "", phone: a.phone || "", address: a.address || "", experience: a.experience || "",
       message: a.message || "", status: (a.status || "pending").toLowerCase() as "pending" | "approved" | "rejected",
       createdAt: a.createdAt || new Date().toISOString(),
@@ -65,7 +77,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const assignCoordinatorToReport = async (reportId: string, coordinatorId: string, refreshReports: () => void) => {
-    try { await adminService.assignCoordinator(reportId, coordinatorId); toast.success("Coordinator assigned!"); refreshReports(); }
+    try {
+      // Uses complaintService (PATCH /api/complaints/{id}/assign) — NOT adminService
+      // adminService does not define assignCoordinator; the endpoint lives in ComplaintController
+      await complaintService.assignCoordinator(reportId, coordinatorId);
+      toast.success("Coordinator assigned!");
+      refreshReports();
+    }
     catch { toast.error("Assignment failed."); }
   };
 
@@ -90,7 +108,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AdminContext.Provider value={{ users, applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser }}>
+    <AdminContext.Provider value={{ users, usersLoading, applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser }}>
       {children}
     </AdminContext.Provider>
   );

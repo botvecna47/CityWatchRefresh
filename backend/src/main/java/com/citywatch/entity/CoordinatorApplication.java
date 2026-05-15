@@ -1,5 +1,7 @@
 package com.citywatch.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -20,7 +22,12 @@ public class CoordinatorApplication {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
+
+    /** Expose only the user ID (not the full entity) in JSON responses. */
+    @JsonProperty("userId")
+    public String getUserId() { return user != null ? user.getId() : null; }
 
     @Column(name = "user_name", nullable = false, length = 100)
     private String userName;

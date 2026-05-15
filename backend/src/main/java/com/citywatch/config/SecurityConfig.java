@@ -26,6 +26,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 public class SecurityConfig {
  
     private final JwtAuthFilter jwtAuthFilter;
@@ -90,7 +91,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/debug_users", "/error").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/send-otp", "/api/auth/verify-otp", "/api/auth/debug_users", "/error").permitAll()
                 // Actuator endpoints for health and metrics
                 .requestMatchers("/actuator/**").permitAll()
                 // Complaints listing and individual complaint pages are public

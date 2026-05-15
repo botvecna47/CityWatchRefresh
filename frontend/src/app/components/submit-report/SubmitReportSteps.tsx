@@ -1,9 +1,24 @@
 import { motion } from "motion/react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import { Crosshair, AlertTriangle, MapPin, ArrowBigUp, Camera, X, Upload, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Crosshair, AlertTriangle, MapPin, ArrowBigUp, Camera, X, Upload, ArrowRight, CheckCircle2, Smartphone, Clock } from "lucide-react";
 import { Button, Input, Textarea, cn } from "../../components/ui";
 import { Report } from "../../store";
 import L from 'leaflet';
+
+// ─── Platform Detection ────────────────────────────────────────────────────────
+// The HTML `capture` attribute is a mobile-only hint — desktop browsers ignore it
+// completely and always show the normal file picker. The only way to enforce
+// camera-only on mobile AND block local gallery on desktop is to:
+//   1. Detect the platform
+//   2. On mobile: render <input capture="environment"> WITHOUT accept="image/*"
+//      (combining both gives Android users a choice dialog — defeating the purpose)
+//   3. On desktop: render NO input at all, just a notice.
+const isMobileDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+};
+const IS_MOBILE = isMobileDevice();
 
 let icons: Record<string, L.DivIcon> | null = null;
 export const initLeaflet = () => {
@@ -22,9 +37,9 @@ export const initLeaflet = () => {
   icons = { Reported: createCustomIcon('text-red-600') };
 };
 
-export function LocationPicker({ position, setPosition }: { position: [number, number], setPosition: (pos: [number, number]) => void }) {
-  useMapEvents({ click(e) { setPosition([e.latlng.lat, e.latlng.lng]); } });
-  return <Marker position={position} icon={icons?.Reported} draggable={true} eventHandlers={{ dragend: (e) => { const marker = e.target; setPosition([marker.getLatLng().lat, marker.getLatLng().lng]); } }} />;
+export function LocationPicker({ position }: { position: [number, number] }) {
+  // Draggable and click-to-change location features removed for strict mobile tracking.
+  return <Marker position={position} icon={icons?.Reported} draggable={false} />;
 }
 
 export function StepIndicator({ num, active, label }: { num: number; active: boolean; label: string }) {
@@ -50,15 +65,10 @@ export function LocationStep({
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Where is the issue?</label>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter street address or detect location..."
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="flex-1 border-[#1A4331]/20 focus:ring-[#2E7D32]"
-          />
-          <Button onClick={handleDetectLocation} variant="secondary" className="gap-2 border border-[#1A4331]/20 bg-[#FDFDF7] text-[#1A4331] hover:bg-gray-100 whitespace-nowrap" disabled={isDetecting}>
-            {isDetecting ? <span className="animate-pulse">Detecting...</span> : <><Crosshair className="w-4 h-4" /> My Location</>}
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-gray-500 font-serif">For strict accuracy, you must be physically present at the location to report an issue. Manual entry is disabled.</p>
+          <Button onClick={handleDetectLocation} className="gap-2 bg-[#2E7D32] hover:bg-[#1b5e20] text-white w-full py-6 text-lg" disabled={isDetecting}>
+            {isDetecting ? <span className="animate-pulse">Accessing GPS...</span> : <><Crosshair className="w-5 h-5" /> Detect My Location</>}
           </Button>
         </div>
       </div>
@@ -69,9 +79,9 @@ export function LocationStep({
             <AlertTriangle className="w-3 h-3" /> Pinpoint accuracy is important. You can drag the pin or click on the map to adjust your exact location.
           </p>
           <div className="w-full h-80 min-h-[300px] max-h-[50vh] bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200">
-            <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+            <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }} dragging={false} zoomControl={false} scrollWheelZoom={false} doubleClickZoom={false}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <LocationPicker position={locationLatLong} setPosition={setLocationLatLong} />
+              <LocationPicker position={locationLatLong} />
             </MapContainer>
             <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
               <MapPin className="w-4 h-4 text-[#2E7D32]" /> {locationLatLong[0].toFixed(5)}, {locationLatLong[1].toFixed(5)}
@@ -129,9 +139,18 @@ export function LocationStep({
                           </button>
                         </div>
                       ) : (
-                        <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-dashed border-amber-300 rounded text-xs text-amber-700 cursor-pointer hover:bg-amber-50 transition-colors">
-                          <Upload className="w-3.5 h-3.5" /> Add Photo
-                          <input type="file" accept="image/*" className="hidden" onChange={handleUpvotePhotoChange} />
+                        <label className={cn("inline-flex items-center gap-2 px-3 py-1.5 border border-dashed rounded text-xs cursor-pointer transition-colors", IS_MOBILE ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-gray-300 text-gray-400 cursor-not-allowed opacity-60")}>
+                          {IS_MOBILE ? (
+                            <>
+                              <Camera className="w-3.5 h-3.5" /> Take Photo
+                              <input type="file" capture="environment" className="hidden" onChange={handleUpvotePhotoChange} />
+                            </>
+                          ) : (
+                            <>
+                              <Smartphone className="w-3.5 h-3.5" />
+                              <span>Camera only (use mobile)</span>
+                            </>
+                          )}
                         </label>
                       )}
                     </div>
@@ -161,7 +180,7 @@ export function DetailsStep({
   category, setCategory, displayCategories, customCategory, setCustomCategory,
   area, setArea, displayAreas, customArea, setCustomArea,
   title, setTitle, images, MAX_IMAGES, removeImage, handleImageUpload,
-  description, setDescription, setStep
+  description, setDescription, setStep, photoTimeLeft
 }: any) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); setStep(3); }} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -191,9 +210,24 @@ export function DetailsStep({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">
-            Photo Evidence <span className="text-gray-400 font-normal">(Optional · max {MAX_IMAGES})</span>
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-[#1A4331] font-serif">
+              Photo Evidence <span className="text-red-500 font-bold">*</span>
+              <span className="text-gray-400 font-normal ml-1">(Required · max {MAX_IMAGES})</span>
+            </label>
+            {/* 30-second countdown timer — appears as soon as first photo is captured */}
+            {photoTimeLeft !== null && (
+              <div className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full transition-colors",
+                photoTimeLeft <= 10
+                  ? "bg-red-100 text-red-700 animate-pulse"
+                  : "bg-amber-50 text-amber-700"
+              )}>
+                <Clock className="w-3.5 h-3.5" />
+                Submit within {photoTimeLeft}s or photo expires
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-2 mb-2">
             {images.map((img: string, idx: number) => (
               <div key={idx} className="relative rounded-sm overflow-hidden border border-gray-200 h-24 group">
@@ -207,7 +241,21 @@ export function DetailsStep({
               <div className={cn("border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer")}>
                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-[#2E7D32] transition-colors mb-1" />
                 <span className="text-xs text-gray-500 font-serif">Add Photo</span>
-                <input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
+                {IS_MOBILE ? (
+                  // Mobile: strict camera-only — no accept= means only camera is offered
+                  <input
+                    type="file"
+                    capture="environment"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={handleImageUpload}
+                  />
+                ) : (
+                  // Desktop: block file picker entirely — show notice only
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/90 rounded-sm pointer-events-none">
+                    <Smartphone className="w-6 h-6 text-gray-400 mb-1" />
+                    <span className="text-xs text-gray-500 text-center px-2 font-serif">Camera capture required — please use the mobile app</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -226,9 +274,17 @@ export function DetailsStep({
       <div className="flex justify-between pt-4">
         <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
         <div className="flex flex-col items-end gap-1">
-          <Button type="button" onClick={() => setStep(3)} className="gap-2" disabled={!title || !description || (category === "OTHER" && !customCategory)}>
+          <Button
+            type="button"
+            onClick={() => setStep(3)}
+            className="gap-2"
+            disabled={!title || !description || images.length === 0 || (category === "OTHER" && !customCategory)}
+          >
             Review Details <ArrowRight className="w-4 h-4" />
           </Button>
+          {images.length === 0 && (
+            <p className="text-xs text-red-500 font-serif">A photo is required to continue</p>
+          )}
         </div>
       </div>
     </form>

@@ -6,12 +6,16 @@ import { CoordinatorDashboard } from "../components/dashboard/CoordinatorDashboa
 export function Dashboard() {
   const { currentUser, reports, loading } = useAppContext();
   
-  if (loading) return <DashboardSkeleton />;
+  if (loading) return <div className="max-w-4xl mx-auto w-full pt-4 md:pt-8 px-4"><DashboardSkeleton /></div>;
   if (!currentUser) return <div className="p-8 text-center text-gray-500 font-serif min-h-[60vh] flex items-center justify-center">Please log in to view your dashboard.</div>;
-  if (currentUser.role === "citizen") return <CitizenDashboard reports={reports.filter(r => r.authorId === currentUser.id)} />;
-  if (currentUser.role === "coordinator") return <CoordinatorDashboard reports={reports} />;
   
-  return <div className="p-8 text-center text-gray-500 font-serif">Admins use the Admin Panel.</div>;
+  return (
+    <div className="max-w-4xl mx-auto w-full pt-4 md:pt-8 px-4 pb-16">
+      {currentUser.role === "citizen" && <CitizenDashboard reports={reports.filter(r => r.authorId === currentUser.id)} />}
+      {currentUser.role === "coordinator" && <CoordinatorDashboard reports={reports} />}
+      {currentUser.role === "admin" && <div className="p-8 text-center text-gray-500 font-serif">Admins use the Admin Panel.</div>}
+    </div>
+  );
 }
 
 function DashboardSkeleton() {

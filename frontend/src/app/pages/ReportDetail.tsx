@@ -18,7 +18,7 @@ import { SpamReportModal } from "../components/report/SpamReportModal";
 export function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer, users, assignCoordinatorToReport } = useAppContext();
+  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer, users, assignCoordinatorToReport, fetchComments } = useAppContext();
   
   const isCitizen = currentUser?.role === 'citizen';
   const isCoordinator = currentUser?.role === 'coordinator';
@@ -47,6 +47,12 @@ export function ReportDetail() {
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
   }, []);
+
+  useEffect(() => {
+    if (id && (!report?.comments || report.comments.length === 0)) {
+      fetchComments(id);
+    }
+  }, [id]);
 
   if (!report) {
     return (

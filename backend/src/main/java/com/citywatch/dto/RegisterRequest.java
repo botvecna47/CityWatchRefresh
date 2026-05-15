@@ -7,35 +7,38 @@ import lombok.Data;
 public class RegisterRequest {
 
     @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 50, message = "Name must be 2-50 characters")
+    @Size(min = 3, max = 50, message = "Name must be 3-50 characters")
+    @Pattern(regexp = "^[a-zA-Z\\s\\-]+$", message = "Name can only contain letters, spaces, and hyphens")
     private String name;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Must be a valid email")
     private String email;
 
+    /**
+     * Strong password policy enforced on both frontend and backend.
+     * Must be at least 12 characters and include:
+     * - 1 uppercase letter
+     * - 1 lowercase letter
+     * - 1 digit
+     * - 1 special character from: !@#$%^&*(),.?":{}|<>
+     */
     @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 12, message = "Password must be at least 12 characters")
+    @Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*(),.?\":{}|<>]).{12,}$",
+        message = "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character"
+    )
     private String password;
 
     @NotBlank(message = "City is required")
     private String city;
 
     /**
-     * 2-letter Indian state code (e.g. GJ, MH, DL, KA, TN).
-     * Used to build the user ID: {STATE}{RTO}{TYPE}{7-seq}
+     * stateCode and rtoCode are kept for ID generation backward-compatibility,
+     * but are now optional — the frontend sends "MH" / "00" as defaults.
+     * Defaulting is handled in AuthController if null.
      */
-    @NotBlank(message = "State code is required")
-    @Size(min = 2, max = 2, message = "State code must be exactly 2 letters")
-    @Pattern(regexp = "[A-Za-z]{2}", message = "State code must be 2 alphabetic characters")
-    private String stateCode;
-
-    /**
-     * 2-digit RTO district code (e.g. 01, 05, 12).
-     * Prefixed in the user ID to encode their registration zone.
-     */
-    @NotBlank(message = "RTO code is required")
-    @Size(min = 2, max = 2, message = "RTO code must be exactly 2 digits")
-    @Pattern(regexp = "\\d{2}", message = "RTO code must be 2 digits")
-    private String rtoCode;
+    private String stateCode = "MH";
+    private String rtoCode   = "00";
 }

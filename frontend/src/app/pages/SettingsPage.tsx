@@ -46,7 +46,7 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-6xl mx-auto py-8 px-4">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "Playfair Display, serif" }}>
@@ -76,7 +76,7 @@ export function SettingsPage() {
         </nav>
 
         {/* Content */}
-        <div className="md:col-span-3 space-y-4">
+        <div className="md:col-span-3 space-y-4 min-h-[60vh]">
           {activeTab === "account" && (
             <AccountTab 
               currentUser={currentUser}

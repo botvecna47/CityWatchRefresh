@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router";
 import { Filter, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { FeedFilters } from "../components/feed/FeedFilters";
 import { FeedItem } from "../components/feed/FeedItem";
 
 export function Home() {
-  const { reports, currentUser, loading, handleVote: voteOnServer, updateReport } = useAppContext();
+  const { reports, currentUser, loading, handleVote: voteOnServer, updateReport, refreshReports } = useAppContext();
   const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
   const navigate = useNavigate();
   const [filterArea, setFilterArea] = useState<Area | "All">(localStorage.getItem("feed_filterArea") || "All");
@@ -18,12 +18,41 @@ export function Home() {
   const [filterUrgency, setFilterUrgency] = useState<"Low" | "Medium" | "High" | "All">((localStorage.getItem("feed_filterUrgency") as any) || "All");
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Infinite Scroll State
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     localStorage.setItem("feed_filterArea", filterArea);
     localStorage.setItem("feed_filterStatus", filterStatus);
     localStorage.setItem("feed_filterUrgency", filterUrgency);
   }, [filterArea, filterStatus, filterUrgency]);
+
+  const loadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    const nextPage = page + 1;
+    const res = await refreshReports(true, nextPage, 5);
+    if (res && res.last) setHasMore(false);
+    setPage(nextPage);
+    setIsLoadingMore(false);
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !loading) {
+          loadMore();
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loading, page]);
 
   const filteredReports = reports.filter(r => {
     if (filterArea !== "All" && r.area !== filterArea) return false;
@@ -44,74 +73,34 @@ export function Home() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 items-start relative">
-      <div className="w-full md:w-64 flex-shrink-0 md:sticky md:top-24 space-y-4">
-        <Button 
-          variant="outline" 
-          className="md:hidden w-full flex justify-between items-center bg-white"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <span className="flex items-center gap-2"><Filter className="w-4 h-4" /> Filters</span>
-          <span className="text-xs text-gray-500">{showFilters ? "Hide" : "Show"}</span>
-        </Button>
+    <div className="flex justify-center relative w-full pt-4 md:pt-6 gap-8 px-4 xl:px-8">
+      {/* Center Main Feed */}
+      <div className="flex-1 w-full max-w-2xl xl:max-w-3xl">
 
-        <div className={cn("space-y-4", !showFilters && "hidden md:block")}>
-          <FeedFilters 
-            search={search} setSearch={setSearch}
-            filterStatus={filterStatus} setFilterStatus={setFilterStatus}
-            filterArea={filterArea} setFilterArea={setFilterArea}
-            filterUrgency={filterUrgency} setFilterUrgency={setFilterUrgency}
-            availableAreas={availableAreas}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 space-y-6 w-full">
-        {!currentUser && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-[#1A4331] to-[#2E7D32] text-white p-8 sm:p-12 rounded-lg shadow-lg relative overflow-hidden mb-8"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-            <div className="relative z-10 max-w-2xl">
-              <h1 className="text-4xl sm:text-5xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-                Report. Resolve. <br/>Revitalize Our City.
-              </h1>
-              <p className="text-lg text-white/90 mb-8 font-serif leading-relaxed max-w-xl">
-                Join a premium community of citizens and coordinators dedicated to keeping our neighborhoods pristine. See an issue? Report it. We'll handle the rest.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link to="/auth">
-                  <Button size="lg" className="bg-white text-[#1A4331] hover:bg-gray-100 font-bold px-8">
-                    Get Started
-                  </Button>
-                </Link>
-                <a href="#feed">
-                  <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 px-8">
-                    Browse Feed
-                  </Button>
-                </a>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        <div id="feed" className="flex justify-between items-center bg-white p-4 shadow-sm border border-gray-100 rounded-sm">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1A4331]" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <div id="feed" className="flex justify-between items-center bg-white p-4 shadow-sm border-y sm:border border-gray-100 rounded-none sm:rounded-sm mb-4">
+          <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-[#1A4331]" style={{ fontFamily: 'Playfair Display, serif' }}>
             CityWatch Feed
           </h2>
           <div className="flex gap-2">
             <Link to={currentUser ? "/submit" : "/auth"}>
-              <Button className="gap-2 bg-[#2E7D32] hover:bg-[#1b5e20] text-white shadow-sm">
-                <span className="hidden sm:inline">{currentUser ? "Report Issue" : "Sign In to Report"}</span>
-                <span className="sm:hidden">Report</span>
+              <Button className="gap-2 bg-[#2E7D32] hover:bg-[#1b5e20] text-white shadow-sm h-9 sm:h-10 px-3 sm:px-4">
+                <span className="hidden sm:inline">{currentUser ? "Report Issue" : "Sign In"}</span>
+                <span className="sm:hidden text-xs">Report</span>
               </Button>
             </Link>
           </div>
         </div>
 
-        <AnimatePresence mode="popLayout">
+        <FeedFilters 
+          search={search} setSearch={setSearch}
+          filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+          filterArea={filterArea} setFilterArea={setFilterArea}
+          filterUrgency={filterUrgency} setFilterUrgency={setFilterUrgency}
+          availableAreas={availableAreas}
+        />
+
+        <div className="space-y-6">
+          <AnimatePresence mode="popLayout">
           {loading ? (
             <div className="space-y-6">
               {[1, 2, 3].map(i => (
@@ -162,9 +151,60 @@ export function Home() {
                   />
                 </motion.div>
               ))}
+              
+              {/* Infinite Scroll Trigger */}
+              {hasMore && (
+                <div 
+                  ref={observerTarget}
+                  className="w-full h-20 flex items-center justify-center py-4"
+                >
+                  {isLoadingMore && <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2E7D32]"></div>}
+                </div>
+              )}
             </div>
           )}
         </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Right Sidebar (Trends/Stats) */}
+      <div className="hidden lg:block w-[300px] xl:w-[350px] flex-shrink-0 space-y-6 sticky top-6 self-start">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <h3 className="font-bold text-lg mb-4 text-[#1A4331]">What's happening</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500">Trending in your city</p>
+              <p className="font-bold text-sm">#RoadRepair</p>
+              <p className="text-xs text-gray-400">1.2k reports</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Civic Updates</p>
+              <p className="font-bold text-sm">Water supply restoration</p>
+              <p className="text-xs text-gray-400">Downtown area</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Community</p>
+              <p className="font-bold text-sm">Park Clean-up Drive</p>
+              <p className="text-xs text-gray-400">This Sunday, 9 AM</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-[#1A4331] rounded-xl p-4 shadow-sm text-white">
+          <h3 className="font-bold text-lg mb-2">Join as Coordinator</h3>
+          <p className="text-sm mb-4 opacity-90">Help verify reports and coordinate with authorities in your area.</p>
+          <Button className="bg-white text-[#1A4331] hover:bg-gray-100 w-full font-bold rounded-xl shadow-none">
+            Apply Now
+          </Button>
+        </div>
+        
+        <div className="text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 px-2">
+          <span>Terms of Service</span>
+          <span>Privacy Policy</span>
+          <span>Cookie Policy</span>
+          <span>Accessibility</span>
+          <span>© 2026 CityWatch</span>
+        </div>
       </div>
     </div>
   );

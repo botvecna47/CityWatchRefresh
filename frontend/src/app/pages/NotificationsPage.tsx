@@ -66,7 +66,7 @@ export function NotificationsPage() {
         </div>
       </div>
 
-      <Card className="bg-white shadow-sm border border-gray-100 overflow-hidden">
+      <Card className="bg-white shadow-sm border border-gray-100 overflow-hidden min-h-[60vh]">
         {userNotifications.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}

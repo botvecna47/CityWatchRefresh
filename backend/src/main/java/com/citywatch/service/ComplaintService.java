@@ -80,15 +80,21 @@ public class ComplaintService {
     }
 
     @Transactional(readOnly = true)
-    public List<ComplaintResponse> getAll() {
-        return complaintRepository.findAllByOrderByCreatedAtDesc()
-                .stream().map(this::toResponse).collect(Collectors.toList());
+    public org.springframework.data.domain.Page<ComplaintResponse> getAll(org.springframework.data.domain.Pageable pageable) {
+        return complaintRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<ComplaintResponse> getByArea(Long areaId) {
+    public org.springframework.data.domain.Page<ComplaintResponse> getByArea(Long areaId, org.springframework.data.domain.Pageable pageable) {
         Area area = areaService.getById(areaId);
-        return complaintRepository.findByAreaOrderByCreatedAtDesc(area)
+        return complaintRepository.findByAreaOrderByCreatedAtDesc(area, pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ComplaintResponse> getInBoundingBox(Double minLat, Double maxLat, Double minLng, Double maxLng) {
+        return complaintRepository.findInBoundingBox(minLat, maxLat, minLng, maxLng)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 

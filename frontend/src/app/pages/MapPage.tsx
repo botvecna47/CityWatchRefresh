@@ -7,14 +7,38 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaf
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-function MapUpdater({ reports }: { reports: Report[] }) {
+import { useMapEvents } from 'react-leaflet';
+import { complaintService } from "../api/services";
+
+function MapUpdater({ setMapReports, activeArea, activeStatus }: { setMapReports: any, activeArea: string, activeStatus: string }) {
   const map = useMap();
+  
+  const fetchBounds = async () => {
+    const bounds = map.getBounds();
+    const bbox = `minLat=${bounds.getSouth()}&maxLat=${bounds.getNorth()}&minLng=${bounds.getWest()}&maxLng=${bounds.getEast()}`;
+    try {
+      const res: any = await complaintService.getAll(0, 50, bbox);
+      const data = res.content || res;
+      if (Array.isArray(data)) {
+        const mapped = data.map((r: any) => ({
+          id: String(r.id), title: r.title || "Reported Issue", description: r.description || "", 
+          image: r.imageUrls?.length > 0 ? r.imageUrls[0] : "", lat: r.latitude, lng: r.longitude,
+          area: r.areaName, status: r.status, urgency: r.priority === 'HIGH' ? 'High' : r.priority === 'MEDIUM' ? 'Medium' : 'Low', locationText: r.locationText
+        }));
+        setMapReports(mapped);
+      }
+    } catch (e) {}
+  };
+
+  useMapEvents({
+    moveend: fetchBounds,
+    zoomend: fetchBounds,
+  });
+
   useEffect(() => {
-    if (reports.length > 0) {
-      const bounds = L.latLngBounds(reports.map((r: Report) => [r.lat, r.lng]));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-    }
-  }, [reports, map]);
+    fetchBounds();
+  }, [activeArea, activeStatus]);
+
   return null;
 }
 
@@ -26,6 +50,7 @@ const urgencyColor = (urgency: string) => {
 
 export function MapPage() {
   const { reports, setSelectedReportId } = useAppContext();
+  const [mapReports, setMapReports] = useState<Report[]>([]);
   const [activeArea, setActiveArea] = useState<Area | "All">(localStorage.getItem("map_filterArea") || "All");
   const [activeStatus, setActiveStatus] = useState<Status | "All">((localStorage.getItem("map_filterStatus") as Status | "All") || "All");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -38,9 +63,13 @@ export function MapPage() {
     localStorage.setItem("map_filterStatus", activeStatus);
   }, [activeArea, activeStatus]);
 
-  const filteredReports = reports.filter(r => {
+  const filteredReports = mapReports.filter(r => {
     if (activeArea !== "All" && r.area !== activeArea) return false;
-    if (activeStatus !== "All" && r.status !== activeStatus) return false;
+    if (activeStatus !== "All" && (
+      (activeStatus === "Reported" && r.status !== "Reported") ||
+      (activeStatus === "In Progress" && r.status !== "In Progress") ||
+      (activeStatus === "Completed" && r.status !== "Completed")
+    )) return false;
     return true;
   });
 
@@ -50,7 +79,7 @@ export function MapPage() {
   if (!isClient) return null;
 
   return (
-    <div className="relative w-full h-[calc(100vh-8rem)] rounded-sm overflow-hidden bg-[#e5e3df] border border-gray-200 shadow-sm">
+    <div className="relative w-full h-[calc(100vh-8rem)] md:h-screen rounded-sm overflow-hidden bg-[#e5e3df] border-0 md:border border-gray-200 shadow-sm">
       
       <MapContainer 
         center={defaultCenter} 
@@ -61,7 +90,7 @@ export function MapPage() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapUpdater reports={filteredReports} />
+        <MapUpdater setMapReports={setMapReports} activeArea={activeArea} activeStatus={activeStatus} />
 
         {filteredReports.map(report => {
           const { fill, stroke } = urgencyColor(report.urgency);
@@ -82,19 +111,19 @@ export function MapPage() {
       </MapContainer>
 
       {/* Filters Overlay */}
-      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-auto z-10 flex flex-col gap-4 pointer-events-none">
-        <div className="bg-white/90 backdrop-blur-md p-4 rounded-sm shadow-sm border border-white/50 w-full sm:w-72 pointer-events-auto">
-          <h3 className="text-sm font-bold text-[#1A4331] mb-3 flex items-center gap-2 font-serif uppercase tracking-wider">
+      <div className="absolute bottom-4 sm:bottom-auto sm:top-6 left-4 right-4 sm:right-auto z-10 flex flex-col gap-4 pointer-events-none">
+        <div className="bg-white/95 dark:bg-[#112d21]/95 backdrop-blur-md p-3 sm:p-4 rounded-lg sm:rounded-sm shadow-xl border border-gray-200 dark:border-[#2E7D32]/30 w-full sm:w-72 pointer-events-auto transition-colors">
+          <h3 className="text-sm font-bold text-[#1A4331] dark:text-[#FDFDF7] mb-3 flex items-center gap-2 font-serif uppercase tracking-wider">
             <Filter className="w-4 h-4" /> Filter Map
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2 font-serif">By Area</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2 font-serif">By Area</label>
               <select
                 value={activeArea}
                 onChange={(e) => setActiveArea(e.target.value as Area | "All")}
-                className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#1A4331] text-[#1A4331] font-serif cursor-pointer shadow-sm"
+                className="w-full border border-gray-300 dark:border-[#2E7D32]/50 rounded-sm px-3 py-2 text-sm font-medium bg-white dark:bg-[#1A4331] focus:outline-none focus:ring-2 focus:ring-[#1A4331] dark:focus:ring-[#2E7D32] text-[#1A4331] dark:text-[#FDFDF7] font-serif cursor-pointer shadow-sm transition-colors"
               >
                 {availableAreas.map((area) => (
                   <option key={area} value={area}>{area}</option>
@@ -103,7 +132,7 @@ export function MapPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2 font-serif">By Status</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2 font-serif">By Status</label>
               <div className="flex flex-wrap gap-2">
                 {["All", "Reported", "In Progress", "Completed"].map((status) => (
                   <button
@@ -113,7 +142,7 @@ export function MapPage() {
                       "px-3 py-1 text-xs font-medium rounded-sm border transition-colors font-serif",
                       activeStatus === status 
                         ? "bg-[#2E7D32] text-white border-[#2E7D32]" 
-                        : "bg-white/50 text-[#1A4331] border-gray-200 hover:bg-gray-100"
+                        : "bg-white/50 dark:bg-white/5 text-[#1A4331] dark:text-[#FDFDF7] border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
                     )}
                   >
                     {status}
@@ -125,14 +154,14 @@ export function MapPage() {
         </div>
         
         {/* Legend */}
-        <div className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-sm shadow-sm border border-white/50 hidden sm:flex items-center gap-4 w-72 pointer-events-auto">
-          <Layers className="w-4 h-4 text-[#1A4331] flex-shrink-0" />
-          <div className="flex items-center gap-3 text-xs font-serif font-medium text-gray-600">
+        <div className="bg-white/90 dark:bg-[#112d21]/90 backdrop-blur-md px-4 py-3 rounded-sm shadow-sm border border-white/50 dark:border-[#2E7D32]/30 hidden sm:flex items-center gap-4 w-72 pointer-events-auto transition-colors">
+          <Layers className="w-4 h-4 text-[#1A4331] dark:text-[#FDFDF7] flex-shrink-0" />
+          <div className="flex items-center gap-3 text-xs font-serif font-medium text-gray-600 dark:text-gray-300">
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> High</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 inline-block" /> Medium</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Low</span>
           </div>
-          <span className="ml-auto text-[10px] text-gray-400">{filteredReports.length} issues</span>
+          <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{filteredReports.length} issues</span>
         </div>
       </div>
 

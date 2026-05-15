@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useAppContext, Report } from "../store";
 import { Card } from "../components/ui";
@@ -58,6 +58,63 @@ export function SubmitReport() {
   const [images, setImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ─── 30-second photo timeout ───────────────────────────────────────────────
+  // Once the first photo is captured on Step 2, a 30-second countdown begins.
+  // If the user does NOT advance to Step 3 within that window, all images are
+  // cleared and they are reverted to Step 1 (location detection) to prevent
+  // use of pre-captured or stale images.
+  const [photoTimeLeft, setPhotoTimeLeft] = useState<number | null>(null);
+  const photoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearPhotoTimer = () => {
+    if (photoTimerRef.current) {
+      clearInterval(photoTimerRef.current);
+      photoTimerRef.current = null;
+    }
+    setPhotoTimeLeft(null);
+  };
+
+  const resetToLocationStep = () => {
+    setImages([]);
+    setImageFiles([]);
+    setStep(1);
+    setLocation("");
+    clearPhotoTimer();
+    import("sonner").then(({ toast }) =>
+      toast.error("Photo expired (30s timeout). Please re-detect your location and take a fresh photo.")
+    );
+  };
+
+  // Start / manage the 30-second countdown whenever images change on step 2
+  useEffect(() => {
+    // Only count down when on step 2 and at least one image is attached
+    if (step === 2 && images.length > 0) {
+      // Don't restart if timer already running
+      if (photoTimerRef.current) return;
+      setPhotoTimeLeft(30);
+      photoTimerRef.current = setInterval(() => {
+        setPhotoTimeLeft(prev => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            clearInterval(photoTimerRef.current!);
+            photoTimerRef.current = null;
+            // Defer the state reset outside the setState callback
+            setTimeout(() => resetToLocationStep(), 0);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      // Images cleared or navigated away — stop timer
+      clearPhotoTimer();
+    }
+    return () => {
+      // Cleanup on unmount
+      if (photoTimerRef.current) clearInterval(photoTimerRef.current);
+    };
+  }, [step, images.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDetectLocation = () => {
     setIsDetecting(true);
@@ -163,6 +220,10 @@ export function SubmitReport() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !location) return;
+    if (imageFiles.length === 0) {
+      import("sonner").then(({ toast }) => toast.error("At least one photo is required to submit a report."));
+      return;
+    }
     if (description.length < 10) {
       import("sonner").then(({ toast }) => toast.error("Description must be at least 10 characters long"));
       return;
@@ -216,6 +277,7 @@ export function SubmitReport() {
     };
 
     addReport(newReport);
+    clearPhotoTimer();
     setIsSubmitting(false);
     import("sonner").then(({ toast }) => toast.success("Your complaint has been submitted!"));
     navigate("/");
@@ -256,6 +318,7 @@ export function SubmitReport() {
             title={title} setTitle={setTitle} images={images} MAX_IMAGES={MAX_IMAGES}
             removeImage={removeImage} handleImageUpload={handleImageUpload}
             description={description} setDescription={setDescription} setStep={setStep}
+            photoTimeLeft={photoTimeLeft}
           />
         )}
 

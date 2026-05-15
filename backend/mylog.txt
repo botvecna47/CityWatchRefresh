@@ -1,0 +1,1860 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.4)
+
+2026-05-14T14:04:42.017+05:30  INFO 8180 --- [           main] com.citywatch.CityWatchApplication       : Starting CityWatchApplication v0.0.1-SNAPSHOT using Java 25.0.1 with PID 8180 (C:\Users\Darshdeep\Desktop\Desktop\Trial And Error\CityWatchRevive_V_01\backend\target\citywatch-backend-0.0.1-SNAPSHOT.jar started by Darshdeep in C:\Users\Darshdeep\Desktop\Desktop\Trial And Error\CityWatchRevive_V_01\backend)
+2026-05-14T14:04:42.021+05:30  INFO 8180 --- [           main] com.citywatch.CityWatchApplication       : No active profile set, falling back to 1 default profile: "default"
+2026-05-14T14:04:43.612+05:30  INFO 8180 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-14T14:04:43.722+05:30  INFO 8180 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 97 ms. Found 15 JPA repository interfaces.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.apache.tomcat.jni.Library in an unnamed module (jar:nested:/C:/Users/Darshdeep/Desktop/Desktop/Trial%20And%20Error/CityWatchRevive_V_01/backend/target/citywatch-backend-0.0.1-SNAPSHOT.jar/!BOOT-INF/lib/tomcat-embed-core-10.1.19.jar!/)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2026-05-14T14:04:48.269+05:30  INFO 8180 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8082 (http)
+2026-05-14T14:04:48.303+05:30  INFO 8180 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-14T14:04:48.305+05:30  INFO 8180 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.19]
+2026-05-14T14:04:48.419+05:30  INFO 8180 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-14T14:04:48.421+05:30  INFO 8180 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 6258 ms
+2026-05-14T14:04:50.599+05:30  INFO 8180 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-14T14:04:51.016+05:30  INFO 8180 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-05-14T14:04:51.346+05:30  INFO 8180 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-14T14:04:52.206+05:30  INFO 8180 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-14T14:04:52.300+05:30  INFO 8180 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-14T14:04:54.720+05:30  INFO 8180 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@56da8847
+2026-05-14T14:04:54.724+05:30  INFO 8180 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-14T14:04:54.915+05:30  WARN 8180 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-14T14:04:59.712+05:30  INFO 8180 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-14T14:05:09.297+05:30  INFO 8180 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-14T14:05:11.256+05:30  INFO 8180 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-14T14:05:17.468+05:30  INFO 8180 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 5 endpoint(s) beneath base path '/actuator'
+2026-05-14T14:05:17.692+05:30  INFO 8180 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@5028cec0, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3a8c7347, org.springframework.security.web.context.SecurityContextHolderFilter@456c528c, org.springframework.security.web.header.HeaderWriterFilter@4d2eb4c6, org.springframework.web.filter.CorsFilter@4cf08d08, org.springframework.security.web.authentication.logout.LogoutFilter@484e9fee, com.citywatch.security.JwtAuthFilter@3e7935f1, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5308b244, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@2dda3edf, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@5739e15e, org.springframework.security.web.session.SessionManagementFilter@7e389cd6, org.springframework.security.web.access.ExceptionTranslationFilter@55002de6, org.springframework.security.web.access.intercept.AuthorizationFilter@45188301]
+2026-05-14T14:05:19.281+05:30  INFO 8180 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path ''
+2026-05-14T14:05:19.288+05:30  INFO 8180 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-05-14T14:05:19.290+05:30  INFO 8180 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@4e365c33]]
+2026-05-14T14:05:19.291+05:30  INFO 8180 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-05-14T14:05:19.346+05:30  INFO 8180 --- [           main] com.citywatch.CityWatchApplication       : Started CityWatchApplication in 37.971 seconds (process running for 38.578)
+2026-05-14T14:05:20.240+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : DataSeeder: Starting data synchronization...
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_user_c_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_user_m_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_user_a_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_complaint_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_vote_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_comment_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_proof_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_escalation_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_notification_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_audit_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_application_seq START 1 INCREMENT 1
+Hibernate: 
+    CREATE SEQUENCE IF NOT EXISTS cw_spam_seq START 1 INCREMENT 1
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        areas 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        categories 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        categories 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        categories 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        categories 
+    WHERE
+        name = ?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        categories 
+    WHERE
+        name = ?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.boundary_lat_max,
+        a1_0.boundary_lat_min,
+        a1_0.boundary_lng_max,
+        a1_0.boundary_lng_min,
+        a1_0.center_lat,
+        a1_0.center_lng,
+        a1_0.city,
+        a1_0.created_at,
+        a1_0.deleted,
+        a1_0.name 
+    from
+        areas a1_0 
+    where
+        (
+            a1_0.deleted = false
+        ) 
+        and a1_0.name=?
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.boundary_lat_max,
+        a1_0.boundary_lat_min,
+        a1_0.boundary_lng_max,
+        a1_0.boundary_lng_min,
+        a1_0.center_lat,
+        a1_0.center_lng,
+        a1_0.city,
+        a1_0.created_at,
+        a1_0.deleted,
+        a1_0.name 
+    from
+        areas a1_0 
+    where
+        (
+            a1_0.deleted = false
+        ) 
+        and a1_0.name=?
+Hibernate: 
+    update
+        users 
+    set
+        area_id=?,
+        city=?,
+        email=?,
+        password_hash=?,
+        phone=?,
+        role=?,
+        rto_code=?,
+        state_code=?,
+        status=?,
+        strike_count=?,
+        trust_level=?,
+        updated_at=?,
+        username=? 
+    where
+        id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    update
+        users 
+    set
+        area_id=?,
+        city=?,
+        email=?,
+        password_hash=?,
+        phone=?,
+        role=?,
+        rto_code=?,
+        state_code=?,
+        status=?,
+        strike_count=?,
+        trust_level=?,
+        updated_at=?,
+        username=? 
+    where
+        id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    update
+        users 
+    set
+        area_id=?,
+        city=?,
+        email=?,
+        password_hash=?,
+        phone=?,
+        role=?,
+        rto_code=?,
+        state_code=?,
+        status=?,
+        strike_count=?,
+        trust_level=?,
+        updated_at=?,
+        username=? 
+    where
+        id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.role=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?
+2026-05-14T14:05:25.749+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : DataSeeder: Found 6 existing citizens.
+Hibernate: 
+    select
+        count(*) 
+    from
+        complaints c1_0 
+    where
+        (
+            c1_0.deleted = false
+        )
+2026-05-14T14:05:25.880+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : DataSeeder: Found 13 existing complaints. Syncing all...
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.boundary_lat_max,
+        a1_0.boundary_lat_min,
+        a1_0.boundary_lng_max,
+        a1_0.boundary_lng_min,
+        a1_0.center_lat,
+        a1_0.center_lng,
+        a1_0.city,
+        a1_0.created_at,
+        a1_0.deleted,
+        a1_0.name 
+    from
+        areas a1_0 
+    where
+        (
+            a1_0.deleted = false
+        ) 
+        and a1_0.name=?
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.boundary_lat_max,
+        a1_0.boundary_lat_min,
+        a1_0.boundary_lng_max,
+        a1_0.boundary_lng_min,
+        a1_0.center_lat,
+        a1_0.center_lng,
+        a1_0.city,
+        a1_0.created_at,
+        a1_0.deleted,
+        a1_0.name 
+    from
+        areas a1_0 
+    where
+        (
+            a1_0.deleted = false
+        ) 
+        and a1_0.name=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.default_sla_hours,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.name 
+    from
+        categories c1_0 
+    where
+        (
+            c1_0.deleted = false
+        ) 
+        and c1_0.name=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.default_sla_hours,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.name 
+    from
+        categories c1_0 
+    where
+        (
+            c1_0.deleted = false
+        ) 
+        and c1_0.name=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.default_sla_hours,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.name 
+    from
+        categories c1_0 
+    where
+        (
+            c1_0.deleted = false
+        ) 
+        and c1_0.name=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.default_sla_hours,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.name 
+    from
+        categories c1_0 
+    where
+        (
+            c1_0.deleted = false
+        ) 
+        and c1_0.name=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.default_sla_hours,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.name 
+    from
+        categories c1_0 
+    where
+        (
+            c1_0.deleted = false
+        ) 
+        and c1_0.name=?
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+Hibernate: 
+    SELECT
+        count(*) 
+    FROM
+        complaints 
+    WHERE
+        id = ?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.area_id,
+        c1_0.assigned_coordinator_id,
+        c1_0.category_id,
+        c2_0.id,
+        c2_0.created_at,
+        c2_0.default_sla_hours,
+        c2_0.deleted,
+        c2_0.description,
+        c2_0.name,
+        c1_0.citizen_id,
+        c1_0.closed_at,
+        c1_0.created_at,
+        c1_0.deleted,
+        c1_0.description,
+        c1_0.escalation_level,
+        c1_0.intensity_score,
+        c1_0.latitude,
+        c1_0.longitude,
+        c1_0.priority,
+        c1_0.reopen_count,
+        c1_0.sla_deadline,
+        c1_0.status,
+        c1_0.title,
+        c1_0.updated_at,
+        uci1_0.complaint_id,
+        uci1_0.citizen_id 
+    from
+        complaints c1_0 
+    join
+        categories c2_0 
+            on c2_0.id=c1_0.category_id 
+            and (c2_0.deleted = false) 
+    left join
+        complaint_upvotes uci1_0 
+            on c1_0.id=uci1_0.complaint_id 
+    where
+        c1_0.id=? 
+        and (
+            c1_0.deleted = false
+        )
+Hibernate: 
+    select
+        iu1_0.complaint_id,
+        iu1_0.image_url 
+    from
+        complaint_images iu1_0 
+    where
+        iu1_0.complaint_id=?
+Hibernate: 
+    select
+        count(*) 
+    from
+        comments c1_0
+2026-05-14T14:06:03.799+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : DataSeeder: 12 sample complaints synchronized.
+2026-05-14T14:06:03.800+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : DataSeeder: Synchronization completed successfully.
+2026-05-14T14:06:03.800+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : ------------------------------------------------------
+2026-05-14T14:06:03.800+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          :   CityWatch — Startup Check Complete
+2026-05-14T14:06:03.800+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          :   Demo password for ALL accounts: Admin@123
+2026-05-14T14:06:03.802+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          :   Admin:       admin@citywatch.in
+2026-05-14T14:06:03.802+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          :   Coordinator: ravi@citywatch.in
+2026-05-14T14:06:03.803+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          :   Coordinator: sunita@citywatch.in
+2026-05-14T14:06:03.803+05:30  INFO 8180 --- [           main] com.citywatch.config.DataSeeder          : ------------------------------------------------------
+Hibernate: 
+    update
+        complaints 
+    set
+        area_id=?,
+        assigned_coordinator_id=?,
+        category_id=?,
+        citizen_id=?,
+        closed_at=?,
+        deleted=?,
+        description=?,
+        escalation_level=?,
+        intensity_score=?,
+        latitude=?,
+        longitude=?,
+        priority=?,
+        reopen_count=?,
+        sla_deadline=?,
+        status=?,
+        title=?,
+        updated_at=? 
+    where
+        id=?
+Hibernate: 
+    delete 
+    from
+        complaint_images 
+    where
+        complaint_id=?
+Hibernate: 
+    insert 
+    into
+        complaint_images
+        (complaint_id, image_url) 
+    values
+        (?, ?)
+2026-05-14T14:06:18.828+05:30  INFO 8180 --- [nio-8082-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-14T14:06:18.828+05:30  INFO 8180 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-14T14:06:18.832+05:30  INFO 8180 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 4 ms
+2026-05-14T14:06:19.062+05:30  INFO 8180 --- [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 2, active threads = 1, queued tasks = 1, completed tasks = 0]
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.area_id,
+        u1_0.city,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.rto_code,
+        u1_0.state_code,
+        u1_0.status,
+        u1_0.strike_count,
+        u1_0.trust_level,
+        u1_0.updated_at,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        us1_0.id,
+        us1_0.email_notifications,
+        us1_0.sms_notifications,
+        us1_0.theme,
+        us1_0.user_id 
+    from
+        user_settings us1_0 
+    where
+        us1_0.user_id=?

@@ -46,6 +46,7 @@ function DataFetcher({ children }: { children: ReactNode }) {
       if (currentUser) {
         refreshNotifications();
         if (currentUser.role === "admin") {
+          refreshUsers();         // ← also keep user list in sync every 15s
           refreshApplications();
           refreshSpamReports();
         }

@@ -20,7 +20,7 @@ target/
 
 # Custom Downloads
 maven.zip
-apache-maven-*/
+# apache-maven-*/ (Unignored to support portable setup)
 compile.log
 
 # IDE
