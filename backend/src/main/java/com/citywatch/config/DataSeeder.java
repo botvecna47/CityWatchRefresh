@@ -176,6 +176,7 @@ public class DataSeeder implements CommandLineRunner {
         // ── Coordinators ─────────────────────────────────────────────────────
         Area shivaji = areaRepository.findByName("Shivajinagar").orElse(null);
         Area cidco   = areaRepository.findByName("CIDCO Colony").orElse(null);
+        Area vazir   = areaRepository.findByName("Vazirabad").orElse(null);
 
         userRepository.findByEmail("ravi@citywatch.in").ifPresentOrElse(
             u -> { u.setPassword(hash); userRepository.save(u); },
@@ -191,6 +192,14 @@ public class DataSeeder implements CommandLineRunner {
                 .id("MH16M0000002").username("sunita_d")
                 .email("sunita@citywatch.in").password(hash)
                 .role(Role.COORDINATOR).area(cidco).city("Nanded").stateCode("MH").rtoCode("16")
+                .build())
+        );
+        userRepository.findByEmail("anil@citywatch.in").ifPresentOrElse(
+            u -> { u.setPassword(hash); userRepository.save(u); },
+            () -> userRepository.save(User.builder()
+                .id("MH16M0000003").username("anil_k")
+                .email("anil@citywatch.in").password(hash)
+                .role(Role.COORDINATOR).area(vazir).city("Nanded").stateCode("MH").rtoCode("16")
                 .build())
         );
     }
@@ -298,6 +307,16 @@ public class DataSeeder implements CommandLineRunner {
             19.1565, 77.3135, ComplaintStatus.IN_PROGRESS, ravi, Priority.CRITICAL,
             new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Pothole3.webp"))
         );
+        
+        // --- ID 14: Streetlight Issue ---
+        Area cidcoArea = areaRepository.findByName("CIDCO Colony").orElse(null);
+        seedOrUpdate(
+            "CMP-100426-000014", citizen2, cidcoArea, street,
+            "Multiple streetlights not working",
+            "The entire street is completely dark because the consecutive streetlights are broken. It feels very unsafe.",
+            19.1255, 77.3255, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
+            new ArrayList<>(List.of("http://localhost:5173/uploads/StreetLightProblem1.jpg", "http://localhost:5173/uploads/StreetLightProblem2.jpg"))
+        );
 
         // --- ID 8: Pothole 4 ---
         seedOrUpdate(
@@ -358,6 +377,18 @@ public class DataSeeder implements CommandLineRunner {
     private void seedOrUpdate(String id, User citizen, Area area, com.citywatch.entity.Category category, String title, String desc,
                                double lat, double lng, ComplaintStatus status, User coordinator, Priority priority,
                                List<String> imageUrls) {
+        
+        // Auto-assign based on area
+        User autoCoordinator = userRepository.findByRole(Role.COORDINATOR).stream()
+                .filter(u -> u.getArea() != null && u.getArea().getId().equals(area.getId()))
+                .findFirst().orElse(null);
+                
+        // If status was PENDING_REVIEW, bump it to ASSIGNED since it now has a coordinator
+        ComplaintStatus finalStatus = (status == ComplaintStatus.PENDING_REVIEW && autoCoordinator != null) 
+            ? ComplaintStatus.ASSIGNED : status;
+
+        User finalCoordinator = (coordinator != null) ? coordinator : autoCoordinator;
+
         Number count = (Number) em.createNativeQuery("SELECT count(*) FROM complaints WHERE id = :id")
                 .setParameter("id", id)
                 .getSingleResult();
@@ -370,9 +401,9 @@ public class DataSeeder implements CommandLineRunner {
                 c.setTitle(title);
                 c.setDescription(desc);
                 c.setPriority(priority);
-                c.setStatus(status);
+                c.setStatus(finalStatus);
                 c.setImageUrls(imageUrls);
-                c.setAssignedCoordinator(coordinator);
+                c.setAssignedCoordinator(finalCoordinator);
                 c.setIntensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5);
                 complaintRepository.save(c);
             });
@@ -382,9 +413,9 @@ public class DataSeeder implements CommandLineRunner {
                 .id(id).citizen(citizen).area(area)
                 .category(category).title(title).description(desc)
                 .latitude(lat).longitude(lng)
-                .status(status).intensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5)
+                .status(finalStatus).intensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5)
                 .priority(priority)
-                .assignedCoordinator(coordinator)
+                .assignedCoordinator(finalCoordinator)
                 .imageUrls(imageUrls)
                 .slaDeadline(LocalDateTime.now().plusDays(5))
                 .build());

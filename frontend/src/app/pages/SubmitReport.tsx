@@ -120,19 +120,47 @@ export function SubmitReport() {
     setIsDetecting(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocationLatLong([pos.coords.latitude, pos.coords.longitude]);
-          setLocation(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setLocationLatLong([lat, lng]);
+          
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            if (data && data.display_name) {
+              const addressParts = [];
+              if (data.address.suburb || data.address.neighbourhood) addressParts.push(data.address.suburb || data.address.neighbourhood);
+              if (data.address.city || data.address.town) addressParts.push(data.address.city || data.address.town);
+              
+              const detectedAddress = addressParts.length > 0 ? addressParts.join(', ') : data.display_name.split(',').slice(0,2).join(', ');
+              setLocation(detectedAddress);
+
+              // Dynamically set Area if it matches
+              const matchedArea = displayAreas.find(a => 
+                data.display_name.toLowerCase().includes(a.name.toLowerCase()) || 
+                detectedAddress.toLowerCase().includes(a.name.toLowerCase())
+              );
+              if (matchedArea) {
+                setArea(matchedArea.name);
+              }
+            } else {
+              setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            }
+          } catch (e) {
+            console.error("Reverse geocoding failed", e);
+            setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+          }
           setIsDetecting(false);
         },
-        () => {
-          setLocation("Shivajinagar, Nanded");
-          setLocationLatLong([19.155, 77.307]);
+        (error) => {
+          console.error("Geolocation error:", error);
+          setLocation("Location access denied");
           setIsDetecting(false);
         }
       );
     } else {
-      setLocation("Shivajinagar, Nanded");
+      setLocation("Geolocation unsupported");
       setIsDetecting(false);
     }
   };

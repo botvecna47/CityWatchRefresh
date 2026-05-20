@@ -138,4 +138,14 @@ public class ComplaintController {
             @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(complaintService.assignCoordinatorManually(principal.getUser(), id, body.get("coordinatorId")));
     }
+    // ── Admin soft delete ───────────────────────────────────────────────────
+    @PostMapping("/{id}/delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> softDelete(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        complaintService.softDelete(principal.getUser(), id, body.get("messageForCitizen"), body.get("reason"));
+        return ResponseEntity.ok().build();
+    }
 }

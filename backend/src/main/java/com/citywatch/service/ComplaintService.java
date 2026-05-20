@@ -462,12 +462,34 @@ public class ComplaintService {
         complaintRepository.save(complaint);
     }
 
+    @Transactional
+    public void softDelete(User admin, String id, String messageForCitizen, String reason) {
+        if (admin.getRole() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can delete complaints.");
+        }
+        
+        Complaint complaint = findOrThrow(id);
+        
+        complaint.setDeleted(true);
+        complaintRepository.save(complaint);
+        
+        // Notify citizen
+        notificationService.create(
+            complaint.getCitizen(),
+            "Report Removed",
+            messageForCitizen,
+            NotificationType.SYSTEM,
+            null
+        );
+        
+        // Log auditing action
+        auditService.logAction(admin, "COMPLAINT_DELETED", "COMPLAINT", id, complaint.getStatus().name(), "DELETED: " + reason);
+    }
+
     private Complaint findOrThrow(String id) {
         return complaintRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
     }
-
-
 
     private void validateTransition(ComplaintStatus current, ComplaintStatus next) {
         // Permit coordinator to move any "pending/assigned" state to IN_PROGRESS

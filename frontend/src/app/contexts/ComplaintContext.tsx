@@ -19,6 +19,7 @@ interface ComplaintContextType {
   submitProof: (id: string, imageUrl: string, lat: number, lng: number) => Promise<void>;
   handleVote: (id: string, currentUserId?: string) => Promise<void>;
   deleteReport: (id: string, spamReportId?: string, resolveSpamReport?: (id: string) => void) => void;
+  softDeleteReport: (id: string, messageForCitizen: string, reason: string) => Promise<void>;
   addComment: (reportId: string, comment: Comment) => void;
   fetchComments: (reportId: string) => Promise<void>;
   sendMessage: (reportId: string, content: string) => Promise<void>;
@@ -138,6 +139,18 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
     catch { refreshReports(); toast.error("Vote failed."); }
   };
 
+  const softDeleteReport = async (id: string, messageForCitizen: string, reason: string) => {
+    // Optimistic UI update
+    setReports(prev => prev.filter(r => r.id !== id));
+    try {
+      await complaintService.softDelete(id, messageForCitizen, reason);
+      toast.success("Report deleted and citizen notified.");
+    } catch {
+      toast.error("Failed to delete report.");
+      refreshReports(); // rollback
+    }
+  };
+
   const deleteReport = async (id: string, spamReportId?: string, resolveSpamReport?: (id: string) => void) => {
     try { await complaintService.delete(id); setReports(prev => prev.filter(r => r.id !== id)); if (spamReportId && resolveSpamReport) resolveSpamReport(spamReportId); toast.success("Report deleted."); }
     catch { toast.error("Failed to delete report."); }
@@ -190,7 +203,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, handleVote, deleteReport, addComment, fetchComments, sendMessage, fetchMessages }}>
+    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, handleVote, deleteReport, softDeleteReport, addComment, fetchComments, sendMessage, fetchMessages }}>
       {children}
     </ComplaintContext.Provider>
   );

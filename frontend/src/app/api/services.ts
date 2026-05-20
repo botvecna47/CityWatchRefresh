@@ -21,7 +21,8 @@ export const complaintService = {
   updateStatus: (id: string, status: string) => apiClient.patch(`/api/complaints/${id}/status`, { status }),
   submitProof: (id: string, data: any) => apiClient.post(`/api/complaints/${id}/proof`, data),
   upvote: (id: string) => apiClient.post(`/api/complaints/${id}/upvote`),
-  delete: (id: string) => apiClient.delete(`/api/admin/complaints/${id}`),
+  softDelete: (id: string, messageForCitizen: string, reason: string) => 
+    apiClient.post(`/api/complaints/${id}/delete`, { messageForCitizen, reason }),
   addComment: (id: string, content: string) => apiClient.post(`/api/complaints/${id}/comments`, { content }),
   getAssigned: (page = 0, size = 10) => apiClient.get(`/api/complaints/assigned?page=${page}&size=${size}`),
   assignCoordinator: (reportId: string, coordinatorId: string) => apiClient.patch(`/api/complaints/${reportId}/assign`, { coordinatorId }),

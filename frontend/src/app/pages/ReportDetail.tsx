@@ -14,11 +14,12 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ReportComments } from "../components/report/ReportComments";
 import { SpamReportModal } from "../components/report/SpamReportModal";
+import { DeleteReportModal } from "../components/report/DeleteReportModal";
 
 export function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer, users, assignCoordinatorToReport, fetchComments } = useAppContext();
+  const { reports, currentUser, updateReport, addComment, submitSpamReport, setReports, loading, handleVote: voteOnServer, users, assignCoordinatorToReport, fetchComments, softDeleteReport } = useAppContext();
   
   const isCitizen = currentUser?.role === 'citizen';
   const isCoordinator = currentUser?.role === 'coordinator';
@@ -31,6 +32,7 @@ export function ReportDetail() {
   const [selectedCoordinatorId, setSelectedCoordinatorId] = useState("");
   const [commentText, setCommentText] = useState("");
   const [showSpamModal, setShowSpamModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [spamReason, setSpamReason] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -108,17 +110,17 @@ export function ReportDetail() {
   };
 
   const handleDelete = () => {
-    toast("Are you sure you want to completely remove this report?", {
-      action: {
-        label: "Delete",
-        onClick: () => {
-          setReports(prev => prev.filter(r => r.id !== report.id));
-          toast.success("Report deleted.");
-          navigate("/");
-        }
-      },
-      cancel: { label: "Cancel", onClick: () => {} }
-    });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteReport = async (messageForCitizen: string, reason: string) => {
+    // @ts-ignore - softDeleteReport is defined in ComplaintContext
+    if (softDeleteReport) {
+      // @ts-ignore
+      await softDeleteReport(report.id, messageForCitizen, reason);
+      setShowDeleteModal(false);
+      navigate("/");
+    }
   };
 
   return (
@@ -161,15 +163,6 @@ export function ReportDetail() {
                   <div className="flex items-center gap-3 flex-wrap">
                     {isAdmin && (
                       <div className="flex items-center gap-2">
-                        {report.status !== 'Completed' && report.status !== 'Closed' && (
-                          <>
-                            <select className="h-8 rounded-sm border border-input bg-background px-2 text-xs font-serif" value={selectedCoordinatorId} onChange={(e) => setSelectedCoordinatorId(e.target.value)}>
-                              <option value="" disabled>Assign Coordinator...</option>
-                              {coordinators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                            <Button size="sm" onClick={() => assignCoordinatorToReport(report.id, selectedCoordinatorId)} disabled={!selectedCoordinatorId} className="h-8 bg-[#1A4331] text-white hover:bg-[#112d21]">Assign</Button>
-                          </>
-                        )}
                         <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 border-red-200 hover:bg-red-50 h-8"><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
                       </div>
                     )}
@@ -249,13 +242,21 @@ export function ReportDetail() {
           </AnimatePresence>
 
           <AnimatePresence>
-            <SpamReportModal 
-              showSpamModal={showSpamModal} 
-              setShowSpamModal={setShowSpamModal} 
-              spamReason={spamReason} 
-              setSpamReason={setSpamReason} 
-              confirmReportSpam={confirmReportSpam} 
-            />
+            {showSpamModal && (
+              <SpamReportModal 
+                showSpamModal={showSpamModal} 
+                setShowSpamModal={setShowSpamModal} 
+                spamReason={spamReason} 
+                setSpamReason={setSpamReason} 
+                confirmReportSpam={confirmReportSpam} 
+              />
+            )}
+            {showDeleteModal && (
+              <DeleteReportModal 
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDeleteReport}
+              />
+            )}
           </AnimatePresence>
         </>
       )}
