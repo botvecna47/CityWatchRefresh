@@ -78,9 +78,10 @@ public class ComplaintController {
     // ── Get assigned complaints (Coordinator) ────────────────────────────────
     @GetMapping("/assigned")
     @PreAuthorize("hasRole('COORDINATOR')")
-    public ResponseEntity<List<ComplaintResponse>> assigned(
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(complaintService.getAssigned(principal.getUser()));
+    public ResponseEntity<org.springframework.data.domain.Page<ComplaintResponse>> assigned(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(complaintService.getAssigned(principal.getUser(), pageable));
     }
 
     // ── Update status (Coordinator) ─────────────────────────────────────────

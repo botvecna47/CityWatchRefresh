@@ -23,16 +23,19 @@ export const complaintService = {
   upvote: (id: string) => apiClient.post(`/api/complaints/${id}/upvote`),
   delete: (id: string) => apiClient.delete(`/api/admin/complaints/${id}`),
   addComment: (id: string, content: string) => apiClient.post(`/api/complaints/${id}/comments`, { content }),
+  getAssigned: (page = 0, size = 10) => apiClient.get(`/api/complaints/assigned?page=${page}&size=${size}`),
   assignCoordinator: (reportId: string, coordinatorId: string) => apiClient.patch(`/api/complaints/${reportId}/assign`, { coordinatorId }),
   getMessages: (id: string) => apiClient.get(`/api/complaints/${id}/messages`),
   sendMessage: (id: string, content: string) => apiClient.post(`/api/complaints/${id}/messages`, { content })
 };
 
 export const adminService = {
-  getUsers: () => apiClient.get("/api/admin/users"),
+  getUsers: (page = 0, size = 10) => apiClient.get(`/api/admin/users?page=${page}&size=${size}`),
+  getComplaints: (page = 0, size = 10) => apiClient.get(`/api/admin/complaints?page=${page}&size=${size}`),
   banUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/ban`),
   unbanUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/unban`),
-  broadcast: (title: string, message: string) => apiClient.post("/api/admin/broadcast", { title, message })
+  broadcast: (title: string, message: string) => apiClient.post("/api/admin/broadcast", { title, message }),
+  seedNotifications: () => apiClient.post("/api/admin/seed-notifications")
 };
 
 export const applicationService = {

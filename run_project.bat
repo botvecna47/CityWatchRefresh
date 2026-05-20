@@ -72,7 +72,7 @@ if not exist "%MVN%" (
 
 :: Run the Maven build in the backend directory, piping output so we see errors
 cd /d "%~dp0backend"
-call "%MVN%" package -DskipTests -q
+call "%MVN%" clean package -DskipTests -q
 if %ERRORLEVEL% neq 0 (
     echo.
     echo  [ERROR] Maven build FAILED. Run the following to see detailed errors:

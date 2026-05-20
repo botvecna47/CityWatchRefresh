@@ -242,7 +242,7 @@ public class DataSeeder implements CommandLineRunner {
             "Deep pothole on main market road",
             "There's a massive pothole in the middle of Vazirabad market causing severe traffic jams.",
             19.1535, 77.3128, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/Potholes1.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes1.jpg"))
         );
 
         // --- ID 2: Garbage 1 ---
@@ -251,7 +251,7 @@ public class DataSeeder implements CommandLineRunner {
             "Garbage pile near square",
             "Garbage not cleared for 6 days. Foul smell affecting everyone.",
             19.1542, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/Garbage1.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Garbage1.jpg"))
         );
 
         // --- ID 3: Drainage 1 ---
@@ -260,7 +260,7 @@ public class DataSeeder implements CommandLineRunner {
             "Water pipeline burst",
             "Massive water leak near the rear residential lane. Clean water is being wasted.",
             19.1528, 77.3145, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("/uploads/Waterleak1.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Waterleak1.jpg"))
         );
 
         // --- ID 4: Garbage 2 ---
@@ -269,7 +269,7 @@ public class DataSeeder implements CommandLineRunner {
             "Dumpyard overflowing onto road",
             "The community bin near the post office is overflowing onto the street.",
             19.1550, 77.3115, ComplaintStatus.ASSIGNED, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/garbage2.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/garbage2.jpg"))
         );
 
         // --- ID 5: Pothole 2 ---
@@ -278,7 +278,7 @@ public class DataSeeder implements CommandLineRunner {
             "Broken road near school",
             "Dangerous potholes right outside the primary school entrance.",
             19.1555, 77.3075, ComplaintStatus.PENDING_REVIEW, null, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/Potholes2.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes2.jpg"))
         );
 
         // --- ID 6: Garbage 3 ---
@@ -287,7 +287,7 @@ public class DataSeeder implements CommandLineRunner {
             "Plastic waste accumulation",
             "Empty plot has become a dumping ground for plastic waste.",
             19.1560, 77.3080, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("/uploads/Garbage3.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Garbage3.jpg"))
         );
 
         // --- ID 7: Pothole 3 ---
@@ -296,7 +296,7 @@ public class DataSeeder implements CommandLineRunner {
             "Road caved in",
             "A section of the road has completely caved in near the junction.",
             19.1565, 77.3135, ComplaintStatus.IN_PROGRESS, ravi, Priority.CRITICAL,
-            new ArrayList<>(List.of("/uploads/Pothole3.webp"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Pothole3.webp"))
         );
 
         // --- ID 8: Pothole 4 ---
@@ -305,7 +305,7 @@ public class DataSeeder implements CommandLineRunner {
             "Continuous stretch of bad roads",
             "The entire street is filled with small and large potholes.",
             19.1570, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.MEDIUM,
-            new ArrayList<>(List.of("/uploads/Pothole4.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Pothole4.jpg"))
         );
 
         // --- ID 9: Pothole 5 ---
@@ -314,7 +314,7 @@ public class DataSeeder implements CommandLineRunner {
             "Monsoon road damage",
             "Recent rains washed away the top layer. Needs immediate tarring.",
             19.1580, 77.3090, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW,
-            new ArrayList<>(List.of("/uploads/Potholes.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes.jpg"))
         );
 
         // --- ID 10: Drainage 2 ---
@@ -323,7 +323,7 @@ public class DataSeeder implements CommandLineRunner {
             "Sewer line blocked",
             "Blocked sewer line causing dirty water to back up onto the pavement.",
             19.1590, 77.3150, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/waterleak3.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/waterleak3.jpg"))
         );
 
         // --- ID 11: Garbage 4 ---
@@ -332,7 +332,7 @@ public class DataSeeder implements CommandLineRunner {
             "Construction debris dumped",
             "Someone dumped construction debris illegally on the roadside.",
             19.1595, 77.3100, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("/uploads/garbabe4"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/garbabe4.jpg"))
         );
 
         // --- ID 12: Drainage 3 ---
@@ -341,7 +341,7 @@ public class DataSeeder implements CommandLineRunner {
             "Continuous water leakage",
             "Underground pipe leak forming a puddle that breeds mosquitoes.",
             19.1600, 77.3160, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("/uploads/Waterleak2.jpg"))
+            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Waterleak2.jpg"))
         );
 
         Complaint c1 = complaintRepository.findById("CMP-100426-000001").orElse(null);

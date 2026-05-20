@@ -44,6 +44,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, String> {
 
     org.springframework.data.domain.Page<Complaint> findByAreaOrderByCreatedAtDesc(Area area, org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<Complaint> findByAssignedCoordinatorOrderByCreatedAtDesc(User coordinator, org.springframework.data.domain.Pageable pageable);
+
     @Query("SELECT c FROM Complaint c WHERE c.latitude >= :minLat AND c.latitude <= :maxLat AND c.longitude >= :minLng AND c.longitude <= :maxLng AND c.status NOT IN ('REJECTED', 'CLOSED') ORDER BY c.createdAt DESC")
     List<Complaint> findInBoundingBox(@Param("minLat") Double minLat, @Param("maxLat") Double maxLat, @Param("minLng") Double minLng, @Param("maxLng") Double maxLng);
 }

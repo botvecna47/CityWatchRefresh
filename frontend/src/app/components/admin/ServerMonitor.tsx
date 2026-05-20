@@ -173,9 +173,9 @@ export function ServerMonitor() {
 
       {/* Overall Health */}
       {health && (
-        <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4" /> Overall Health
+        <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-3xl hover:shadow-md transition-shadow">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-5 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-emerald-500" /> Overall Health
           </h3>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
@@ -194,19 +194,19 @@ export function ServerMonitor() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 bg-white border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Cpu className="w-4 h-4 text-blue-500" />
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">CPU Usage</span>
+        <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-3xl hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-50">
+            <Cpu className="w-5 h-5 text-blue-500" />
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">CPU Usage</span>
           </div>
-          <p className="text-3xl font-bold text-[#1A4331]">{loading ? "..." : `${cpuUsage}%`}</p>
+          <p className="text-4xl font-bold text-[#1A4331] tracking-tight">{loading ? "..." : `${cpuUsage}%`}</p>
           {!loading && <GaugeBar value={cpuUsage} label="System CPU" color={cpuUsage > 80 ? "bg-red-500" : cpuUsage > 50 ? "bg-amber-400" : "bg-blue-500"} />}
         </Card>
 
-        <Card className="p-5 bg-white border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Database className="w-4 h-4 text-emerald-500" />
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Heap Memory</span>
+        <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-3xl hover:shadow-md transition-all">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-50">
+            <Database className="w-5 h-5 text-emerald-500" />
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Heap Memory</span>
           </div>
           <p className="text-3xl font-bold text-[#1A4331]">{loading ? "..." : fmt(heapUsed)}</p>
           {!loading && (

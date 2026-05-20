@@ -69,12 +69,8 @@ public class ComplaintService {
         complaint = complaintRepository.save(complaint);
         auditService.log(citizen, "COMPLAINT_SUBMITTED", complaint);
 
-        notificationService.notifyCoordinatorsInArea(
-                area,
-                "New complaint needs review",
-                "A new " + category.getName().toLowerCase() + " complaint was submitted in your area.",
-                complaint.getId()
-        );
+        autoAssignCoordinator(complaint);
+        complaintRepository.save(complaint);
 
         return toResponse(complaint);
     }
@@ -105,9 +101,9 @@ public class ComplaintService {
     }
 
     @Transactional(readOnly = true)
-    public List<ComplaintResponse> getAssigned(User coordinator) {
-        return complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(coordinator)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+    public org.springframework.data.domain.Page<ComplaintResponse> getAssigned(User coordinator, org.springframework.data.domain.Pageable pageable) {
+        return complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(coordinator, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -136,23 +132,123 @@ public class ComplaintService {
             complaint.setAssignedCoordinator(coordinator);
         }
 
-        if (newStatus == ComplaintStatus.CLOSED) {
+        if (newStatus == ComplaintStatus.CLOSED || newStatus == ComplaintStatus.COMPLETED) {
             complaint.setClosedAt(LocalDateTime.now());
         }
-
+        
         complaintRepository.save(complaint);
         auditService.logAction(coordinator, "STATUS_CHANGED", "COMPLAINT", id, old.name(), newStatus.name());
-
-        notificationService.create(
-                complaint.getCitizen(),
-                "Complaint status updated",
-                "Your complaint is now: " + newStatus.name().replace("_", " "),
-                NotificationType.COMPLAINT_UPDATE,
-                id
-        );
+        
+        if (newStatus == ComplaintStatus.CLOSED || newStatus == ComplaintStatus.COMPLETED) {
+            notificationService.create(
+                    complaint.getCitizen(),
+                    "Complaint Resolved",
+                    "Your complaint '" + complaint.getTitle() + "' has been resolved.",
+                    NotificationType.COMPLAINT_UPDATE,
+                    id
+            );
+            
+            // Notify assigned coordinator (if any)
+            if (complaint.getAssignedCoordinator() != null) {
+                notificationService.create(
+                        complaint.getAssignedCoordinator(),
+                        "Complaint Resolved",
+                        "Complaint '" + complaint.getTitle() + "' has been successfully resolved.",
+                        NotificationType.COMPLAINT_UPDATE,
+                        id
+                );
+            }
+            
+            // Notify admins
+            userRepository.findByRole(Role.ADMIN).forEach(admin -> 
+                notificationService.create(
+                        admin,
+                        "Complaint Resolved",
+                        "Complaint '" + complaint.getTitle() + "' has been resolved in area " + 
+                        (complaint.getArea() != null ? complaint.getArea().getName() : "Unknown"),
+                        NotificationType.SYSTEM,
+                        id
+                )
+            );
+        } else {
+            notificationService.create(
+                    complaint.getCitizen(),
+                    "Complaint status updated",
+                    "Your complaint is now: " + newStatus.name().replace("_", " "),
+                    NotificationType.COMPLAINT_UPDATE,
+                    id
+            );
+        }
 
         return toResponse(complaint);
     }
+
+    private void autoAssignCoordinator(Complaint complaint) {
+        if (complaint.getArea() == null) return;
+        
+        List<User> areaCoordinators = userRepository.findAll().stream()
+            .filter(u -> u.getRole() == Role.COORDINATOR 
+                      && u.getStatus() == UserStatus.ACTIVE 
+                      && u.getArea() != null 
+                      && u.getArea().getId().equals(complaint.getArea().getId()))
+            .collect(Collectors.toList());
+            
+        if (areaCoordinators.isEmpty()) {
+            notificationService.notifyCoordinatorsInArea(
+                complaint.getArea(), 
+                "New Report Needs Attention", 
+                "No coordinators available for auto-assignment.", 
+                complaint.getId()
+            );
+            return;
+        }
+        
+        User bestCoordinator = null;
+        int minCount = Integer.MAX_VALUE;
+        for (User u : areaCoordinators) {
+            int activeCount = (int) complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(u).stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.ASSIGNED)
+                .count();
+            if (activeCount < minCount) {
+                minCount = activeCount;
+                bestCoordinator = u;
+            }
+        }
+        
+        if (minCount >= 5 || bestCoordinator == null) {
+            notificationService.notifyCoordinatorsInArea(
+                complaint.getArea(), 
+                "New Task Available", 
+                "Coordinator queues are full! First to accept gets this report.", 
+                complaint.getId()
+            );
+        } else {
+            complaint.setAssignedCoordinator(bestCoordinator);
+            complaint.setStatus(ComplaintStatus.ASSIGNED);
+            complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
+            
+            notificationService.create(
+                bestCoordinator, 
+                "New Task Auto-Assigned", 
+                "You have been automatically assigned a new report in your area.", 
+                NotificationType.COMPLAINT_UPDATE, 
+                complaint.getId()
+            );
+        }
+    }
+
+    public ComplaintResponse toResponse(Complaint c) {
+        ComplaintResponse r = complaintMapper.toResponse(c);
+        if (r.getImageUrls() != null) {
+            r.setImageUrls(r.getImageUrls().stream().map(url -> 
+                url.startsWith("/images/") 
+                    ? "https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images" + url 
+                    : url
+            ).collect(Collectors.toList()));
+        }
+        return r;
+    }
+
 
     @Transactional
     public ComplaintResponse upvote(User citizen, String id) {
@@ -251,32 +347,63 @@ public class ComplaintService {
 
     @Transactional
     public void assignCoordinator(Complaint complaint) {
-        // Use area ID equality (not object reference) to avoid JPA proxy mismatch
         Long areaId = complaint.getArea() != null ? complaint.getArea().getId() : null;
-        List<User> coordinators = userRepository.findAll().stream()
+        if (areaId == null) return;
+
+        List<User> areaCoordinators = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.COORDINATOR
                         && u.getStatus() == UserStatus.ACTIVE
                         && u.getArea() != null
                         && u.getArea().getId().equals(areaId))
                 .collect(Collectors.toList());
 
-        if (coordinators.isEmpty()) return;
+        if (areaCoordinators.isEmpty()) return;
 
-        User assigned = coordinators.get(new Random().nextInt(coordinators.size()));
-        complaint.setAssignedCoordinator(assigned);
-        complaint.setStatus(ComplaintStatus.ASSIGNED);
+        // Find coordinator with minimum active complaints
+        User bestCoordinator = null;
+        int minWorkload = Integer.MAX_VALUE;
 
-        complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
+        for (User coordinator : areaCoordinators) {
+            int activeCount = (int) complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(coordinator).stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.ASSIGNED || c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.PENDING_REVIEW)
+                .count();
 
-        complaintRepository.save(complaint);
+            if (activeCount < minWorkload) {
+                minWorkload = activeCount;
+                bestCoordinator = coordinator;
+            }
+        }
 
-        notificationService.create(
-                assigned,
-                "Complaint assigned to you",
-                "A new complaint has been assigned to you in " + complaint.getArea().getName(),
-                NotificationType.COMPLAINT_UPDATE,
-                complaint.getId()
-        );
+        if (bestCoordinator != null && minWorkload < 5) {
+            // Auto-assign to best coordinator
+            complaint.setAssignedCoordinator(bestCoordinator);
+            complaint.setStatus(ComplaintStatus.ASSIGNED);
+            complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
+            complaintRepository.save(complaint);
+
+            notificationService.create(
+                    bestCoordinator,
+                    "New Auto-Assigned Task",
+                    "A new complaint has been automatically assigned to you in " + complaint.getArea().getName(),
+                    NotificationType.COMPLAINT_UPDATE,
+                    complaint.getId()
+            );
+        } else {
+            // Leave in manual acceptance queue, notify all area coordinators
+            complaint.setAssignedCoordinator(null);
+            complaint.setStatus(ComplaintStatus.PENDING_REVIEW); // Stays pending for manual pickup
+            complaintRepository.save(complaint);
+
+            for (User coordinator : areaCoordinators) {
+                notificationService.create(
+                        coordinator,
+                        "New Task Available in Area",
+                        "A new high-volume complaint in " + complaint.getArea().getName() + " is available for manual acceptance.",
+                        NotificationType.SYSTEM,
+                        complaint.getId()
+                );
+            }
+        }
     }
 
     @Transactional
@@ -333,10 +460,6 @@ public class ComplaintService {
 
         complaint.setPriority(priority);
         complaintRepository.save(complaint);
-    }
-
-    public ComplaintResponse toResponse(Complaint c) {
-        return complaintMapper.toResponse(c);
     }
 
     private Complaint findOrThrow(String id) {

@@ -41,11 +41,10 @@ public class AdminController {
 
     @GetMapping("/users")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<List<UserSummaryResponse>> getAllUsers() {
+    public ResponseEntity<org.springframework.data.domain.Page<UserSummaryResponse>> getAllUsers(org.springframework.data.domain.Pageable pageable) {
         return ResponseEntity.ok(
-                userRepository.findAll().stream()
+                userRepository.findAll(pageable)
                         .map(this::toUserSummary)
-                        .collect(Collectors.toList())
         );
     }
 
@@ -68,12 +67,8 @@ public class AdminController {
     }
 
     @GetMapping("/complaints")
-    public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
-        return ResponseEntity.ok(
-                complaintRepository.findAllByOrderByCreatedAtDesc().stream()
-                        .map(complaintService::toResponse)
-                        .collect(Collectors.toList())
-        );
+    public ResponseEntity<org.springframework.data.domain.Page<ComplaintResponse>> getAllComplaints(org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(complaintService.getAll(pageable));
     }
 
     @DeleteMapping("/complaints/{id}")
@@ -103,6 +98,20 @@ public class AdminController {
         );
         
         return ResponseEntity.ok(Map.of("message", "Broadcast sent to all users"));
+    }
+
+    @PostMapping("/seed-notifications")
+    public ResponseEntity<Map<String, String>> seedNotifications(@org.springframework.security.core.annotation.AuthenticationPrincipal com.citywatch.security.CustomUserDetails principal) {
+        for (int i = 1; i <= 10; i++) {
+            notificationService.create(
+                principal.getUser(),
+                "Mock Notification " + i,
+                "This is a simulated notification generated for testing purposes.",
+                com.citywatch.enums.NotificationType.SYSTEM,
+                null
+            );
+        }
+        return ResponseEntity.ok(Map.of("message", "10 mock notifications generated successfully"));
     }
 
     private UserSummaryResponse toUserSummary(User u) {

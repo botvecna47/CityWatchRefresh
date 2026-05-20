@@ -8,7 +8,16 @@ interface AdminContextType {
   usersLoading: boolean;
   applications: CoordinatorApplication[];
   spamReports: SpamReport[];
-  refreshUsers: () => void;
+  usersTotalPages: number;
+  usersPage: number;
+  setUsersPage: (page: number) => void;
+  adminReports: Report[];
+  adminReportsLoading: boolean;
+  adminReportsTotalPages: number;
+  adminReportsPage: number;
+  setAdminReportsPage: (page: number) => void;
+  refreshUsers: (page?: number) => void;
+  refreshAdminReports: (page?: number) => void;
   refreshApplications: () => void;
   refreshSpamReports: () => void;
   submitApplication: (app: Omit<CoordinatorApplication, "id" | "status" | "createdAt">) => void;
@@ -26,23 +35,70 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersPage, setUsersPage] = useState(0);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [adminReports, setAdminReports] = useState<Report[]>([]);
+  const [adminReportsLoading, setAdminReportsLoading] = useState(false);
+  const [adminReportsPage, setAdminReportsPage] = useState(0);
+  const [adminReportsTotalPages, setAdminReportsTotalPages] = useState(1);
   const [applications, setApplications] = useState<CoordinatorApplication[]>([]);
   const [spamReports, setSpamReports] = useState<SpamReport[]>([]);
 
-  const refreshUsers = () => {
+  const refreshUsers = (page = 0) => {
     setUsersLoading(true);
-    adminService.getUsers()
-      .then((data: any[]) => setUsers(data.map(u => ({
-        id: String(u.id), name: u.username || "Unknown", email: u.email, role: (u.role || "citizen").toLowerCase() as Role,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.username || u.email)}`,
-        status: (u.status || "ACTIVE").toUpperCase() === "ACTIVE" ? "active" : "banned" as "active" | "banned",
-        area: u.areaName || undefined, settings: { emailNotifications: true, smsNotifications: false, theme: "system" as const }
-      }))))
+    adminService.getUsers(page, 10)
+      .then((res: any) => {
+        const data = res.content || [];
+        setUsersTotalPages(res.totalPages || 1);
+        setUsers(data.map((u: any) => ({
+          id: String(u.id), name: u.username || "Unknown", email: u.email, role: (u.role || "citizen").toLowerCase() as Role,
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.username || u.email)}`,
+          status: (u.status || "ACTIVE").toUpperCase() === "ACTIVE" ? "active" : "banned" as "active" | "banned",
+          area: u.areaName || undefined, settings: { emailNotifications: true, smsNotifications: false, theme: "system" as const }
+        })));
+      })
       .catch((err) => {
         console.error("[AdminContext] refreshUsers failed:", err);
         toast.error("Failed to load users. Check backend connection.");
       })
       .finally(() => setUsersLoading(false));
+  };
+
+  const mapStatus = (s: string) => {
+    switch ((s || "").toUpperCase()) {
+      case "IN_PROGRESS": case "ASSIGNED": return "In Progress";
+      case "COMPLETED": case "CLOSED": return "Completed";
+      default: return "Reported";
+    }
+  };
+
+  const mapPriority = (p: string) => {
+    switch ((p || "").toUpperCase()) {
+      case "HIGH": return "High";
+      case "MEDIUM": return "Medium";
+      default: return "Low";
+    }
+  };
+
+  const refreshAdminReports = (page = 0) => {
+    setAdminReportsLoading(true);
+    adminService.getComplaints(page, 10)
+      .then((res: any) => {
+        setAdminReportsTotalPages(res.totalPages || 1);
+        let data = res.content || res;
+        if (!Array.isArray(data)) data = [];
+        setAdminReports(data.map((r: any) => ({
+          id: String(r.id), title: r.title || (r.category ? r.category.replace(/_/g, " ") : "Reported Issue"),
+          description: r.description || "", image: r.imageUrls?.length > 0 ? r.imageUrls[0] : "", additionalImages: r.imageUrls?.slice(1) || [],
+          locationText: r.locationText || (r.areaName ? `${r.areaName}, Nanded` : "Nanded"), lat: r.latitude || 19.155, lng: r.longitude || 77.307,
+          area: r.areaName, status: mapStatus(r.status), authorId: String(r.citizenId), authorName: r.citizenName || "Citizen",
+          authorAvatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(r.citizenName || "U")}`, upvotes: r.upvotes || 0,
+          downvotes: 0, upvotedCitizenIds: r.upvotedCitizenIds ? [...r.upvotedCitizenIds] : [], category: r.category, comments: [], messages: [],
+          createdAt: r.createdAt || new Date().toISOString(), urgency: mapPriority(r.priority), coordinatorId: r.coordinatorId ? String(r.coordinatorId) : undefined,
+        })));
+      })
+      .catch(console.error)
+      .finally(() => setAdminReportsLoading(false));
   };
 
   const refreshApplications = () => {
@@ -108,7 +164,11 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AdminContext.Provider value={{ users, usersLoading, applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser }}>
+    <AdminContext.Provider value={{ 
+      users, usersLoading, usersPage, usersTotalPages, setUsersPage,
+      adminReports, adminReportsLoading, adminReportsPage, adminReportsTotalPages, setAdminReportsPage, refreshAdminReports,
+      applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser 
+    }}>
       {children}
     </AdminContext.Provider>
   );
