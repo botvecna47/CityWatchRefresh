@@ -58,9 +58,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     const newSettings = { ...currentUser.settings, ...settings };
     setCurrentUser({ ...currentUser, settings: newSettings });
+    // Persist to localStorage for instant reads
     if (settings.emailNotifications !== undefined) localStorage.setItem("settings_emailNotifs", JSON.stringify(settings.emailNotifications));
     if (settings.smsNotifications !== undefined) localStorage.setItem("settings_smsNotifs", JSON.stringify(settings.smsNotifications));
     if (settings.theme !== undefined) localStorage.setItem("settings_theme", settings.theme);
+    // Persist to backend DB
+    authService.updateSettings({
+      emailNotifications: newSettings.emailNotifications,
+      smsNotifications: newSettings.smsNotifications,
+      theme: newSettings.theme,
+    }).catch(err => console.warn("[AuthContext] Failed to save settings to backend:", err));
   };
 
   // Stabilize the context value so that consumers don't re-render

@@ -1,7 +1,8 @@
 import { useState } from "react";
+import React from "react";
 import { useAppContext } from "../store";
 import { cn } from "../components/ui";
-import { ChevronRight } from "lucide-react";
+import { LogOut, User2, Lock, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 import { AccountTab } from "../components/settings/AccountTab";
@@ -11,7 +12,7 @@ import { PrivacyTab } from "../components/settings/PrivacyTab";
 type Tab = "account" | "security" | "privacy";
 
 export function SettingsPage() {
-  const { currentUser, updateUserSettings } = useAppContext();
+  const { currentUser, updateUserSettings, setCurrentUser } = useAppContext();
 
   const [emailNotif, setEmailNotif] = useState(currentUser?.settings?.emailNotifications ?? true);
   const [smsNotif, setSmsNotif] = useState(currentUser?.settings?.smsNotifications ?? false);
@@ -24,7 +25,7 @@ export function SettingsPage() {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
-  const handleSaveAccount = () => {
+  const handleSaveAccount = async () => {
     updateUserSettings({ emailNotifications: emailNotif, smsNotifications: smsNotif, theme: theme as any });
     toast.success("Preferences saved.");
   };
@@ -39,46 +40,62 @@ export function SettingsPage() {
 
   if (!currentUser) return null;
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "account",  label: "Account" },
-    { id: "security", label: "Security" },
-    { id: "privacy",  label: "Privacy & Data" },
+  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: "account",  label: "Account",       icon: User2 },
+    { id: "security", label: "Security",       icon: Lock },
+    { id: "privacy",  label: "Privacy & Data", icon: Shield },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
+    <div className="max-w-5xl mx-auto py-8 px-4 pb-16">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "Playfair Display, serif" }}>
+        <h1 className="text-3xl font-bold text-[#1A4331]" style={{ fontFamily: "Playfair Display, serif" }}>
           Settings
         </h1>
         <p className="text-sm text-gray-500 mt-1">Manage your account preferences and security.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Sidebar */}
-        <nav className="md:col-span-1 space-y-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "w-full text-left px-3 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center justify-between group",
-                activeTab === tab.id
-                  ? "bg-[#1A4331]/8 text-[#1A4331] border-l-[3px] border-[#2E7D32] pl-[calc(0.75rem-3px)]"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              )}
-            >
-              {tab.label}
-              <ChevronRight className={cn("w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity", activeTab === tab.id && "opacity-60")} />
-            </button>
-          ))}
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Sidebar — nav + logout in one column */}
+        <nav className="w-full md:w-56 flex-shrink-0 bg-white border border-gray-100 rounded-2xl shadow-sm p-2 flex flex-col gap-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-3 group",
+                  isActive
+                    ? "bg-[#1A4331] text-white"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-[#1A4331]"
+                )}
+              >
+                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-white/80" : "text-gray-400 group-hover:text-[#2E7D32]")} />
+                {tab.label}
+              </button>
+            );
+          })}
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-1" />
+
+          {/* Logout */}
+          <button
+            onClick={() => setCurrentUser(null)}
+            className="w-full text-left px-3 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-3 text-red-500 hover:bg-red-50 hover:text-red-600 group"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0 text-red-400 group-hover:text-red-500" />
+            Log Out
+          </button>
         </nav>
 
         {/* Content */}
-        <div className="md:col-span-3 space-y-4 min-h-[60vh]">
+        <div className="flex-1 space-y-4 min-h-[60vh]">
           {activeTab === "account" && (
-            <AccountTab 
+            <AccountTab
               currentUser={currentUser}
               emailNotif={emailNotif} setEmailNotif={setEmailNotif}
               smsNotif={smsNotif} setSmsNotif={setSmsNotif}
@@ -90,7 +107,7 @@ export function SettingsPage() {
           )}
 
           {activeTab === "security" && (
-            <SecurityTab 
+            <SecurityTab
               currentPw={currentPw} setCurrentPw={setCurrentPw}
               newPw={newPw} setNewPw={setNewPw}
               confirmPw={confirmPw} setConfirmPw={setConfirmPw}
@@ -103,4 +120,4 @@ export function SettingsPage() {
       </div>
     </div>
   );
-}
+}

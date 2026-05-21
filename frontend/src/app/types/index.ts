@@ -114,3 +114,18 @@ export interface Notification {
   createdAt: string;
   link?: string;
 }
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  oldValue?: string;
+  newValue?: string;
+  timestamp: string;
+  user?: {
+    id: string;
+    username: string;
+  };
+}
+

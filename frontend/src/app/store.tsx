@@ -40,20 +40,6 @@ function DataFetcher({ children }: { children: ReactNode }) {
         refreshSpamReports();
       }
     }
-
-    const interval = setInterval(() => {
-      refreshReports(true); // silent: don't flash loading spinner during background refresh
-      if (currentUser) {
-        refreshNotifications();
-        if (currentUser.role === "admin") {
-          refreshUsers();         // ← also keep user list in sync every 15s
-          refreshApplications();
-          refreshSpamReports();
-        }
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;

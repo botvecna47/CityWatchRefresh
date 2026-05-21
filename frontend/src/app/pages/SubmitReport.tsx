@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAppContext, Report } from "../store";
 import { Card } from "../components/ui";
 import { storageClient } from "../storageClient";
-import { 
-  initLeaflet, StepIndicator, LocationStep, DetailsStep, ReviewStep 
+import {
+  initLeaflet, StepIndicator, LocationStep, DetailsStep, ReviewStep
 } from "../components/submit-report/SubmitReportSteps";
 import 'leaflet/dist/leaflet.css';
 
@@ -53,69 +53,13 @@ export function SubmitReport() {
   useEffect(() => {
     if (!area && displayAreas.length > 0) setArea(displayAreas[0].name);
     if (!category && displayCategories.length > 0) setCategory(displayCategories[0].name);
-  }, [areas, categories]);
+  }, [areas, categories]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [images, setImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ─── 30-second photo timeout ───────────────────────────────────────────────
-  // Once the first photo is captured on Step 2, a 30-second countdown begins.
-  // If the user does NOT advance to Step 3 within that window, all images are
-  // cleared and they are reverted to Step 1 (location detection) to prevent
-  // use of pre-captured or stale images.
-  const [photoTimeLeft, setPhotoTimeLeft] = useState<number | null>(null);
-  const photoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const clearPhotoTimer = () => {
-    if (photoTimerRef.current) {
-      clearInterval(photoTimerRef.current);
-      photoTimerRef.current = null;
-    }
-    setPhotoTimeLeft(null);
-  };
-
-  const resetToLocationStep = () => {
-    setImages([]);
-    setImageFiles([]);
-    setStep(1);
-    setLocation("");
-    clearPhotoTimer();
-    import("sonner").then(({ toast }) =>
-      toast.error("Photo expired (30s timeout). Please re-detect your location and take a fresh photo.")
-    );
-  };
-
-  // Start / manage the 30-second countdown whenever images change on step 2
-  useEffect(() => {
-    // Only count down when on step 2 and at least one image is attached
-    if (step === 2 && images.length > 0) {
-      // Don't restart if timer already running
-      if (photoTimerRef.current) return;
-      setPhotoTimeLeft(30);
-      photoTimerRef.current = setInterval(() => {
-        setPhotoTimeLeft(prev => {
-          if (prev === null) return null;
-          if (prev <= 1) {
-            clearInterval(photoTimerRef.current!);
-            photoTimerRef.current = null;
-            // Defer the state reset outside the setState callback
-            setTimeout(() => resetToLocationStep(), 0);
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      // Images cleared or navigated away — stop timer
-      clearPhotoTimer();
-    }
-    return () => {
-      // Cleanup on unmount
-      if (photoTimerRef.current) clearInterval(photoTimerRef.current);
-    };
-  }, [step, images.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // ─── Geolocation ──────────────────────────────────────────────────────────
   const handleDetectLocation = () => {
     setIsDetecting(true);
     if (navigator.geolocation) {
@@ -124,7 +68,6 @@ export function SubmitReport() {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           setLocationLatLong([lat, lng]);
-          
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await res.json();
@@ -132,18 +75,13 @@ export function SubmitReport() {
               const addressParts = [];
               if (data.address.suburb || data.address.neighbourhood) addressParts.push(data.address.suburb || data.address.neighbourhood);
               if (data.address.city || data.address.town) addressParts.push(data.address.city || data.address.town);
-              
-              const detectedAddress = addressParts.length > 0 ? addressParts.join(', ') : data.display_name.split(',').slice(0,2).join(', ');
+              const detectedAddress = addressParts.length > 0 ? addressParts.join(', ') : data.display_name.split(',').slice(0, 2).join(', ');
               setLocation(detectedAddress);
-
-              // Dynamically set Area if it matches
-              const matchedArea = displayAreas.find(a => 
-                data.display_name.toLowerCase().includes(a.name.toLowerCase()) || 
+              const matchedArea = displayAreas.find((a: any) =>
+                data.display_name.toLowerCase().includes(a.name.toLowerCase()) ||
                 detectedAddress.toLowerCase().includes(a.name.toLowerCase())
               );
-              if (matchedArea) {
-                setArea(matchedArea.name);
-              }
+              if (matchedArea) setArea(matchedArea.name);
             } else {
               setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
             }
@@ -155,12 +93,12 @@ export function SubmitReport() {
         },
         (error) => {
           console.error("Geolocation error:", error);
-          setLocation("Location access denied");
+          import("sonner").then(({ toast }) => toast.error("Location access denied. Please type your location manually."));
           setIsDetecting(false);
         }
       );
     } else {
-      setLocation("Geolocation unsupported");
+      import("sonner").then(({ toast }) => toast.error("Geolocation is not supported by this browser."));
       setIsDetecting(false);
     }
   };
@@ -171,7 +109,6 @@ export function SubmitReport() {
     }
 
     // Use Haversine distance to find truly nearby issues (within 500m of the pin)
-    // This avoids the bug of relying on the `area` dropdown which isn't set until Step 2
     const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const R = 6371;
       const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -179,8 +116,8 @@ export function SubmitReport() {
       const a =
         Math.sin(dLat / 2) ** 2 +
         Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLng / 2) ** 2;
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
@@ -190,7 +127,7 @@ export function SubmitReport() {
         r.status !== "Completed" &&
         r.lat != null &&
         r.lng != null &&
-        haversineKm(userLat, userLng, r.lat, r.lng) <= 0.5  // within 500m
+        haversineKm(userLat, userLng, r.lat, r.lng) <= 0.5
       )
       .slice(0, 2);
 
@@ -247,39 +184,37 @@ export function SubmitReport() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !location) return;
-    if (imageFiles.length === 0) {
-      import("sonner").then(({ toast }) => toast.error("At least one photo is required to submit a report."));
+    if (!title || !description) {
+      import("sonner").then(({ toast }) => toast.error("Title and description are required."));
       return;
     }
     if (description.length < 10) {
-      import("sonner").then(({ toast }) => toast.error("Description must be at least 10 characters long"));
+      import("sonner").then(({ toast }) => toast.error("Description must be at least 10 characters long."));
       return;
     }
 
     setIsSubmitting(true);
     let uploadedUrls: string[] = [];
 
-    if (imageFiles.length > 0) {
-      for (const file of imageFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-        const filePath = `reports/${fileName}`;
+    // Upload any attached images to Supabase storage
+    for (const file of imageFiles) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+      const filePath = `reports/${fileName}`;
 
-        const { error: uploadError } = await storageClient.storage
-          .from('citywatch-images')
-          .upload(filePath, file);
+      const { error: uploadError } = await storageClient.storage
+        .from('citywatch-images')
+        .upload(filePath, file);
 
-        if (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          import("sonner").then(({ toast }) => toast.error('Failed to upload image to storage. Please try again.'));
-          setIsSubmitting(false);
-          return; // Abort submission completely!
-        }
-
-        const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(filePath);
-        uploadedUrls.push(data.publicUrl);
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        import("sonner").then(({ toast }) => toast.error('Failed to upload image. Please try again.'));
+        setIsSubmitting(false);
+        return;
       }
+
+      const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(filePath);
+      uploadedUrls.push(data.publicUrl);
     }
 
     const newReport: Report = {
@@ -289,7 +224,7 @@ export function SubmitReport() {
       description,
       image: uploadedUrls.length > 0 ? uploadedUrls[0] : "",
       additionalImages: uploadedUrls.slice(1),
-      locationText: location,
+      locationText: location || `${locationLatLong[0].toFixed(5)}, ${locationLatLong[1].toFixed(5)}`,
       lat: locationLatLong[0],
       lng: locationLatLong[1],
       area: (area === "OTHER" ? (customArea || "OTHER") : area) as any,
@@ -305,14 +240,13 @@ export function SubmitReport() {
     };
 
     addReport(newReport);
-    clearPhotoTimer();
     setIsSubmitting(false);
     import("sonner").then(({ toast }) => toast.success("Your complaint has been submitted!"));
     navigate("/");
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8">
+    <div className="max-w-3xl mx-auto py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#1A4331] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Report a Civic Issue</h1>
         <p className="text-gray-600 font-serif">Help improve Nanded by reporting problems in your area.</p>
@@ -327,7 +261,7 @@ export function SubmitReport() {
 
       <Card className="p-6 md:p-8 bg-white border border-gray-100 shadow-sm">
         {step === 1 && (
-          <LocationStep 
+          <LocationStep
             location={location} setLocation={setLocation} locationLatLong={locationLatLong}
             setLocationLatLong={setLocationLatLong} isDetecting={isDetecting} handleDetectLocation={handleDetectLocation}
             isClient={isClient} nearbyIssues={nearbyIssues} handleUpvoteNearby={handleUpvoteNearby}
@@ -338,7 +272,7 @@ export function SubmitReport() {
         )}
 
         {step === 2 && (
-          <DetailsStep 
+          <DetailsStep
             category={category} setCategory={setCategory} displayCategories={displayCategories}
             customCategory={customCategory} setCustomCategory={setCustomCategory}
             area={area} setArea={setArea} displayAreas={displayAreas}
@@ -346,12 +280,11 @@ export function SubmitReport() {
             title={title} setTitle={setTitle} images={images} MAX_IMAGES={MAX_IMAGES}
             removeImage={removeImage} handleImageUpload={handleImageUpload}
             description={description} setDescription={setDescription} setStep={setStep}
-            photoTimeLeft={photoTimeLeft}
           />
         )}
 
         {step === 3 && (
-          <ReviewStep 
+          <ReviewStep
             title={title} location={location} area={area} customArea={customArea}
             category={category} customCategory={customCategory} description={description}
             images={images} MAX_IMAGES={MAX_IMAGES} setStep={setStep}

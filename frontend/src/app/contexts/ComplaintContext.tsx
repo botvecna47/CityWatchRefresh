@@ -86,7 +86,16 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
       }));
       
       if (page === 0) {
-        setReports(mapped);
+        setReports(prev => {
+          if (prev.length === 0) return mapped;
+          return mapped.map(m => {
+            const existing = prev.find(p => p.id === m.id);
+            if (existing) {
+              return { ...m, comments: existing.comments, messages: existing.messages };
+            }
+            return m;
+          });
+        });
       } else {
         setReports(prev => {
           const newReports = mapped.filter(m => !prev.some(p => p.id === m.id));
@@ -157,14 +166,16 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addComment = async (reportId: string, comment: Comment) => {
-    setReports(prev => prev.map(r => r.id === reportId ? { ...r, comments: [...r.comments, comment] } : r));
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, comments: [...(r.comments || []), comment] } : r));
     try {
       const saved = await complaintService.addComment(reportId, comment.text);
       setReports(prev => prev.map(r => {
         if (r.id !== reportId) return r;
-        return { ...r, comments: [...r.comments.filter(c => c.id !== comment.id), { id: String(saved.id), authorId: String(saved.authorId || ""), authorName: saved.authorName || comment.authorName, text: saved.content || comment.text, createdAt: saved.createdAt || comment.createdAt }]};
+        return { ...r, comments: [...(r.comments || []).filter(c => c.id !== comment.id), { id: String(saved.id), authorId: String(saved.authorId || ""), authorName: saved.authorName || comment.authorName, text: saved.content || comment.text, createdAt: saved.createdAt || comment.createdAt }]};
       }));
-    } catch {}
+    } catch (e) {
+      console.error("Failed to post comment", e);
+    }
   };
 
   const fetchComments = async (reportId: string) => {

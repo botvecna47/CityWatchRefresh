@@ -19,11 +19,33 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const refreshNotifications = () => {
     notificationService.getAll()
       .then((data: any[]) => {
-        setNotifications(data.map(n => ({
-          id: String(n.id), userId: "", title: n.title || "", message: n.message || "",
-          read: Boolean(n.isRead || n.read), type: (n.type || "system").toLowerCase() as "system" | "report" | "application",
-          createdAt: n.createdAt || new Date().toISOString(), link: n.link || undefined,
-        })));
+        setNotifications(data.map(n => {
+          // Backend sends LocalDateTime which Jackson may serialize as array [y,m,d,h,min,s] or ISO string
+          let createdAt: string;
+          if (Array.isArray(n.createdAt)) {
+            const [y, mo, d, h = 0, min = 0, s = 0] = n.createdAt;
+            createdAt = new Date(y, mo - 1, d, h, min, s).toISOString();
+          } else {
+            createdAt = n.createdAt || new Date().toISOString();
+          }
+          // Normalize type — backend sends e.g. "COMPLAINT_UPDATE", we map to frontend's union
+          const rawType = (n.type || "system").toLowerCase();
+          const type = rawType.includes("complaint") || rawType.includes("report")
+            ? "report"
+            : rawType.includes("application")
+            ? "application"
+            : "system";
+          return {
+            id: String(n.id),
+            userId: "",
+            title: n.title || "",
+            message: n.message || "",
+            read: Boolean(n.isRead || n.read),
+            type: type as "system" | "report" | "application",
+            createdAt,
+            link: n.link || undefined,
+          };
+        }));
       }).catch(console.error);
   };
 

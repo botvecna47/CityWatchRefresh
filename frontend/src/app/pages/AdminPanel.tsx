@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { RefreshCw, LayoutDashboard, AlertTriangle, Users, Shield, FileText, Settings, Activity, Server } from "lucide-react";
+import { RefreshCw, LayoutDashboard, AlertTriangle, Users, Shield, FileText, Settings, Activity, Server, ClipboardList } from "lucide-react";
 import { cn, Button } from "../components/ui";
 import { useAppContext } from "../store";
 import { useAdmin } from "../contexts/AdminContext";
@@ -13,6 +13,7 @@ import { ApplicationsManagement } from "../components/admin/ApplicationsManageme
 import { SpamManagement } from "../components/admin/SpamManagement";
 import { SystemManagement } from "../components/admin/SystemManagement";
 import { ServerMonitor } from "../components/admin/ServerMonitor";
+import { AuditLogsManagement } from "../components/admin/AuditLogsManagement";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -21,13 +22,14 @@ const TABS = [
   { id: "users", label: "Citizens", icon: Users },
   { id: "applications", label: "Applications", icon: FileText },
   { id: "spam", label: "Spam", icon: Activity },
+  { id: "audit", label: "Audit Logs", icon: ClipboardList },
   { id: "system", label: "System Config", icon: Settings },
   { id: "monitor", label: "Server Monitor", icon: Server },
 ] as const;
 
 export function AdminPanel() {
   const { users, usersLoading, currentUser, reports, applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports } = useAppContext();
-  const { adminReports, refreshAdminReports, adminReportsPage, usersPage } = useAdmin();
+  const { adminReports, refreshAdminReports, adminReportsPage, usersPage, refreshAuditLogs } = useAdmin();
   const [activeTab, setActiveTab] = useState<typeof TABS[number]["id"]>("overview");
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export function AdminPanel() {
     refreshApplications();
     refreshSpamReports();
     refreshAdminReports(adminReportsPage);
+    refreshAuditLogs();
   };
 
   return (
@@ -141,6 +144,7 @@ export function AdminPanel() {
             {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Directory" />}
             {activeTab === "applications" && <ApplicationsManagement />}
             {activeTab === "spam" && <SpamManagement />}
+            {activeTab === "audit" && <AuditLogsManagement />}
             {activeTab === "system" && <SystemManagement />}
             {activeTab === "monitor" && <ServerMonitor />}
           </motion.div>

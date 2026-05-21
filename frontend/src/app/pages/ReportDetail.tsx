@@ -15,6 +15,7 @@ import L from 'leaflet';
 import { ReportComments } from "../components/report/ReportComments";
 import { SpamReportModal } from "../components/report/SpamReportModal";
 import { DeleteReportModal } from "../components/report/DeleteReportModal";
+import { ImageWithFallback } from "../components/ImageWithFallback";
 
 export function ReportDetail() {
   const { id } = useParams();
@@ -125,7 +126,7 @@ export function ReportDetail() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6">
-      <Link to="/" className="inline-flex items-center gap-2 text-[#1A4331] hover:text-[#2E7D32] transition-colors font-medium text-sm">
+      <Link to="/" className="md:hidden inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-[#1A4331] transition-all font-medium text-sm px-3 py-1.5 rounded shadow-sm w-fit">
         <ArrowLeft className="w-4 h-4" /> Back to Feed
       </Link>
 
@@ -141,14 +142,19 @@ export function ReportDetail() {
         <>
           <Card className="overflow-hidden bg-white shadow-md border-gray-200">
             <div className="flex flex-col md:flex-row">
-              <div className="hidden md:flex w-16 bg-gray-50 flex-col items-center py-6 border-r border-gray-100 gap-2">
-                {isCitizen ? (
-                  <button onClick={() => handleVote('up')} className={cn("p-2 transition-colors rounded hover:bg-gray-200", hasUpvoted ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]")}>
-                    <ArrowBigUp className="w-8 h-8" />
-                  </button>
-                ) : <ArrowBigUp className="w-8 h-8 text-gray-300" />}
-                <span className="text-lg font-bold text-[#1A4331]">{report.upvotes}</span>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">votes</span>
+              <div className="hidden md:flex w-16 bg-gray-50 flex-col items-center py-6 border-r border-gray-100">
+                <Link to="/" className="text-gray-400 hover:text-[#1A4331] p-2 hover:bg-gray-200 rounded transition-colors" title="Back to Feed">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+                <div className="flex flex-col items-center gap-1 mt-6">
+                  {isCitizen ? (
+                    <button onClick={() => handleVote('up')} className={cn("p-2 transition-colors rounded hover:bg-gray-200", hasUpvoted ? "text-[#2E7D32]" : "text-gray-400 hover:text-[#2E7D32]")}>
+                      <ArrowBigUp className="w-8 h-8" />
+                    </button>
+                  ) : <ArrowBigUp className="w-8 h-8 text-gray-300" />}
+                  <span className="text-lg font-bold text-[#1A4331]">{report.upvotes}</span>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">votes</span>
+                </div>
               </div>
 
               <div className="flex-1 p-6 md:p-8">
@@ -182,15 +188,28 @@ export function ReportDetail() {
                 <h1 className="text-3xl font-bold mb-4 text-[#1A4331] leading-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{report.title}</h1>
                 <p className="text-gray-700 whitespace-pre-wrap text-lg leading-relaxed mb-6 font-serif">{report.description}</p>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
+                {/* Image Slider */}
+                <div className="slider-container flex overflow-x-auto snap-x snap-mandatory gap-3 mb-6 pb-3 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'thin' }}>
+                  {/* Custom scrollbar for desktop */}
+                  <style>{`
+                    .slider-container::-webkit-scrollbar { height: 6px; }
+                    .slider-container::-webkit-scrollbar-track { background: transparent; }
+                    .slider-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+                    .slider-container::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+                  `}</style>
+                  
                   {report.image && (
-                    <div className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner col-span-2 md:col-span-3 cursor-zoom-in group relative" onClick={() => setLightboxIndex(0)}>
-                      <img src={report.image} alt={report.title} className="w-full h-auto object-cover max-h-[400px] group-hover:brightness-90 transition-all duration-300" />
+                    <div className="flex-none w-[90%] md:w-[75%] snap-center rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner cursor-zoom-in group relative" onClick={() => setLightboxIndex(0)}>
+                      <ImageWithFallback 
+                        src={report.image} 
+                        alt={report.title} 
+                        className="w-full h-64 md:h-96 object-cover group-hover:brightness-90 transition-all duration-300" 
+                      />
                     </div>
                   )}
                   {report.additionalImages?.map((img, i) => (
-                    <div key={i} className="rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner cursor-zoom-in group relative" onClick={() => setLightboxIndex(i + (report.image ? 1 : 0))}>
-                      <img src={img} alt={`Additional ${i}`} className="w-full h-32 md:h-48 object-cover group-hover:brightness-90 transition-all duration-300" />
+                    <div key={i} className="flex-none w-[90%] md:w-[75%] snap-center rounded-sm overflow-hidden bg-gray-100 border border-gray-200 shadow-inner cursor-zoom-in group relative" onClick={() => setLightboxIndex(i + (report.image ? 1 : 0))}>
+                      <img src={img} alt={`Additional ${i}`} className="w-full h-64 md:h-96 object-cover group-hover:brightness-90 transition-all duration-300" />
                     </div>
                   ))}
                 </div>
@@ -213,7 +232,7 @@ export function ReportDetail() {
                 {report.proofImage && (
                   <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-sm shadow-sm">
                     <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2 text-lg font-serif"><CheckCircle2 className="w-6 h-6 text-green-600" /> Resolution Proof</h3>
-                    <img src={report.proofImage} alt="Proof" className="w-full h-auto rounded-sm border border-green-300 shadow-sm mb-4" />
+                    <img src={report.proofImage} alt="Proof" className="w-full h-64 md:h-80 object-cover rounded-sm border border-green-300 shadow-sm mb-4" />
                     {report.resolutionLocation && (
                       <p className="text-sm text-green-800 flex items-center gap-2 font-medium"><MapPin className="w-4 h-4" /> Resolved at: {report.resolutionLocation.lat.toFixed(4)}, {report.resolutionLocation.lng.toFixed(4)}</p>
                     )}

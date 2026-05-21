@@ -33,6 +33,11 @@ export function AppLayout() {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Scroll to top on every navigation
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [location.pathname]);
+
   // Coordinator Application Form State
   const [appForm, setAppForm] = useState({
     phone: "",
@@ -55,7 +60,7 @@ export function AppLayout() {
     navLinks.push({ name: "Admin Panel", path: "/admin", icon: ShieldAlert });
   }
 
-  const unreadCount = currentUser ? notifications.filter(n => n.userId === currentUser.id && !n.read).length : 0;
+  const unreadCount = currentUser ? notifications.filter(n => !n.read).length : 0;
 
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +71,22 @@ export function AppLayout() {
     }
     if (!appForm.phone || !appForm.message || !appForm.address || !appForm.experience) {
       toast.error("Please fill all fields");
+      return;
+    }
+    if (appForm.phone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
+    if (appForm.address.length < 10) {
+      toast.error("Please provide a more complete address (min 10 characters)");
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s,.-]+$/.test(appForm.address)) {
+      toast.error("Address can only contain letters, numbers, spaces, commas, periods, and hyphens");
+      return;
+    }
+    if (appForm.experience.length < 20 || appForm.message.length < 20) {
+      toast.error("Please provide at least 20 characters for your experience and motivation");
       return;
     }
     submitApplication({
@@ -213,7 +234,7 @@ export function AppLayout() {
               transition={{ duration: 0.2 }}
               className="h-full w-full"
             >
-              <Outlet />
+              <Outlet context={{ openJoinModal: () => setIsJoinModalOpen(true) }} />
             </motion.div>
           </AnimatePresence>
         </main>
@@ -290,9 +311,12 @@ export function AppLayout() {
               <div>
                 <label className="block text-sm font-medium mb-1">Phone Number</label>
                 <Input 
-                  placeholder="(555) 123-4567" 
+                  placeholder="10-digit mobile number" 
                   value={appForm.phone}
-                  onChange={(e) => setAppForm({...appForm, phone: e.target.value})}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setAppForm({...appForm, phone: val});
+                  }}
                   className="bg-white"
                 />
               </div>

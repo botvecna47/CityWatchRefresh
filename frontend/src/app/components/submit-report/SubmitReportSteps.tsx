@@ -1,24 +1,9 @@
 import { motion } from "motion/react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import { Crosshair, AlertTriangle, MapPin, ArrowBigUp, Camera, X, Upload, ArrowRight, CheckCircle2, Smartphone, Clock } from "lucide-react";
+import { Crosshair, AlertTriangle, MapPin, ArrowBigUp, Camera, X, Upload, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button, Input, Textarea, cn } from "../../components/ui";
 import { Report } from "../../store";
 import L from 'leaflet';
-
-// ─── Platform Detection ────────────────────────────────────────────────────────
-// The HTML `capture` attribute is a mobile-only hint — desktop browsers ignore it
-// completely and always show the normal file picker. The only way to enforce
-// camera-only on mobile AND block local gallery on desktop is to:
-//   1. Detect the platform
-//   2. On mobile: render <input capture="environment"> WITHOUT accept="image/*"
-//      (combining both gives Android users a choice dialog — defeating the purpose)
-//   3. On desktop: render NO input at all, just a notice.
-const isMobileDevice = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    ('ontouchstart' in window && navigator.maxTouchPoints > 0);
-};
-const IS_MOBILE = isMobileDevice();
 
 let icons: Record<string, L.DivIcon> | null = null;
 export const initLeaflet = () => {
@@ -37,9 +22,34 @@ export const initLeaflet = () => {
   icons = { Reported: createCustomIcon('text-red-600') };
 };
 
-export function LocationPicker({ position }: { position: [number, number] }) {
-  // Draggable and click-to-change location features removed for strict mobile tracking.
-  return <Marker position={position} icon={icons?.Reported} draggable={false} />;
+// ─── Draggable & clickable map pin ────────────────────────────────────────────
+function DraggableMarker({
+  position,
+  onMove,
+}: {
+  position: [number, number];
+  onMove: (lat: number, lng: number) => void;
+}) {
+  // Listen for map clicks to reposition pin
+  useMapEvents({
+    click(e) {
+      onMove(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  return (
+    <Marker
+      position={position}
+      icon={icons?.Reported}
+      draggable={true}
+      eventHandlers={{
+        dragend(e) {
+          const { lat, lng } = (e.target as L.Marker).getLatLng();
+          onMove(lat, lng);
+        },
+      }}
+    />
+  );
 }
 
 export function StepIndicator({ num, active, label }: { num: number; active: boolean; label: string }) {
@@ -56,40 +66,89 @@ export function StepIndicator({ num, active, label }: { num: number; active: boo
   );
 }
 
-export function LocationStep({ 
-  location, setLocation, locationLatLong, setLocationLatLong, isDetecting, handleDetectLocation, 
-  isClient, nearbyIssues, handleUpvoteNearby, upvotePhotoPreview, handleUpvotePhotoChange, 
-  setUpvotePhotoFile, setUpvotePhotoPreview, setNearbyIssues, setStep, handleConfirmLocation 
+export function LocationStep({
+  location, setLocation, locationLatLong, setLocationLatLong, isDetecting, handleDetectLocation,
+  isClient, nearbyIssues, handleUpvoteNearby, upvotePhotoPreview, handleUpvotePhotoChange,
+  setUpvotePhotoFile, setUpvotePhotoPreview, setNearbyIssues, setStep, handleConfirmLocation
 }: any) {
+
+  const handlePinMove = async (lat: number, lng: number) => {
+    setLocationLatLong([lat, lng]);
+    // Reverse geocode the new position
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      if (data?.display_name) {
+        const parts = [];
+        if (data.address.suburb || data.address.neighbourhood) parts.push(data.address.suburb || data.address.neighbourhood);
+        if (data.address.city || data.address.town) parts.push(data.address.city || data.address.town);
+        setLocation(parts.length > 0 ? parts.join(', ') : data.display_name.split(',').slice(0, 2).join(', '));
+      } else {
+        setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
+    } catch {
+      setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Where is the issue?</label>
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-gray-500 font-serif">For strict accuracy, you must be physically present at the location to report an issue. Manual entry is disabled.</p>
-          <Button onClick={handleDetectLocation} className="gap-2 bg-[#2E7D32] hover:bg-[#1b5e20] text-white w-full py-6 text-lg" disabled={isDetecting}>
-            {isDetecting ? <span className="animate-pulse">Accessing GPS...</span> : <><Crosshair className="w-5 h-5" /> Detect My Location</>}
-          </Button>
+        <label className="block text-sm font-medium text-[#1A4331] mb-1 font-serif">Where is the issue?</label>
+        <p className="text-xs text-gray-500 font-serif mb-4">
+          Detect your GPS location instantly, type an address manually, or drag the map pin to set the exact spot.
+        </p>
+
+        {/* Option 1: GPS detect */}
+        <Button
+          onClick={handleDetectLocation}
+          className="gap-2 bg-[#2E7D32] hover:bg-[#1b5e20] text-white w-full py-5 text-base mb-3"
+          disabled={isDetecting}
+        >
+          {isDetecting
+            ? <span className="animate-pulse">Accessing GPS...</span>
+            : <><Crosshair className="w-5 h-5" /> Detect My Location (GPS)</>}
+        </Button>
+
+        {/* Option 2: Manual text input */}
+        <div className="relative">
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Or type your address / landmark…"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
-      {location && isClient && (
+      {/* Map — shown once we have coordinates (GPS detected or default) */}
+      {isClient && (
         <div>
-          <p className="text-xs text-amber-600 mb-2 font-medium flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Pinpoint accuracy is important. You can drag the pin or click on the map to adjust your exact location.
+          <p className="text-xs text-amber-700 mb-2 font-medium flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Drag the pin or click anywhere on the map to set the exact location.
           </p>
           <div className="w-full h-80 min-h-[300px] max-h-[50vh] bg-gray-100 rounded-sm relative overflow-hidden border border-gray-200">
-            <MapContainer center={locationLatLong} zoom={15} style={{ height: '100%', width: '100%', zIndex: 0 }} dragging={false} zoomControl={false} scrollWheelZoom={false} doubleClickZoom={false}>
+            <MapContainer
+              key={locationLatLong.join(',')}
+              center={locationLatLong}
+              zoom={15}
+              style={{ height: '100%', width: '100%', zIndex: 0 }}
+              scrollWheelZoom={true}
+              zoomControl={true}
+            >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <LocationPicker position={locationLatLong} />
+              <DraggableMarker position={locationLatLong} onMove={handlePinMove} />
             </MapContainer>
-            <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
+            <div className="absolute bottom-2 left-2 z-[500] bg-white/90 backdrop-blur px-3 py-1 rounded-sm shadow-sm font-medium text-[#1A4331] flex items-center gap-2 border border-[#1A4331]/10 text-xs">
               <MapPin className="w-4 h-4 text-[#2E7D32]" /> {locationLatLong[0].toFixed(5)}, {locationLatLong[1].toFixed(5)}
             </div>
           </div>
         </div>
       )}
 
+      {/* Nearby issues */}
       {nearbyIssues.length > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -101,9 +160,8 @@ export function LocationStep({
             <div className="flex-1">
               <h3 className="font-bold text-amber-900 mb-1 font-serif">Similar Issue Found Nearby</h3>
               <p className="text-sm text-amber-800 mb-4 font-serif">
-                The following issue has already been reported nearby. Upvoting it increases its priority and helps coordinators address it faster. You may also attach a supporting photo.
+                The following issue has already been reported nearby. Upvoting it increases its priority and helps coordinators address it faster.
               </p>
-
               <div className="space-y-4">
                 {nearbyIssues.map((issue: Report) => (
                   <div key={issue.id} className="bg-white p-4 rounded-sm border border-amber-100 shadow-sm">
@@ -121,11 +179,10 @@ export function LocationStep({
                         <ArrowBigUp className="w-4 h-4" /> Upvote
                       </Button>
                     </div>
-
                     <div className="border-t border-amber-100 pt-3">
                       <p className="text-xs text-amber-800 font-medium mb-2 font-serif flex items-center gap-1">
                         <Camera className="w-3.5 h-3.5" />
-                        Optionally attach a supporting photo to strengthen this complaint
+                        Optionally attach a supporting photo
                       </p>
                       {upvotePhotoPreview ? (
                         <div className="relative w-24 h-20 rounded overflow-hidden border border-amber-200 group">
@@ -139,18 +196,9 @@ export function LocationStep({
                           </button>
                         </div>
                       ) : (
-                        <label className={cn("inline-flex items-center gap-2 px-3 py-1.5 border border-dashed rounded text-xs cursor-pointer transition-colors", IS_MOBILE ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-gray-300 text-gray-400 cursor-not-allowed opacity-60")}>
-                          {IS_MOBILE ? (
-                            <>
-                              <Camera className="w-3.5 h-3.5" /> Take Photo
-                              <input type="file" capture="environment" className="hidden" onChange={handleUpvotePhotoChange} />
-                            </>
-                          ) : (
-                            <>
-                              <Smartphone className="w-3.5 h-3.5" />
-                              <span>Camera only (use mobile)</span>
-                            </>
-                          )}
+                        <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-dashed border-amber-300 text-amber-700 rounded text-xs cursor-pointer hover:bg-amber-50 transition-colors">
+                          <Camera className="w-3.5 h-3.5" /> Add Photo
+                          <input type="file" accept="image/*" className="hidden" onChange={handleUpvotePhotoChange} />
                         </label>
                       )}
                     </div>
@@ -167,9 +215,15 @@ export function LocationStep({
         </motion.div>
       )}
 
-      {!nearbyIssues.length && location && (
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleConfirmLocation} className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white">Confirm Location & Continue <ArrowRight className="w-4 h-4" /></Button>
+      {!nearbyIssues.length && (
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={handleConfirmLocation}
+            disabled={!location}
+            className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white disabled:opacity-50"
+          >
+            Confirm Location &amp; Continue <ArrowRight className="w-4 h-4" />
+          </Button>
         </div>
       )}
     </div>
@@ -180,7 +234,7 @@ export function DetailsStep({
   category, setCategory, displayCategories, customCategory, setCustomCategory,
   area, setArea, displayAreas, customArea, setCustomArea,
   title, setTitle, images, MAX_IMAGES, removeImage, handleImageUpload,
-  description, setDescription, setStep, photoTimeLeft
+  description, setDescription, setStep,
 }: any) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); setStep(3); }} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -204,29 +258,35 @@ export function DetailsStep({
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Area</label>
+            <select
+              value={area}
+              onChange={(e) => { setArea(e.target.value); if (e.target.value !== "OTHER") setCustomArea(""); }}
+              className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
+            >
+              {displayAreas.map((a: any) => (
+                <option key={a.id} value={a.name}>{a.name}</option>
+              ))}
+              <option value="OTHER">Other (Please specify)</option>
+            </select>
+            {area === "OTHER" && (
+              <Input required placeholder="Specify area name..." value={customArea} onChange={(e) => setCustomArea(e.target.value)} className="mt-2" />
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-[#1A4331] mb-2 font-serif">Title</label>
             <Input required placeholder="Briefly describe the issue" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
         </div>
 
+        {/* Photo upload — works on ALL devices, camera or gallery */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-[#1A4331] font-serif">
-              Photo Evidence <span className="text-red-500 font-bold">*</span>
-              <span className="text-gray-400 font-normal ml-1">(Required · max {MAX_IMAGES})</span>
+              Photo Evidence
+              <span className="text-gray-400 font-normal ml-1">(Optional · max {MAX_IMAGES})</span>
             </label>
-            {/* 30-second countdown timer — appears as soon as first photo is captured */}
-            {photoTimeLeft !== null && (
-              <div className={cn(
-                "flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full transition-colors",
-                photoTimeLeft <= 10
-                  ? "bg-red-100 text-red-700 animate-pulse"
-                  : "bg-amber-50 text-amber-700"
-              )}>
-                <Clock className="w-3.5 h-3.5" />
-                Submit within {photoTimeLeft}s or photo expires
-              </div>
-            )}
           </div>
           <div className="grid grid-cols-3 gap-2 mb-2">
             {images.map((img: string, idx: number) => (
@@ -238,30 +298,26 @@ export function DetailsStep({
               </div>
             ))}
             {images.length < MAX_IMAGES && (
-              <div className={cn("border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer")}>
+              <label className="border-2 border-dashed border-gray-300 rounded-sm h-24 flex flex-col items-center justify-center relative hover:bg-gray-50 transition-colors bg-white group cursor-pointer">
                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-[#2E7D32] transition-colors mb-1" />
                 <span className="text-xs text-gray-500 font-serif">Add Photo</span>
-                {IS_MOBILE ? (
-                  // Mobile: strict camera-only — no accept= means only camera is offered
-                  <input
-                    type="file"
-                    capture="environment"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={handleImageUpload}
-                  />
-                ) : (
-                  // Desktop: block file picker entirely — show notice only
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/90 rounded-sm pointer-events-none">
-                    <Smartphone className="w-6 h-6 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500 text-center px-2 font-serif">Camera capture required — please use the mobile app</span>
-                  </div>
-                )}
-              </div>
+                {/* Accept all image sources — camera or gallery, mobile or desktop */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={handleImageUpload}
+                />
+              </label>
             )}
           </div>
           <p className="text-xs text-gray-500">
             {images.length}/{MAX_IMAGES} photos added
             {images.length >= MAX_IMAGES && <span className="text-amber-600 ml-1">· Limit reached</span>}
+          </p>
+          <p className="text-xs text-gray-400 mt-1 font-serif">
+            Upload from your gallery or take a photo directly. Works on all devices.
           </p>
         </div>
       </div>
@@ -273,19 +329,14 @@ export function DetailsStep({
 
       <div className="flex justify-between pt-4">
         <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            type="button"
-            onClick={() => setStep(3)}
-            className="gap-2"
-            disabled={!title || !description || images.length === 0 || (category === "OTHER" && !customCategory)}
-          >
-            Review Details <ArrowRight className="w-4 h-4" />
-          </Button>
-          {images.length === 0 && (
-            <p className="text-xs text-red-500 font-serif">A photo is required to continue</p>
-          )}
-        </div>
+        <Button
+          type="button"
+          onClick={() => setStep(3)}
+          className="gap-2 bg-[#1A4331] hover:bg-[#112d21] text-white"
+          disabled={!title || !description || (category === "OTHER" && !customCategory) || (area === "OTHER" && !customArea)}
+        >
+          Review Details <ArrowRight className="w-4 h-4" />
+        </Button>
       </div>
     </form>
   );
@@ -301,7 +352,7 @@ export function ReviewStep({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3 text-sm">
             <p><strong className="text-gray-700 font-serif">Title:</strong> {title}</p>
-            <p><strong className="text-gray-700 font-serif">Location:</strong> {location}</p>
+            <p><strong className="text-gray-700 font-serif">Location:</strong> {location || <span className="text-gray-400 italic">Not specified</span>}</p>
             <p><strong className="text-gray-700 font-serif">Area:</strong> {area === "OTHER" ? customArea : area}</p>
             <p><strong className="text-gray-700 font-serif">Category:</strong> {(category === "OTHER" ? customCategory : category).replace("_", " ")}</p>
             <p><strong className="text-gray-700 font-serif">Description:</strong><br /><span className="text-gray-600 font-serif">{description}</span></p>

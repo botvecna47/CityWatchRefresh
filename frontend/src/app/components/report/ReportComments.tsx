@@ -47,7 +47,7 @@ export function ReportComments({ report, currentUser, commentText, setCommentTex
           className={cn("text-xl font-bold flex items-center gap-2", activeTab === 'comments' ? "text-[#1A4331] border-b-2 border-[#1A4331] pb-2 -mb-[9px]" : "text-gray-400 font-normal")}
           style={{ fontFamily: 'Playfair Display, serif' }}
         >
-          <MessageSquare className="w-5 h-5" /> Comments ({report.comments.length})
+          <MessageSquare className="w-5 h-5" /> Comments ({report.comments?.length || 0})
         </button>
         {showMessagesTab && (
           <button 
@@ -63,10 +63,10 @@ export function ReportComments({ report, currentUser, commentText, setCommentTex
       {activeTab === 'comments' ? (
         <>
           <div className="space-y-6 mb-8">
-            {report.comments.map(comment => (
+            {(report.comments || []).map(comment => (
               <div key={comment.id} className="flex gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#1A4331] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <span className="font-bold text-sm">{comment.authorName.charAt(0).toUpperCase()}</span>
+                  <span className="font-bold text-sm">{comment.authorName?.charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="flex-1 bg-[#FDFDF7] p-4 rounded-md border border-[#1A4331]/10 shadow-sm relative">
                   <div className="absolute top-4 -left-2 w-4 h-4 bg-[#FDFDF7] border-l border-t border-[#1A4331]/10 rotate-[-45deg]"></div>
@@ -80,7 +80,7 @@ export function ReportComments({ report, currentUser, commentText, setCommentTex
                 </div>
               </div>
             ))}
-            {report.comments.length === 0 && (
+            {(!report.comments || report.comments.length === 0) && (
               <p className="text-gray-500 italic text-center py-4 bg-gray-50 rounded-sm border border-gray-100">No comments yet. Be the first to discuss this issue.</p>
             )}
           </div>

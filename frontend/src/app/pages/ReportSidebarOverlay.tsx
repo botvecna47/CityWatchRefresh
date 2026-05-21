@@ -151,7 +151,7 @@ export function ReportSidebarOverlay() {
 
             {report.image && (
               <div className="rounded-md overflow-hidden border border-gray-100 bg-gray-50">
-                <img src={report.image} alt={report.title} className="w-full object-cover max-h-52" />
+                <img src={report.image} alt={report.title} className="w-full h-48 sm:h-56 object-cover" />
               </div>
             )}
 
@@ -210,7 +210,7 @@ export function ReportSidebarOverlay() {
                 <p className="font-bold text-green-900 text-sm mb-2 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-green-600" /> Resolution Proof
                 </p>
-                <img src={report.proofImage} alt="Proof" className="w-full h-auto rounded-sm border border-green-200 max-h-40 object-cover" />
+                <img src={report.proofImage} alt="Proof" className="w-full h-32 sm:h-40 object-cover rounded-sm border border-green-200" />
               </div>
             )}
 

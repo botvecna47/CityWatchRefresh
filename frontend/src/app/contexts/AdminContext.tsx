@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "sonner";
-import { User, CoordinatorApplication, SpamReport, Role } from "../types";
-import { adminService, applicationService, spamService, complaintService } from "../api/services";
+import { User, CoordinatorApplication, SpamReport, Role, AuditLog } from "../types";
+import { adminService, applicationService, spamService, complaintService, auditLogService } from "../api/services";
 
 interface AdminContextType {
   users: User[];
@@ -27,6 +27,9 @@ interface AdminContextType {
   resolveSpamReport: (id: string) => void;
   banUser: (id: string) => void;
   unbanUser: (id: string) => void;
+  auditLogs: AuditLog[];
+  auditLogsLoading: boolean;
+  refreshAuditLogs: () => void;
 }
 
 // AdminContext is kept internal — consumers use the useAdmin() hook
@@ -43,6 +46,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [adminReportsTotalPages, setAdminReportsTotalPages] = useState(1);
   const [applications, setApplications] = useState<CoordinatorApplication[]>([]);
   const [spamReports, setSpamReports] = useState<SpamReport[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
 
   const refreshUsers = (page = 0) => {
     setUsersLoading(true);
@@ -163,11 +168,31 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     catch { toast.error("Failed to unban user."); }
   };
 
+  const refreshAuditLogs = () => {
+    setAuditLogsLoading(true);
+    auditLogService.getAll()
+      .then((data: any[]) => {
+        setAuditLogs(data.map(a => ({
+          id: String(a.id),
+          action: a.action || "",
+          entityType: a.entityType || "",
+          entityId: String(a.entityId || ""),
+          oldValue: a.oldValue || undefined,
+          newValue: a.newValue || undefined,
+          timestamp: a.timestamp || new Date().toISOString(),
+          user: a.user ? { id: String(a.user.id), username: a.user.username || "System" } : undefined,
+        })));
+      })
+      .catch(console.error)
+      .finally(() => setAuditLogsLoading(false));
+  };
+
   return (
     <AdminContext.Provider value={{ 
       users, usersLoading, usersPage, usersTotalPages, setUsersPage,
       adminReports, adminReportsLoading, adminReportsPage, adminReportsTotalPages, setAdminReportsPage, refreshAdminReports,
-      applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser 
+      applications, spamReports, refreshUsers, refreshApplications, refreshSpamReports, submitApplication, updateApplicationStatus, assignCoordinatorToReport, submitSpamReport, resolveSpamReport, banUser, unbanUser,
+      auditLogs, auditLogsLoading, refreshAuditLogs,
     }}>
       {children}
     </AdminContext.Provider>

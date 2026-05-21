@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { useAppContext } from "../store";
 import { Card, Button, Input, cn } from "../components/ui";
@@ -10,10 +10,16 @@ import logo from "../../assets/logo.png";
 const API_BASE = "/api/auth";
 
 export function AuthPage() {
-  const { setCurrentUser } = useAppContext();
+  const { setCurrentUser, currentUser } = useAppContext();
   const navigate = useNavigate();
   const [step, setStep] = useState<"login" | "signup" | "verify">("login");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate("/");
+    }
+  }, [currentUser, navigate]);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -56,6 +62,17 @@ export function AuthPage() {
     }
   };
 
+  const validateCity = (val: string) => {
+    setCity(val);
+    if (!val) {
+      setCityError("City is required");
+    } else if (/[^a-zA-Z\s-]/.test(val)) {
+      setCityError("City can only contain letters, spaces, and hyphens");
+    } else {
+      setCityError("");
+    }
+  };
+
   const isPasswordValid = 
     password.length >= 12 &&
     /[A-Z]/.test(password) &&
@@ -81,7 +98,7 @@ export function AuthPage() {
       if (!confirmPassword) { setConfirmPasswordError("Please confirm your password"); hasEmptyFields = true; }
 
       if (hasEmptyFields) { toast.error("Please fill in all fields."); return; }
-      if (emailError || nameError) { toast.error("Please fix the errors before continuing."); return; }
+      if (emailError || nameError || cityError) { toast.error("Please fix the errors before continuing."); return; }
       if (!isPasswordValid) {
         setPasswordError("Password does not meet all criteria.");
         toast.error("Password does not meet all criteria.");
@@ -368,7 +385,7 @@ export function AuthPage() {
                             <Input 
                               placeholder="City"
                               value={city}
-                              onChange={(e) => setCity(e.target.value)}
+                              onChange={(e) => validateCity(e.target.value)}
                               className={cityError ? "border-red-500 focus:ring-red-500" : ""}
                             />
                             {cityError && <p className="text-red-500 text-xs mt-1">{cityError}</p>}
@@ -467,69 +484,7 @@ export function AuthPage() {
               </motion.form>
             </AnimatePresence>
 
-            {/* Test accounts info */}
-            {step === "login" && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="mt-8"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Quick Test Access</span>
-                  </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-2">
-                  <button 
-                    onClick={() => handleQuickSignIn("c1@gmail.com")}
-                    className="flex items-center justify-between p-2.5 rounded-sm bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors group text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🧑</span>
-                      <div>
-                        <p className="text-xs font-bold text-blue-900 group-hover:underline">Citizen Portal</p>
-                        <p className="text-[10px] text-blue-700 opacity-70">c1@gmail.com</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
-                  </button>
-
-                  <button 
-                    onClick={() => handleQuickSignIn("ravi@citywatch.in")}
-                    className="flex items-center justify-between p-2.5 rounded-sm bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors group text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🔧</span>
-                      <div>
-                        <p className="text-xs font-bold text-purple-900 group-hover:underline">Coordinator Panel</p>
-                        <p className="text-[10px] text-purple-700 opacity-70">ravi@citywatch.in</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
-                  </button>
-
-                  <button 
-                    onClick={() => handleQuickSignIn("admin@citywatch.in")}
-                    className="flex items-center justify-between p-2.5 rounded-sm bg-red-50 border border-red-100 hover:bg-red-100 transition-colors group text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🛡️</span>
-                      <div>
-                        <p className="text-xs font-bold text-red-900 group-hover:underline">Command Center (Admin)</p>
-                        <p className="text-[10px] text-red-700 opacity-70">admin@citywatch.in</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">One-Click</span>
-                  </button>
-                </div>
-                <p className="text-[10px] text-center text-gray-400 mt-2">Password: <code className="bg-gray-100 px-1 rounded">Admin@123</code></p>
-              </motion.div>
-            )}
           </Card>
         </motion.div>
       </div>

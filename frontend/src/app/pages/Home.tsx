@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { Filter, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext, Status, Area } from "../store";
@@ -13,6 +13,7 @@ export function Home() {
   const { reports, currentUser, loading, handleVote: voteOnServer, updateReport, refreshReports } = useAppContext();
   const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
   const navigate = useNavigate();
+  const { openJoinModal } = useOutletContext<any>();
   const [filterArea, setFilterArea] = useState<Area | "All">(localStorage.getItem("feed_filterArea") || "All");
   const [filterStatus, setFilterStatus] = useState<Status | "All">((localStorage.getItem("feed_filterStatus") as Status | "All") || "All");
   const [filterUrgency, setFilterUrgency] = useState<"Low" | "Medium" | "High" | "All">((localStorage.getItem("feed_filterUrgency") as any) || "All");
@@ -190,13 +191,21 @@ export function Home() {
           </div>
         </div>
         
-        <div className="bg-[#1A4331] rounded-xl p-4 shadow-sm text-white">
-          <h3 className="font-bold text-lg mb-2">Join as Coordinator</h3>
-          <p className="text-sm mb-4 opacity-90">Help verify reports and coordinate with authorities in your area.</p>
-          <Button className="bg-white text-[#1A4331] hover:bg-gray-100 w-full font-bold rounded-xl shadow-none">
-            Apply Now
-          </Button>
-        </div>
+        {(!currentUser || currentUser.role === 'citizen') && (
+          <div className="bg-[#1A4331] rounded-xl p-4 shadow-sm text-white">
+            <h3 className="font-bold text-lg mb-2">Join as Coordinator</h3>
+            <p className="text-sm mb-4 opacity-90">Help verify reports and coordinate with authorities in your area.</p>
+            <Button 
+              onClick={() => {
+                if (!currentUser) navigate('/auth');
+                else openJoinModal();
+              }}
+              className="bg-white text-[#1A4331] hover:bg-gray-100 w-full font-bold rounded-xl shadow-none"
+            >
+              Apply Now
+            </Button>
+          </div>
+        )}
         
         <div className="text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 px-2">
           <span>Terms of Service</span>

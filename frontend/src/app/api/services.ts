@@ -60,3 +60,8 @@ export const notificationService = {
   markRead: (id: string) => apiClient.patch(`/api/notifications/${id}/read`),
   markAllRead: () => apiClient.patch("/api/notifications/read-all")
 };
+
+export const auditLogService = {
+  getAll: () => apiClient.get("/api/admin/audit-logs"),
+};
+
