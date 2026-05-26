@@ -38,6 +38,17 @@ public class ComplaintService {
 
     @Transactional
     public ComplaintResponse submit(User citizen, ComplaintRequest req) {
+        // Validation: Citizens can only upload images
+        if (req.getImageUrls() != null && !req.getImageUrls().isEmpty()) {
+            for (String url : req.getImageUrls()) {
+                String lowerUrl = url.toLowerCase();
+                if (!(lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png") ||
+                      lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".webp"))) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Citizens can only upload image files (.jpg, .png, .webp, etc.). Documents are not allowed.");
+                }
+            }
+        }
+
         long recentCount = complaintRepository.countByCitizenSince(citizen, LocalDateTime.now().minusHours(24));
         if (recentCount >= 10) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You can submit at most 10 complaints per day.");
@@ -170,13 +181,21 @@ public class ComplaintService {
                         id
                 )
             );
-        } else {
+        } else if (newStatus == ComplaintStatus.IN_PROGRESS && complaint.getCitizen() != null) {
+            notificationService.create(
+                complaint.getCitizen(),
+                "Report In Progress",
+                "Your report is now In Progress. The assigned coordinator is actively working on it.",
+                NotificationType.COMPLAINT_UPDATE,
+                complaint.getId()
+            );
+        } else if (newStatus != ComplaintStatus.IN_PROGRESS && complaint.getCitizen() != null) {
             notificationService.create(
                     complaint.getCitizen(),
-                    "Complaint status updated",
-                    "Your complaint is now: " + newStatus.name().replace("_", " "),
+                    "Status update",
+                    "Your complaint is now: " + newStatus,
                     NotificationType.COMPLAINT_UPDATE,
-                    id
+                    complaint.getId()
             );
         }
 
@@ -216,10 +235,14 @@ public class ComplaintService {
         }
         
         if (minCount >= 5 || bestCoordinator == null) {
+            String descriptionPreview = complaint.getDescription();
+            if (descriptionPreview != null && descriptionPreview.length() > 50) {
+                descriptionPreview = descriptionPreview.substring(0, 47) + "...";
+            }
             notificationService.notifyCoordinatorsInArea(
                 complaint.getArea(), 
-                "New Task Available", 
-                "Coordinator queues are full! First to accept gets this report.", 
+                "New Task: " + complaint.getTitle(), 
+                "A new report was filed in your area. Please review and accept it if you can.\n\nDescription: " + descriptionPreview, 
                 complaint.getId()
             );
         } else {
@@ -227,10 +250,14 @@ public class ComplaintService {
             complaint.setStatus(ComplaintStatus.ASSIGNED);
             complaint.setSlaDeadline(LocalDateTime.now().plusHours(complaint.getCategory().getDefaultSlaHours()));
             
+            String descriptionPreview = complaint.getDescription();
+            if (descriptionPreview != null && descriptionPreview.length() > 50) {
+                descriptionPreview = descriptionPreview.substring(0, 47) + "...";
+            }
             notificationService.create(
                 bestCoordinator, 
-                "New Task Auto-Assigned", 
-                "You have been automatically assigned a new report in your area.", 
+                "New Task Auto-Assigned: " + complaint.getTitle(), 
+                "You have been automatically assigned a new report in your area.\n\nDescription: " + descriptionPreview, 
                 NotificationType.COMPLAINT_UPDATE, 
                 complaint.getId()
             );
@@ -253,18 +280,28 @@ public class ComplaintService {
     @Transactional
     public ComplaintResponse upvote(User citizen, String id) {
         Complaint complaint = findOrThrow(id);
-        if (complaint.getUpvotedCitizenIds() == null) {
-            complaint.setUpvotedCitizenIds(new java.util.HashSet<String>());
-        }
-        // Toggle: remove if already voted, add if not
-        if (complaint.getUpvotedCitizenIds().contains(citizen.getId())) {
-            complaint.getUpvotedCitizenIds().remove(citizen.getId());
+
+        boolean alreadyUpvoted = complaintRepository.hasUpvoted(id, citizen.getId());
+
+        if (alreadyUpvoted) {
+            // Remove this citizen's upvote atomically — doesn't touch anyone else's row
+            complaintRepository.deleteUpvote(id, citizen.getId());
         } else {
-            complaint.getUpvotedCitizenIds().add(citizen.getId());
+            // Add this citizen's upvote atomically — INSERT IGNORE prevents duplicates
+            complaintRepository.insertUpvote(id, citizen.getId());
             recalculateIntensity(complaint);
         }
-        complaintRepository.save(complaint);
-        return toResponse(complaint);
+
+        // Reload the fresh count and full voter list from DB (bypasses stale Hibernate cache)
+        complaintRepository.flush();
+        int freshCount = complaintRepository.countUpvotes(id);
+        java.util.List<String> freshIds = complaintRepository.findUpvoterIds(id);
+
+        // Build response directly with fresh data to avoid stale @ElementCollection
+        ComplaintResponse resp = toResponse(complaint);
+        resp.setUpvotes(freshCount);
+        resp.setUpvotedCitizenIds(new java.util.HashSet<>(freshIds));
+        return resp;
     }
 
     @Transactional
@@ -280,13 +317,20 @@ public class ComplaintService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not assigned to this complaint");
         }
 
+        // Validation: Coordinators can upload images or PDFs
+        if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
+            String lowerUrl = req.getImageUrl().toLowerCase();
+            if (!(lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png") ||
+                  lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".pdf"))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators can only upload images or PDF files as proof.");
+            }
+        }
+
+        // Removed strict 25 meter distance check
         double dLat = Math.abs(req.getLatitude() - complaint.getLatitude());
         double dLng = Math.abs(req.getLongitude() - complaint.getLongitude());
         double distance = Math.sqrt(dLat * dLat + dLng * dLng);
-        if (distance > NEARBY_DELTA) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You must be within 25 meters of the complaint location to complete it.");
-        }
-        boolean locationValid = true;
+        boolean locationValid = distance <= NEARBY_DELTA;
 
         Proof proof = Proof.builder()
                 .id(idGenerator.nextProofId())

@@ -137,6 +137,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   const handleVote = async (id: string, currentUserId?: string) => {
     let wasUpvoted = false;
     if (currentUserId) {
+      // Optimistic update
       setReports(prev => prev.map(r => {
         if (r.id !== id) return r;
         const ids = r.upvotedCitizenIds || [];
@@ -144,8 +145,22 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
         return { ...r, upvotes: wasUpvoted ? r.upvotes - 1 : r.upvotes + 1, upvotedCitizenIds: wasUpvoted ? ids.filter(i => i !== currentUserId) : [...ids, currentUserId] };
       }));
     }
-    try { await complaintService.upvote(id); if (wasUpvoted) toast.info("Upvote removed."); else toast.success("Upvoted! Thank you for your support."); }
-    catch { refreshReports(); toast.error("Vote failed."); }
+    try {
+      const serverReport = await complaintService.upvote(id);
+      // Sync authoritative count from server — prevents drift when multiple users vote
+      if (serverReport) {
+        setReports(prev => prev.map(r => r.id !== id ? r : {
+          ...r,
+          upvotes: serverReport.upvotes ?? r.upvotes,
+          upvotedCitizenIds: serverReport.upvotedCitizenIds ?? r.upvotedCitizenIds,
+        }));
+      }
+      if (wasUpvoted) toast.info("Upvote removed.");
+      else toast.success("Upvoted! Thank you for your support.");
+    } catch {
+      refreshReports(); // rollback on failure
+      toast.error("Vote failed.");
+    }
   };
 
   const softDeleteReport = async (id: string, messageForCitizen: string, reason: string) => {

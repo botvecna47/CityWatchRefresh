@@ -58,8 +58,12 @@ public class Complaint {
     private List<String> imageUrls;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "complaint_upvotes", joinColumns = @JoinColumn(name = "complaint_id"))
-    @Column(name = "citizen_id")
+    @CollectionTable(
+        name = "complaint_upvotes",
+        joinColumns = @JoinColumn(name = "complaint_id"),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"complaint_id", "citizen_id"})
+    )
+    @Column(name = "citizen_id", length = 12)
     private Set<String> upvotedCitizenIds;
 
     @Column(nullable = false)

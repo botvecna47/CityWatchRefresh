@@ -91,11 +91,11 @@ export function SystemManagement() {
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Center Lat</label>
-                    <Input type="number" step="0.0001" value={newArea.centerLat} onChange={e => setNewArea({...newArea, centerLat: parseFloat(e.target.value)})} required />
+                    <Input type="number" step="0.0001" value={newArea.centerLat || ""} onChange={e => setNewArea({...newArea, centerLat: parseFloat(e.target.value) || 0})} required />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Center Lng</label>
-                    <Input type="number" step="0.0001" value={newArea.centerLng} onChange={e => setNewArea({...newArea, centerLng: parseFloat(e.target.value)})} required />
+                    <Input type="number" step="0.0001" value={newArea.centerLng || ""} onChange={e => setNewArea({...newArea, centerLng: parseFloat(e.target.value) || 0})} required />
                   </div>
                 </div>
                 <Button size="sm" className="w-full h-11 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl font-bold shadow-md">Save New Area</Button>
@@ -144,7 +144,7 @@ export function SystemManagement() {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Default SLA (Hours)</label>
-                  <Input type="number" value={newCat.defaultSlaHours} onChange={e => setNewCat({...newCat, defaultSlaHours: parseInt(e.target.value)})} required />
+                  <Input type="number" value={newCat.defaultSlaHours || ""} onChange={e => setNewCat({...newCat, defaultSlaHours: parseInt(e.target.value) || 0})} required />
                 </div>
                 <Button size="sm" className="w-full h-11 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl font-bold shadow-md mt-2">Save Category</Button>
               </motion.form>

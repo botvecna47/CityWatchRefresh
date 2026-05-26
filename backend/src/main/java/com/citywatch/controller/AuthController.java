@@ -30,6 +30,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
+    // City → RTO code mapping for Maharashtra
+    private static final java.util.Map<String, String> CITY_TO_RTO = java.util.Map.ofEntries(
+        java.util.Map.entry("nanded", "26"),
+        java.util.Map.entry("mumbai", "01"),
+        java.util.Map.entry("pune", "11"),
+        java.util.Map.entry("nagpur", "13"),
+        java.util.Map.entry("aurangabad", "09"),
+        java.util.Map.entry("nashik", "15"),
+        java.util.Map.entry("solapur", "22"),
+        java.util.Map.entry("kolhapur", "09"),
+        java.util.Map.entry("thane", "04"),
+        java.util.Map.entry("latur", "24")
+    );
+
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
@@ -42,7 +56,7 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail().toLowerCase(), loginRequest.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtils.generateJwtToken(authentication);
@@ -65,7 +79,7 @@ public class AuthController {
         if (email == null || email.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required."));
         }
-        if (userRepository.existsByEmail(email.toLowerCase())) {
+        if (userRepository.existsByEmailIgnoreCase(email.toLowerCase())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "An account with this email already exists."));
         }
@@ -92,18 +106,29 @@ public class AuthController {
     // ─── POST /api/auth/register ────────────────────────────────────────────
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
+        String emailLower = registerRequest.getEmail().toLowerCase();
 
-        // Check if email already exists
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+        // Gate: OTP must have been verified before registration is allowed
+        if (!emailVerificationService.isVerified(emailLower)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Email not verified. Please complete the OTP verification step first."));
+        }
+
+        // Strict case-insensitive email uniqueness check
+        if (userRepository.existsByEmailIgnoreCase(emailLower)) {
+            emailVerificationService.consumeVerification(emailLower); // clear the verified flag
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "An account with this email already exists."));
         }
 
-        // Resolve stateCode / rtoCode (frontend may not send them; default to MH/00)
+        // Resolve stateCode / rtoCode — auto-detect from city, fallback to MH/26 (Nanded default)
         String stateCode = (registerRequest.getStateCode() != null && !registerRequest.getStateCode().isBlank())
                 ? registerRequest.getStateCode().toUpperCase() : "MH";
-        String rtoCode   = (registerRequest.getRtoCode() != null && !registerRequest.getRtoCode().isBlank())
-                ? registerRequest.getRtoCode() : "00";
+        String cityLower = registerRequest.getCity() != null ? registerRequest.getCity().trim().toLowerCase() : "";
+        String rtoCode = CITY_TO_RTO.getOrDefault(cityLower,
+                (registerRequest.getRtoCode() != null && !registerRequest.getRtoCode().isBlank()
+                        && !registerRequest.getRtoCode().equals("00"))
+                        ? registerRequest.getRtoCode() : "26");
 
         // Generate structured user ID: {STATE}{RTO}{TYPE}{7-seq}
         String userId = idGenerator.nextUserId(Role.CITIZEN, stateCode, rtoCode);
@@ -116,19 +141,27 @@ public class AuthController {
             username = baseUsername + "_" + counter++;
         }
 
-        // Create and persist the user
+        // City with null-safety fallback
+        String city = (registerRequest.getCity() != null && !registerRequest.getCity().isBlank())
+                ? registerRequest.getCity() : "";
+
+        // Create and persist the user — store email in lowercase for consistency
         User user = User.builder()
                 .id(userId)
                 .username(username)
-                .email(registerRequest.getEmail())
+                .fullName(registerRequest.getName().trim())  // store original cased name
+                .email(emailLower)
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role(Role.CITIZEN)
-                .city(registerRequest.getCity())
+                .city(city)
                 .stateCode(stateCode)
                 .rtoCode(rtoCode)
                 .build();
 
         user = userRepository.save(user);
+
+        // Consume the verified status — prevents re-registration with same OTP session
+        emailVerificationService.consumeVerification(emailLower);
 
         // Auto-login: generate JWT for the new user
         Authentication authentication = authenticationManager.authenticate(
@@ -164,7 +197,7 @@ public class AuthController {
                 .token(jwt)
                 .id(user.getId())
                 .username(user.getUsername())
-                .name(user.getUsername())
+                .name(user.getFullName())   // return real full name, not the handle
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .status(user.getStatus().name())

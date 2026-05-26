@@ -29,8 +29,11 @@ public class EmailVerificationService {
     private static final Logger log = LoggerFactory.getLogger(EmailVerificationService.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    // In-memory store: email -> OtpEntry
+    // In-memory store: email -> OtpEntry (pending verification)
     private final Map<String, OtpEntry> otpStore = new ConcurrentHashMap<>();
+
+    // Emails that have passed OTP verification but not yet registered
+    private final java.util.Set<String> verifiedEmails = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // Optional: null when spring-boot-starter-mail is not configured or SMTP is unavailable
     @Autowired(required = false)
@@ -93,10 +96,25 @@ public class EmailVerificationService {
             log.warn("[EmailVerification] Incorrect OTP for email: {}", email);
             return false;
         }
-        // Valid — mark as verified by removing from pending store
+        // Valid — mark as verified: remove from pending and add to verified set
         otpStore.remove(email.toLowerCase());
+        verifiedEmails.add(email.toLowerCase());
         log.info("[EmailVerification] OTP verified successfully for email: {}", email);
         return true;
+    }
+
+    /**
+     * Returns true if the email has passed OTP verification and hasn't registered yet.
+     */
+    public boolean isVerified(String email) {
+        return verifiedEmails.contains(email.toLowerCase());
+    }
+
+    /**
+     * Consumes (removes) the verified status for an email — called after successful registration.
+     */
+    public void consumeVerification(String email) {
+        verifiedEmails.remove(email.toLowerCase());
     }
 
     // ─── Private Helpers ───────────────────────────────────────────────────────
@@ -184,7 +202,7 @@ public class EmailVerificationService {
                       <tr>
                         <td style="background-color:#1A4331;padding:20px 40px;text-align:center;">
                           <p style="margin:0;font-size:12px;color:#a8d5b5;font-family:Arial,sans-serif;">
-                            © 2025 CityWatch — Empowering civic communities
+                            © 2026 CityWatch — Empowering civic communities
                           </p>
                         </td>
                       </tr>

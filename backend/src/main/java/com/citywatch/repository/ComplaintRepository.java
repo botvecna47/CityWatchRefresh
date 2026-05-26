@@ -48,4 +48,26 @@ public interface ComplaintRepository extends JpaRepository<Complaint, String> {
 
     @Query("SELECT c FROM Complaint c WHERE c.latitude >= :minLat AND c.latitude <= :maxLat AND c.longitude >= :minLng AND c.longitude <= :maxLng AND c.status NOT IN ('REJECTED', 'CLOSED') ORDER BY c.createdAt DESC")
     List<Complaint> findInBoundingBox(@Param("minLat") Double minLat, @Param("maxLat") Double maxLat, @Param("minLng") Double minLng, @Param("maxLng") Double maxLng);
+    // ── Upvote atomic operations ─────────────────────────────────────────────
+    // Check if a citizen has already upvoted a complaint
+    @Query(value = "SELECT COUNT(*) > 0 FROM complaint_upvotes WHERE complaint_id = :complaintId AND citizen_id = :citizenId", nativeQuery = true)
+    boolean hasUpvoted(@Param("complaintId") String complaintId, @Param("citizenId") String citizenId);
+
+    // Insert a single upvote row (ON CONFLICT DO NOTHING skips if already exists — no duplicate, no overwrite)
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "INSERT INTO complaint_upvotes (complaint_id, citizen_id) VALUES (:complaintId, :citizenId) ON CONFLICT DO NOTHING", nativeQuery = true)
+    void insertUpvote(@Param("complaintId") String complaintId, @Param("citizenId") String citizenId);
+
+    // Remove a single upvote row
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "DELETE FROM complaint_upvotes WHERE complaint_id = :complaintId AND citizen_id = :citizenId", nativeQuery = true)
+    void deleteUpvote(@Param("complaintId") String complaintId, @Param("citizenId") String citizenId);
+
+    // Count upvotes for a complaint
+    @Query(value = "SELECT COUNT(*) FROM complaint_upvotes WHERE complaint_id = :complaintId", nativeQuery = true)
+    int countUpvotes(@Param("complaintId") String complaintId);
+
+    // Get all citizen IDs who upvoted a complaint
+    @Query(value = "SELECT citizen_id FROM complaint_upvotes WHERE complaint_id = :complaintId", nativeQuery = true)
+    java.util.List<String> findUpvoterIds(@Param("complaintId") String complaintId);
 }

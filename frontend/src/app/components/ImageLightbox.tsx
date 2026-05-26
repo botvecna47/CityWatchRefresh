@@ -6,9 +6,10 @@ interface ImageLightboxProps {
   images: string[];
   initialIndex: number;
   onClose: () => void;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
-export const ImageLightbox = forwardRef<HTMLDivElement, ImageLightboxProps>(({ images, initialIndex, onClose }, ref) => {
+export const ImageLightbox = ({ images, initialIndex, onClose, ref }: ImageLightboxProps) => {
   const [index, setIndex] = useState(initialIndex);
   const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
   const [zoomed, setZoomed] = useState(false);

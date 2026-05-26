@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router";
 import { ArrowBigUp, MessageSquare, MapPin, Camera } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Card, Badge, cn, Button } from "../ui";
 
 export function StatusBadge({ status }: { status: string }) {
@@ -43,7 +43,7 @@ export function FeedItem({ report, currentUser, handleVoteAction, updateReport }
           <div>
             <span className="font-semibold text-[#1A4331] text-sm">{report.authorName}</span>
             <span className="text-xs text-gray-500 ml-2">
-              {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}
+              {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })} • {format(new Date(report.createdAt), "dd MMM yy, HH:mm")}
             </span>
           </div>
           <div className="sm:ml-auto flex gap-2 w-full sm:w-auto items-center">

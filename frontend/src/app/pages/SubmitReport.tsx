@@ -108,7 +108,7 @@ export function SubmitReport() {
       await refreshMasterData();
     }
 
-    // Use Haversine distance to find truly nearby issues (within 500m of the pin)
+    // Use Haversine distance to find truly nearby issues (within 75m of the pin)
     const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const R = 6371;
       const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -122,14 +122,15 @@ export function SubmitReport() {
     };
 
     const [userLat, userLng] = locationLatLong;
-    const nearby = reports
-      .filter(r =>
-        r.status !== "Completed" &&
-        r.lat != null &&
-        r.lng != null &&
-        haversineKm(userLat, userLng, r.lat, r.lng) <= 0.5
-      )
-      .slice(0, 2);
+    
+    const reportsWithDistance = reports
+      .filter(r => r.status !== "Completed" && r.lat != null && r.lng != null)
+      .map(r => ({ ...r, distance: haversineKm(userLat, userLng, r.lat, r.lng) }));
+
+    const nearby = reportsWithDistance
+      .filter(r => r.distance <= 0.075) // 75 meters
+      .sort((a, b) => a.distance - b.distance) // Closest first
+      .slice(0, 5); // Top 5
 
     if (nearby.length > 0) {
       setNearbyIssues(nearby);

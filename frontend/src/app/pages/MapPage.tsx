@@ -74,7 +74,7 @@ export function MapPage() {
   });
 
   const defaultCenter: [number, number] = [19.1383, 77.3210];
-  const availableAreas = ["All", ...Array.from(new Set(reports.map(r => r.area).filter(Boolean)))];
+  const availableAreas = ["All", ...Array.from(new Set(mapReports.map(r => r.area).filter(Boolean)))];
 
   if (!isClient) return null;
 

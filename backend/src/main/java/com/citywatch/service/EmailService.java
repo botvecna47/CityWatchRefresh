@@ -50,6 +50,8 @@ public class EmailService {
     }
 
     private String buildHtml(String name, String title, String body) {
+        String uniqueRef = java.util.UUID.randomUUID().toString().substring(0, 8);
+        String currentDateTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
         return """
             <!DOCTYPE html>
             <html lang="en">
@@ -57,70 +59,79 @@ public class EmailService {
               <meta charset="UTF-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1.0" />
               <title>CityWatch Notification</title>
+              <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
             </head>
-            <body style="margin:0;padding:0;background-color:#f5f5f0;font-family:'Georgia',serif;">
-              <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f0;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#FDFDF7;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#FDFDF7;padding:40px 20px;">
                 <tr>
                   <td align="center">
-                    <table width="560" cellpadding="0" cellspacing="0"
-                      style="background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e0e0d8;max-width:560px;width:100%%;">
-
+                    <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e0e6e2;max-width:560px;width:100%%;box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                      
                       <!-- Header -->
                       <tr>
-                        <td style="background-color:#1A4331;padding:28px 32px;">
+                        <td style="background-color:#1A4331;padding:32px 40px;text-align:center;">
+                          <img src="https://img.icons8.com/ios-filled/100/ffffff/shield.png" alt="CityWatch Logo" width="48" height="48" style="display:block;margin:0 auto 12px auto;" />
+                          <p style="margin:0;font-size:12px;letter-spacing:2px;color:#a8d5b5;text-transform:uppercase;font-weight:600;">Civic Issue Reporting Platform</p>
+                          <h1 style="margin:8px 0 0 0;font-size:28px;font-weight:800;color:#ffffff;font-family:'Playfair Display', Georgia, serif;">CityWatch</h1>
+                        </td>
+                      </tr>
+                      
+                      <!-- Body -->
+                      <tr>
+                        <td style="padding:40px;">
+                          <p style="margin:0 0 20px 0;font-size:16px;color:#4a5568;line-height:1.5;">
+                            Hello <strong style="color:#1A4331;">%s</strong>,
+                          </p>
+                          <h2 style="margin:0 0 24px 0;font-size:20px;color:#1A4331;font-weight:700;line-height:1.3;font-family:'Playfair Display', Georgia, serif;">%s</h2>
+                          
+                          <!-- Notification Box -->
                           <table width="100%%" cellpadding="0" cellspacing="0">
                             <tr>
-                              <td>
-                                <span style="font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:-0.5px;">
-                                  🌿 CityWatch
-                                </span>
-                              </td>
-                              <td align="right">
-                                <span style="font-size:11px;color:#9ECBA8;font-family:sans-serif;letter-spacing:1px;text-transform:uppercase;">
-                                  Notification
-                                </span>
+                              <td style="padding:0 0 32px 0;">
+                                <div style="background-color:#f0f7f2;border-left:4px solid #2E7D32;border-radius:0 8px 8px 0;padding:24px;">
+                                  <p style="margin:0;font-size:16px;color:#2d3748;line-height:1.6;white-space:pre-wrap;">%s</p>
+                                </div>
                               </td>
                             </tr>
                           </table>
-                        </td>
-                      </tr>
-
-                      <!-- Body -->
-                      <tr>
-                        <td style="padding:32px;">
-                          <p style="margin:0 0 8px 0;font-size:13px;color:#6b7280;font-family:sans-serif;">
-                            Hello, %s
+                          
+                          <table width="100%%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td align="center">
+                                <a href="http://localhost:5173" style="display:inline-block;background-color:#2E7D32;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:bold;letter-spacing:0.5px;box-shadow: 0 2px 4px rgba(46, 125, 50, 0.3);">
+                                  Open CityWatch Platform
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <!-- Divider -->
+                          <hr style="border:none;border-top:1px solid #edf2f7;margin:32px 0 24px 0;" />
+                          
+                          <p style="margin:0;font-size:13px;color:#718096;text-align:center;line-height:1.5;">
+                            You are receiving this because you have email notifications enabled on your CityWatch account.
                           </p>
-                          <h2 style="margin:0 0 20px 0;font-size:20px;color:#1A4331;line-height:1.3;">
-                            %s
-                          </h2>
-                          <div style="background:#f9faf9;border-left:4px solid #2E7D32;border-radius:4px;padding:16px 20px;margin-bottom:24px;">
-                            <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;font-family:sans-serif;">
-                              %s
-                            </p>
-                          </div>
-                          <a href="https://citywatch.app/notifications"
-                            style="display:inline-block;background-color:#2E7D32;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-family:sans-serif;font-weight:bold;">
-                            View in CityWatch →
-                          </a>
                         </td>
                       </tr>
-
+                      
                       <!-- Footer -->
                       <tr>
-                        <td style="background-color:#f5f5f0;padding:20px 32px;border-top:1px solid #e5e7eb;">
-                          <p style="margin:0;font-size:11px;color:#9ca3af;font-family:sans-serif;line-height:1.6;">
-                            You are receiving this because you have email notifications enabled on your CityWatch account.<br/>
-                            To unsubscribe, go to <strong>Settings → Notifications</strong> and turn off Email Notifications.
+                        <td style="background-color:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #edf2f7;">
+                          <p style="margin:0 0 8px 0;font-size:12px;color:#a0aec0;">
+                            © 2026 CityWatch — Empowering civic communities
+                          </p>
+                          <p style="margin:0;font-size:10px;color:#cbd5e0;">
+                            Ref: %s • Sent: %s
                           </p>
                         </td>
                       </tr>
+                      
                     </table>
                   </td>
                 </tr>
               </table>
             </body>
             </html>
-            """.formatted(name, title, body.replace("\n", "<br/>"));
+            """.formatted(name, title, body, uniqueRef, currentDateTime);
     }
 }

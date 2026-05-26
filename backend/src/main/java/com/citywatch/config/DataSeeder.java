@@ -80,19 +80,7 @@ public class DataSeeder implements CommandLineRunner {
         String hash = passwordEncoder.encode(DEMO_PASSWORD);
         seedAreas();
         seedCategories();
-        seedStaff(hash); // Always sync Admin and Coordinators
-
-        long citizenCount = userRepository.findByRole(Role.CITIZEN).size();
-        log.info("DataSeeder: Found {} existing citizens.", citizenCount);
-
-        if (citizenCount == 0) {
-            log.info("DataSeeder: No citizens found. Seeding demo citizens...");
-            seedDemoCitizens(hash);
-        }
-        
-        long complaintCount = complaintRepository.count();
-        log.info("DataSeeder: Found {} existing complaints. Syncing all...", complaintCount);
-        seedComplaints(); // always run to keep titles/statuses up to date
+        seedStaff(hash); 
 
         log.info("DataSeeder: Synchronization completed successfully.");
 
@@ -100,8 +88,7 @@ public class DataSeeder implements CommandLineRunner {
         log.info("  CityWatch — Startup Check Complete");
         log.info("  Demo password for ALL accounts: {}", DEMO_PASSWORD);
         log.info("  Admin:       admin@citywatch.in");
-        log.info("  Coordinator: ravi@citywatch.in");
-        log.info("  Coordinator: sunita@citywatch.in");
+        log.info("  Coordinator: gamerdani322@gmail.com");
         log.info("------------------------------------------------------");
     }
 
@@ -158,10 +145,6 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    /**
-     * Synchronizes Admin and coordinator accounts. Always ensures they exist and
-     * have the correct demo password for testing.
-     */
     private void seedStaff(String hash) {
         // ── Admin ────────────────────────────────────────────────────────────
         userRepository.findByEmail("admin@citywatch.in").ifPresentOrElse(
@@ -174,251 +157,16 @@ public class DataSeeder implements CommandLineRunner {
         );
 
         // ── Coordinators ─────────────────────────────────────────────────────
-        Area shivaji = areaRepository.findByName("Shivajinagar").orElse(null);
-        Area cidco   = areaRepository.findByName("CIDCO Colony").orElse(null);
-        Area vazir   = areaRepository.findByName("Vazirabad").orElse(null);
+        Area vazir = areaRepository.findByName("Vazirabad").orElse(null);
 
-        userRepository.findByEmail("ravi@citywatch.in").ifPresentOrElse(
-            u -> { u.setPassword(hash); userRepository.save(u); },
+        String customCoordHash = passwordEncoder.encode("Coordinator@123");
+        userRepository.findByEmail("gamerdani322@gmail.com").ifPresentOrElse(
+            u -> { u.setPassword(customCoordHash); u.setFullName("Prakash Singh"); u.setUsername("prakash_s"); userRepository.save(u); },
             () -> userRepository.save(User.builder()
-                .id("MH16M0000001").username("ravi_p")
-                .email("ravi@citywatch.in").password(hash)
-                .role(Role.COORDINATOR).area(shivaji).city("Nanded").stateCode("MH").rtoCode("16")
-                .build())
-        );
-        userRepository.findByEmail("sunita@citywatch.in").ifPresentOrElse(
-            u -> { u.setPassword(hash); userRepository.save(u); },
-            () -> userRepository.save(User.builder()
-                .id("MH16M0000002").username("sunita_d")
-                .email("sunita@citywatch.in").password(hash)
-                .role(Role.COORDINATOR).area(cidco).city("Nanded").stateCode("MH").rtoCode("16")
-                .build())
-        );
-        userRepository.findByEmail("anil@citywatch.in").ifPresentOrElse(
-            u -> { u.setPassword(hash); userRepository.save(u); },
-            () -> userRepository.save(User.builder()
-                .id("MH16M0000003").username("anil_k")
-                .email("anil@citywatch.in").password(hash)
+                .id("MH16M0000004").username("prakash_s").fullName("Prakash Singh")
+                .email("gamerdani322@gmail.com").password(customCoordHash)
                 .role(Role.COORDINATOR).area(vazir).city("Nanded").stateCode("MH").rtoCode("16")
                 .build())
         );
-    }
-
-    /**
-     * Seeds the standard 5 demo citizens. Only called if the DB has no citizens.
-     */
-    private void seedDemoCitizens(String hash) {
-        log.info("DataSeeder: Seeding 5 demo citizens...");
-        for (int i = 1; i <= 5; i++) {
-            final String email = "c" + i + "@gmail.com";
-            final String uid   = String.format("MH16C%07d", i);
-            final String uname = "citizen" + i;
-            userRepository.findByEmail(email).ifPresentOrElse(
-                u -> { u.setPassword(hash); userRepository.save(u); },
-                () -> userRepository.save(User.builder()
-                    .id(uid).username(uname)
-                    .email(email).password(hash)
-                    .role(Role.CITIZEN).city("Nanded").stateCode("MH").rtoCode("16")
-                    .build())
-            );
-        }
-    }
-
-    private void seedComplaints() {
-        User citizen1 = userRepository.findByEmail("c1@gmail.com").orElse(null);
-        User citizen2 = userRepository.findByEmail("c2@gmail.com").orElse(null);
-        User citizen3 = userRepository.findByEmail("c3@gmail.com").orElse(null);
-        User ravi     = userRepository.findByEmail("ravi@citywatch.in").orElse(null);
-        User sunita   = userRepository.findByEmail("sunita@citywatch.in").orElse(null);
-
-        Area vazir = areaRepository.findByName("Vazirabad").orElse(null);
-        Area shivaji = areaRepository.findByName("Shivajinagar").orElse(null);
-        
-        com.citywatch.entity.Category pothole = categoryRepository.findByName("POTHOLE").orElse(null);
-        com.citywatch.entity.Category garbage = categoryRepository.findByName("GARBAGE").orElse(null);
-        com.citywatch.entity.Category street = categoryRepository.findByName("STREETLIGHT").orElse(null);
-        com.citywatch.entity.Category drainage = categoryRepository.findByName("DRAINAGE").orElse(null);
-        com.citywatch.entity.Category other = categoryRepository.findByName("OTHER").orElse(null);
-
-        if (citizen1 == null || vazir == null || shivaji == null || pothole == null) {
-            log.warn("DataSeeder: skipping complaint seed — required user/area/category not found");
-            return;
-        }
-
-        // --- ID 1: Pothole 1 ---
-        seedOrUpdate(
-            "CMP-100426-000001", citizen1, vazir, pothole,
-            "Deep pothole on main market road",
-            "There's a massive pothole in the middle of Vazirabad market causing severe traffic jams.",
-            19.1535, 77.3128, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes1.jpg"))
-        );
-
-        // --- ID 2: Garbage 1 ---
-        seedOrUpdate(
-            "CMP-100426-000002", citizen2, vazir, garbage,
-            "Garbage pile near square",
-            "Garbage not cleared for 6 days. Foul smell affecting everyone.",
-            19.1542, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Garbage1.jpg"))
-        );
-
-        // --- ID 3: Drainage 1 ---
-        seedOrUpdate(
-            "CMP-100426-000003", citizen3, vazir, drainage,
-            "Water pipeline burst",
-            "Massive water leak near the rear residential lane. Clean water is being wasted.",
-            19.1528, 77.3145, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Waterleak1.jpg"))
-        );
-
-        // --- ID 4: Garbage 2 ---
-        seedOrUpdate(
-            "CMP-100426-000004", citizen1, vazir, garbage,
-            "Dumpyard overflowing onto road",
-            "The community bin near the post office is overflowing onto the street.",
-            19.1550, 77.3115, ComplaintStatus.ASSIGNED, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/garbage2.jpg"))
-        );
-
-        // --- ID 5: Pothole 2 ---
-        seedOrUpdate(
-            "CMP-100426-000005", citizen2, shivaji, pothole,
-            "Broken road near school",
-            "Dangerous potholes right outside the primary school entrance.",
-            19.1555, 77.3075, ComplaintStatus.PENDING_REVIEW, null, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes2.jpg"))
-        );
-
-        // --- ID 6: Garbage 3 ---
-        seedOrUpdate(
-            "CMP-100426-000006", citizen3, shivaji, garbage,
-            "Plastic waste accumulation",
-            "Empty plot has become a dumping ground for plastic waste.",
-            19.1560, 77.3080, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Garbage3.jpg"))
-        );
-
-        // --- ID 7: Pothole 3 ---
-        seedOrUpdate(
-            "CMP-100426-000007", citizen1, vazir, pothole,
-            "Road caved in",
-            "A section of the road has completely caved in near the junction.",
-            19.1565, 77.3135, ComplaintStatus.IN_PROGRESS, ravi, Priority.CRITICAL,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Pothole3.webp"))
-        );
-        
-        // --- ID 14: Streetlight Issue ---
-        Area cidcoArea = areaRepository.findByName("CIDCO Colony").orElse(null);
-        seedOrUpdate(
-            "CMP-100426-000014", citizen2, cidcoArea, street,
-            "Multiple streetlights not working",
-            "The entire street is completely dark because the consecutive streetlights are broken. It feels very unsafe.",
-            19.1255, 77.3255, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("http://localhost:5173/uploads/StreetLightProblem1.jpg", "http://localhost:5173/uploads/StreetLightProblem2.jpg"))
-        );
-
-        // --- ID 8: Pothole 4 ---
-        seedOrUpdate(
-            "CMP-100426-000008", citizen2, vazir, pothole,
-            "Continuous stretch of bad roads",
-            "The entire street is filled with small and large potholes.",
-            19.1570, 77.3140, ComplaintStatus.ASSIGNED, sunita, Priority.MEDIUM,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Pothole4.jpg"))
-        );
-
-        // --- ID 9: Pothole 5 ---
-        seedOrUpdate(
-            "CMP-100426-000009", citizen3, shivaji, pothole,
-            "Monsoon road damage",
-            "Recent rains washed away the top layer. Needs immediate tarring.",
-            19.1580, 77.3090, ComplaintStatus.PENDING_REVIEW, null, Priority.LOW,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Potholes.jpg"))
-        );
-
-        // --- ID 10: Drainage 2 ---
-        seedOrUpdate(
-            "CMP-100426-000010", citizen1, vazir, drainage,
-            "Sewer line blocked",
-            "Blocked sewer line causing dirty water to back up onto the pavement.",
-            19.1590, 77.3150, ComplaintStatus.ASSIGNED, sunita, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/waterleak3.jpg"))
-        );
-
-        // --- ID 11: Garbage 4 ---
-        seedOrUpdate(
-            "CMP-100426-000011", citizen2, shivaji, garbage,
-            "Construction debris dumped",
-            "Someone dumped construction debris illegally on the roadside.",
-            19.1595, 77.3100, ComplaintStatus.PENDING_REVIEW, null, Priority.MEDIUM,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/garbabe4.jpg"))
-        );
-
-        // --- ID 12: Drainage 3 ---
-        seedOrUpdate(
-            "CMP-100426-000012", citizen3, vazir, drainage,
-            "Continuous water leakage",
-            "Underground pipe leak forming a puddle that breeds mosquitoes.",
-            19.1600, 77.3160, ComplaintStatus.IN_PROGRESS, ravi, Priority.HIGH,
-            new ArrayList<>(List.of("https://zutdbxtzwaktrrfjtetg.supabase.co/storage/v1/object/public/citywatch-images/Waterleak2.jpg"))
-        );
-
-        Complaint c1 = complaintRepository.findById("CMP-100426-000001").orElse(null);
-        if (ravi != null && c1 != null && commentRepository.count() == 0) {
-            commentRepository.save(Comment.builder()
-                .id("CMT-100426-000001").complaint(c1).user(ravi)
-                .content("Team dispatched to assess road damage. Repair work begins tomorrow morning.")
-                .build());
-        }
-
-        log.info("DataSeeder: 12 sample complaints synchronized.");
-    }
-
-    private void seedOrUpdate(String id, User citizen, Area area, com.citywatch.entity.Category category, String title, String desc,
-                               double lat, double lng, ComplaintStatus status, User coordinator, Priority priority,
-                               List<String> imageUrls) {
-        
-        // Auto-assign based on area
-        User autoCoordinator = userRepository.findByRole(Role.COORDINATOR).stream()
-                .filter(u -> u.getArea() != null && u.getArea().getId().equals(area.getId()))
-                .findFirst().orElse(null);
-                
-        // If status was PENDING_REVIEW, bump it to ASSIGNED since it now has a coordinator
-        ComplaintStatus finalStatus = (status == ComplaintStatus.PENDING_REVIEW && autoCoordinator != null) 
-            ? ComplaintStatus.ASSIGNED : status;
-
-        User finalCoordinator = (coordinator != null) ? coordinator : autoCoordinator;
-
-        Number count = (Number) em.createNativeQuery("SELECT count(*) FROM complaints WHERE id = :id")
-                .setParameter("id", id)
-                .getSingleResult();
-        if (count.longValue() > 0) {
-            // Update metadata only if the complaint is still active (not soft-deleted)
-            complaintRepository.findById(id).ifPresent(c -> {
-                c.setArea(area);
-                c.setLatitude(lat);
-                c.setLongitude(lng);
-                c.setTitle(title);
-                c.setDescription(desc);
-                c.setPriority(priority);
-                c.setStatus(finalStatus);
-                c.setImageUrls(imageUrls);
-                c.setAssignedCoordinator(finalCoordinator);
-                c.setIntensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5);
-                complaintRepository.save(c);
-            });
-        } else {
-            // Does not exist at all, safe to insert
-            complaintRepository.save(Complaint.builder()
-                .id(id).citizen(citizen).area(area)
-                .category(category).title(title).description(desc)
-                .latitude(lat).longitude(lng)
-                .status(finalStatus).intensityScore(priority == Priority.HIGH ? 3.5 : priority == Priority.MEDIUM ? 1.5 : 0.5)
-                .priority(priority)
-                .assignedCoordinator(finalCoordinator)
-                .imageUrls(imageUrls)
-                .slaDeadline(LocalDateTime.now().plusDays(5))
-                .build());
-        }
     }
 }

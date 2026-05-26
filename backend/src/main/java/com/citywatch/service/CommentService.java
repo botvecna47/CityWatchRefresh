@@ -8,6 +8,8 @@ import com.citywatch.entity.User;
 import com.citywatch.repository.CommentRepository;
 import com.citywatch.repository.ComplaintRepository;
 import com.citywatch.util.CwIdGenerator;
+import com.citywatch.enums.NotificationType;
+import com.citywatch.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,13 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final ComplaintRepository complaintRepository;
     private final CwIdGenerator idGenerator;
+    private final NotificationService notificationService;
 
-    public CommentService(CommentRepository commentRepository, ComplaintRepository complaintRepository, CwIdGenerator idGenerator) {
+    public CommentService(CommentRepository commentRepository, ComplaintRepository complaintRepository, CwIdGenerator idGenerator, NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.complaintRepository = complaintRepository;
         this.idGenerator = idGenerator;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +59,28 @@ public class CommentService {
                 .parent(parent)
                 .build();
 
-        return toResponse(commentRepository.save(comment));
+        Comment savedComment = commentRepository.save(comment);
+
+        // --- Notification Logic ---
+        if (user.getRole() == Role.COORDINATOR && complaint.getCitizen() != null) {
+            notificationService.create(
+                complaint.getCitizen(),
+                "New Response on Your Report",
+                user.getFullName() + " left a comment on your report: \"" + complaint.getTitle() + "\"",
+                NotificationType.COMPLAINT_UPDATE,
+                complaint.getId()
+            );
+        } else if (user.getRole() == Role.CITIZEN && complaint.getAssignedCoordinator() != null) {
+            notificationService.create(
+                complaint.getAssignedCoordinator(),
+                "New Comment from Citizen",
+                "The citizen commented on your assigned task: \"" + complaint.getTitle() + "\"",
+                NotificationType.COMPLAINT_UPDATE,
+                complaint.getId()
+            );
+        }
+
+        return toResponse(savedComment);
     }
 
     @Transactional
@@ -64,6 +89,15 @@ public class CommentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
         comment.setIsModerated(true);
         commentRepository.save(comment);
+
+        // Notify the author that their comment was moderated
+        notificationService.create(
+            comment.getUser(),
+            "Comment Removed",
+            "Your comment on the report \"" + comment.getComplaint().getTitle() + "\" was removed by a moderator for violating community guidelines.",
+            NotificationType.SYSTEM,
+            comment.getComplaint().getId()
+        );
     }
 
     private Complaint findComplaint(String id) {
@@ -76,7 +110,7 @@ public class CommentService {
                 .id(c.getId())
                 .complaintId(c.getComplaint().getId())
                 .authorId(c.getUser().getId())
-                .authorName(c.getUser().getUsername())
+                .authorName(c.getUser().getFullName())
                 .authorRole(c.getUser().getRole().name())
                 .content(c.getContent())
                 .parentId(c.getParent() != null ? c.getParent().getId() : null)

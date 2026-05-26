@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { MapPin, MessageSquare } from "lucide-react";
 import { Report } from "../../store";
 import { Card } from "../../components/ui";
@@ -17,7 +17,7 @@ export function ReportSummaryCard({ report }: { report: Report }) {
       <div className="flex items-center gap-4 text-xs text-gray-500 font-medium font-serif flex-wrap">
         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-500" /> {report.area}</span>
         <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {report.comments.length} Comments</span>
-        <span>{report.createdAt ? formatDistanceToNow(new Date(report.createdAt), { addSuffix: true }) : "Recent"}</span>
+        <span>{report.createdAt ? `${formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })} • ${format(new Date(report.createdAt), "dd MMM yy, HH:mm")}` : "Recent"}</span>
       </div>
     </Card>
   );

@@ -26,6 +26,9 @@ public class User {
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
+    @Column(name = "full_name", length = 100)
+    private String fullName;
+
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
@@ -55,7 +58,7 @@ public class User {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Area area;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String city;
 
     @Column(name = "state_code", length = 2)
@@ -80,6 +83,8 @@ public class User {
     public void setId(String id) { this.id = id; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    public String getFullName() { return fullName != null ? fullName : username; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }
@@ -114,6 +119,7 @@ public class User {
         private User u = new User();
         public UserBuilder id(String id) { u.setId(id); return this; }
         public UserBuilder username(String username) { u.setUsername(username); return this; }
+        public UserBuilder fullName(String fullName) { u.setFullName(fullName); return this; }
         public UserBuilder email(String email) { u.setEmail(email); return this; }
         public UserBuilder password(String password) { u.setPassword(password); return this; }
         public UserBuilder role(Role role) { u.setRole(role); return this; }

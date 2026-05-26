@@ -162,7 +162,16 @@ export function AuthPage() {
         });
         const data = await registerRes.json();
         if (!registerRes.ok) {
-          toast.error(data.error || "Registration failed.");
+          if (registerRes.status === 403) {
+            // OTP session expired — go back to verify step
+            toast.error("Session expired. Please verify your email again.");
+            setStep("verify");
+          } else if (registerRes.status === 409) {
+            toast.error("An account with this email already exists. Try logging in instead.");
+            setStep("login");
+          } else {
+            toast.error(data.error || "Registration failed.");
+          }
           return;
         }
 

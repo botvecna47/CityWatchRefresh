@@ -32,13 +32,32 @@ function DataFetcher({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshMasterData();
     refreshReports();
+    
     if (currentUser) {
-      refreshNotifications();
-      if (currentUser.role === "admin") {
-        refreshUsers();
-        refreshApplications();
-        refreshSpamReports();
-      }
+      const fetchUserData = () => {
+        refreshNotifications();
+        if (currentUser.role === "admin") {
+          refreshUsers();
+          refreshApplications();
+          refreshSpamReports();
+        }
+      };
+      
+      // Fetch immediately on mount/auth change
+      fetchUserData();
+      
+      // Refetch on window focus or visibility change (syncs read state from other tabs/devices)
+      const onFocus = () => {
+        if (document.visibilityState === 'visible') fetchUserData();
+      };
+      
+      window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onFocus);
+      
+      return () => {
+        window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onFocus);
+      };
     }
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 

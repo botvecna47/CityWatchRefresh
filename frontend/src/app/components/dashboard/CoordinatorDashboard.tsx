@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { motion } from "motion/react";
 import { CheckCircle2, Clock, AlertTriangle, Upload, MapPin, Smartphone, ArrowRight, Activity, Target } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
@@ -119,58 +119,59 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="p-6 bg-white/80 backdrop-blur-md shadow-sm border border-gray-100 col-span-1 flex flex-col justify-center items-center rounded-2xl hover:shadow-md transition-all duration-300">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <Card className="p-6 bg-white/80 backdrop-blur-md shadow-sm border border-gray-100 col-span-1 lg:col-span-2 flex flex-col justify-center items-center rounded-2xl hover:shadow-md transition-all duration-300">
           <h3 className="font-bold text-[#1A4331] w-full border-b border-gray-100 pb-2 mb-4 font-serif flex items-center justify-between">
-            Area Status 
-            <Target className="w-4 h-4 text-gray-400" />
+            Progress Analytics Report 
+            <Activity className="w-4 h-4 text-[#2E7D32]" />
           </h3>
-          <div className="w-full h-48 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={areaData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
-                  {areaData.map((entry, index) => {
-                    const colors = ["#ef4444", "#f59e0b", "#22c55e"];
-                    return <Cell key={`pie-cell-${entry.name}`} fill={colors[index % colors.length]} />;
-                  })}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
-              <span className="text-2xl font-bold text-[#1A4331]">{areaReports.length}</span>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total</span>
+          <div className="flex w-full justify-around items-center h-full flex-wrap">
+            <div className="w-40 h-40 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={areaData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={5} dataKey="value" stroke="none">
+                    {areaData.map((entry, index) => {
+                      const colors = ["#ef4444", "#f59e0b", "#22c55e"];
+                      return <Cell key={`pie-cell-${entry.name}`} fill={colors[index % colors.length]} />;
+                    })}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+                <span className="text-2xl font-bold text-[#1A4331]">{areaReports.length}</span>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total</span>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-4 text-xs font-semibold text-gray-600 mt-2">
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-red-500 rounded-full shadow-sm" /> New</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-amber-500 rounded-full shadow-sm" /> Active</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-sm" /> Done</span>
+            <div className="flex flex-col gap-4 mt-4 sm:mt-0">
+              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-red-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">New Queue: {available.length}</span></div>
+              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-amber-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">In Progress: {assigned.length}</span></div>
+              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-green-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">Resolved Today: {completed.length}</span></div>
+            </div>
           </div>
         </Card>
 
-        <div className="col-span-1 lg:grid-cols-2 lg:col-span-2 grid grid-cols-2 gap-4">
-          <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300 }}>
-            <Card className="h-full p-6 bg-gradient-to-br from-red-50 to-red-100/50 border-red-100 flex flex-col justify-center rounded-2xl relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-colors"></div>
-              <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Needs Attention
-              </p>
-              <p className="text-5xl font-black text-red-700 tracking-tight">{available.length}</p>
-              <p className="text-sm font-medium text-red-600/80 mt-2">Unassigned reports in area</p>
-            </Card>
-          </motion.div>
-          <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300 }}>
-            <Card className="h-full p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-100 flex flex-col justify-center rounded-2xl relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors"></div>
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Your Active Tasks
-              </p>
-              <p className="text-5xl font-black text-amber-700 tracking-tight">{assigned.length}</p>
-              <p className="text-sm font-medium text-amber-600/80 mt-2">Currently in progress</p>
-            </Card>
-          </motion.div>
-        </div>
+        <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300 }} className="col-span-1">
+          <Card className="h-full p-6 bg-gradient-to-br from-red-50 to-red-100/50 border-red-100 flex flex-col justify-center rounded-2xl relative overflow-hidden group">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-colors"></div>
+            <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Needs Attention
+            </p>
+            <p className="text-5xl font-black text-red-700 tracking-tight">{available.length}</p>
+            <p className="text-sm font-medium text-red-600/80 mt-2">Unassigned reports in area</p>
+          </Card>
+        </motion.div>
+        
+        <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300 }} className="col-span-1">
+          <Card className="h-full p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-100 flex flex-col justify-center rounded-2xl relative overflow-hidden group">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors"></div>
+            <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Clock className="w-4 h-4" /> Your Active Tasks
+            </p>
+            <p className="text-5xl font-black text-amber-700 tracking-tight">{assigned.length}</p>
+            <p className="text-sm font-medium text-amber-600/80 mt-2">Currently in progress</p>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -232,7 +233,7 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                   <Badge className="bg-red-50 text-red-700 border border-red-100 shadow-sm">{r.urgency}</Badge>
                 </div>
                 <p className="text-sm text-gray-500 mb-5 flex items-center gap-2 font-medium">
-                  <Clock className="w-4 h-4 text-gray-400" /> Elapsed: {r.createdAt ? formatDistanceToNow(new Date(r.createdAt)) : "Unknown"}
+                  <Clock className="w-4 h-4 text-gray-400" /> Elapsed: {r.createdAt ? `${formatDistanceToNow(new Date(r.createdAt))} • ${format(new Date(r.createdAt), "dd MMM yy, HH:mm")}` : "Unknown"}
                 </p>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                   <Link to={`/report/${r.id}`} className="text-sm text-[#2E7D32] font-semibold hover:text-[#1A4331] transition-colors">View Details</Link>

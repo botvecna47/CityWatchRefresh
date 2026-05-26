@@ -51,7 +51,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUsers = (page = 0) => {
     setUsersLoading(true);
-    adminService.getUsers(page, 10)
+    adminService.getUsers(page, 100)  // fetch up to 100 users so all appear in the admin panel
       .then((res: any) => {
         const data = res.content || [];
         setUsersTotalPages(res.totalPages || 1);
