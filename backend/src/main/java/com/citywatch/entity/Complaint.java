@@ -110,6 +110,9 @@ public class Complaint {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    @Column(name = "reopen_reason", columnDefinition = "TEXT")
+    private String reopenReason;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public User getCitizen() { return citizen; }
@@ -146,6 +149,8 @@ public class Complaint {
     public void setEscalationLevel(Integer escalationLevel) { this.escalationLevel = escalationLevel; }
     public Integer getReopenCount() { return reopenCount; }
     public void setReopenCount(Integer reopenCount) { this.reopenCount = reopenCount; }
+    public String getReopenReason() { return reopenReason; }
+    public void setReopenReason(String reopenReason) { this.reopenReason = reopenReason; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

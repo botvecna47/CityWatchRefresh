@@ -76,7 +76,7 @@ export function ReportComments({ report, currentUser, commentText, setCommentTex
                       {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-gray-700 text-sm font-serif leading-relaxed">{comment.text}</p>
+                  <p className="text-gray-700 text-sm font-serif leading-relaxed">{comment.content}</p>
                 </div>
               </div>
             ))}

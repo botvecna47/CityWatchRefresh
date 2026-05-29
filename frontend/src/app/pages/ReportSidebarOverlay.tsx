@@ -18,8 +18,8 @@ export function ReportSidebarOverlay() {
   const navigate = useNavigate();
   const {
     reports, currentUser, updateReport, addComment, submitSpamReport,
-    handleVote: voteOnServer, selectedReportId, setSelectedReportId, fetchMessages
-  } = useAppContext();
+    handleVote: voteOnServer, selectedReportId, setSelectedReportId, fetchMessages, fetchComments, citizenResolve
+  } = useAppContext() as any;
 
   const report = reports.find(r => r.id === selectedReportId);
 
@@ -29,6 +29,8 @@ export function ReportSidebarOverlay() {
   const [spamReason, setSpamReason] = useState("");
   const [activeTab, setActiveTab] = useState<'comments' | 'messages'>('comments');
   const [messageText, setMessageText] = useState("");
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -44,7 +46,12 @@ export function ReportSidebarOverlay() {
     setCommentText("");
     setMessageText("");
     setActiveTab('comments');
-  }, [selectedReportId]);
+    if (selectedReportId) {
+      if (fetchComments) {
+        fetchComments(selectedReportId);
+      }
+    }
+  }, [selectedReportId, fetchComments]);
 
   if (!report) return null;
 
@@ -65,7 +72,7 @@ export function ReportSidebarOverlay() {
       id: Math.random().toString(36).substr(2, 9),
       authorId: currentUser.id,
       authorName: currentUser.name,
-      text: commentText,
+      content: commentText,
       createdAt: new Date().toISOString(),
     };
     addComment(report.id, newComment);
@@ -205,12 +212,57 @@ export function ReportSidebarOverlay() {
               </div>
             )}
 
-            {report.proofImage && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-sm">
-                <p className="font-bold text-green-900 text-sm mb-2 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" /> Resolution Proof
-                </p>
-                <img src={report.proofImage} alt="Proof" className="w-full h-32 sm:h-40 object-cover rounded-sm border border-green-200" />
+            {report.proofImage && report.status === "Completed" && (
+              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-sm">
+                <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-600" /> Resolution Proof</h4>
+                {report.proofImage.toLowerCase().endsWith('.pdf') ? (
+                  <div className="w-full h-32 sm:h-40 flex flex-col items-center justify-center bg-white rounded-sm border border-green-200">
+                    <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-12 h-12 mb-2 opacity-80" alt="PDF Proof" />
+                    <a href={report.proofImage} target="_blank" rel="noopener noreferrer" className="text-green-700 text-sm font-semibold hover:underline">View PDF</a>
+                  </div>
+                ) : (
+                  <img src={report.proofImage} alt="Proof" className="w-full h-32 sm:h-40 object-cover rounded-sm border border-green-200" />
+                )}
+                
+                {currentUser?.id === report.authorId && (
+                  <div className="mt-4 pt-4 border-t border-green-200 flex flex-col gap-3">
+                    <p className="text-sm text-green-900 font-semibold">Are you satisfied with this resolution?</p>
+                    
+                    {isReopening ? (
+                      <div className="flex flex-col gap-3 mt-1 bg-white p-3 rounded-lg border border-red-100 shadow-sm">
+                        <label className="text-xs font-medium text-red-900">Why are you reopening this issue?</label>
+                        <textarea 
+                          className="w-full border border-gray-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[60px]"
+                          placeholder="Please explain why the issue is not actually resolved..."
+                          value={reopenReason}
+                          onChange={(e) => setReopenReason(e.target.value)}
+                        />
+                        <div className="flex gap-2 justify-end mt-1">
+                          <Button onClick={() => { setIsReopening(false); setReopenReason(""); }} variant="outline" size="sm" className="text-gray-500 h-8 text-xs">
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => { citizenResolve(report.id, false, reopenReason); setIsReopening(false); setReopenReason(""); }} 
+                            disabled={reopenReason.trim().length < 10}
+                            size="sm"
+                            className="bg-red-600 text-white hover:bg-red-700 h-8 text-xs"
+                          >
+                            Submit Reopen
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button onClick={() => setIsReopening(true)} variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50 text-xs h-9">
+                          No, Reopen
+                        </Button>
+                        <Button onClick={() => citizenResolve(report.id, true)} className="flex-1 bg-green-600 text-white hover:bg-green-700 text-xs h-9">
+                          Yes, Confirm
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

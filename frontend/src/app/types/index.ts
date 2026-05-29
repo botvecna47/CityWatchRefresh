@@ -40,7 +40,7 @@ export interface Comment {
   id: string;
   authorId: string;
   authorName: string;
-  text: string;
+  content: string;
   createdAt: string;
 }
 
@@ -71,7 +71,8 @@ export interface Report {
   upvotedCitizenIds?: string[];
   category?: string;
   comments: Comment[];
-  messages: Message[];
+  messages?: Message[];
+  commentCount?: number;
   createdAt: string;
   urgency: "Low" | "Medium" | "High";
   coordinatorId?: string;

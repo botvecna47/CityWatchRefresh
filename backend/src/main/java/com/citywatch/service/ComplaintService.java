@@ -281,27 +281,17 @@ public class ComplaintService {
     public ComplaintResponse upvote(User citizen, String id) {
         Complaint complaint = findOrThrow(id);
 
-        boolean alreadyUpvoted = complaintRepository.hasUpvoted(id, citizen.getId());
-
-        if (alreadyUpvoted) {
-            // Remove this citizen's upvote atomically — doesn't touch anyone else's row
-            complaintRepository.deleteUpvote(id, citizen.getId());
+        java.util.Set<String> upvoters = complaint.getUpvotedCitizenIds();
+        
+        if (upvoters.contains(citizen.getId())) {
+            upvoters.remove(citizen.getId());
         } else {
-            // Add this citizen's upvote atomically — INSERT IGNORE prevents duplicates
-            complaintRepository.insertUpvote(id, citizen.getId());
+            upvoters.add(citizen.getId());
             recalculateIntensity(complaint);
         }
 
-        // Reload the fresh count and full voter list from DB (bypasses stale Hibernate cache)
-        complaintRepository.flush();
-        int freshCount = complaintRepository.countUpvotes(id);
-        java.util.List<String> freshIds = complaintRepository.findUpvoterIds(id);
-
-        // Build response directly with fresh data to avoid stale @ElementCollection
-        ComplaintResponse resp = toResponse(complaint);
-        resp.setUpvotes(freshCount);
-        resp.setUpvotedCitizenIds(new java.util.HashSet<>(freshIds));
-        return resp;
+        complaintRepository.save(complaint);
+        return toResponse(complaint);
     }
 
     @Transactional
@@ -359,7 +349,7 @@ public class ComplaintService {
     }
 
     @Transactional
-    public ComplaintResponse citizenResolve(User detachedCitizen, String id, boolean accepted) {
+    public ComplaintResponse citizenResolve(User detachedCitizen, String id, boolean accepted, String reason) {
         User citizen = userRepository.findById(detachedCitizen.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Citizen not found"));
         Complaint complaint = findOrThrow(id);
@@ -379,9 +369,20 @@ public class ComplaintService {
             complaint.setStatus(ComplaintStatus.REOPENED);
             complaint.setReopenCount(complaint.getReopenCount() + 1);
             complaint.setEscalationLevel(complaint.getEscalationLevel() + 1);
-            complaint.setAssignedCoordinator(null);
-            complaintRepository.save(complaint);
-            assignCoordinator(complaint);
+            complaint.setReopenReason(reason);
+            // DO NOT setAssignedCoordinator(null) - forcefully keep the same coordinator
+            // complaint.setAssignedCoordinator(null); 
+            // assignCoordinator(complaint); // Skip auto-reassignment
+            
+            if (complaint.getAssignedCoordinator() != null) {
+                notificationService.create(
+                        complaint.getAssignedCoordinator(),
+                        "Issue Reopened: " + complaint.getTitle(),
+                        "The citizen was not satisfied and has forcefully reopened this issue.\nReason: " + (reason != null ? reason : "No reason provided") + "\n\nYou are still assigned to this task. Please resolve it.",
+                        NotificationType.COMPLAINT_UPDATE,
+                        complaint.getId()
+                );
+            }
             auditService.log(citizen, "COMPLAINT_REOPENED", complaint);
         }
 

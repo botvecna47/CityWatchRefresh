@@ -3,6 +3,7 @@ package com.citywatch.util;
 import com.citywatch.dto.response.ComplaintResponse;
 import com.citywatch.entity.Complaint;
 import com.citywatch.repository.ProofRepository;
+import com.citywatch.repository.CommentRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
@@ -11,9 +12,11 @@ import java.util.HashSet;
 public class ComplaintMapper {
 
     private final ProofRepository proofRepository;
+    private final CommentRepository commentRepository;
 
-    public ComplaintMapper(ProofRepository proofRepository) {
+    public ComplaintMapper(ProofRepository proofRepository, CommentRepository commentRepository) {
         this.proofRepository = proofRepository;
+        this.commentRepository = commentRepository;
     }
 
     public ComplaintResponse toResponse(Complaint c) {
@@ -48,6 +51,7 @@ public class ComplaintMapper {
                 .reopenCount(c.getReopenCount())
                 .upvotes(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds().size() : 0)
                 .upvotedCitizenIds(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds() : new HashSet<>())
+                .commentCount((int) commentRepository.countByComplaintAndIsModeratedFalse(c))
                 .createdAt(c.getCreatedAt())
                 .slaDeadline(c.getSlaDeadline())
                 .closedAt(c.getClosedAt())

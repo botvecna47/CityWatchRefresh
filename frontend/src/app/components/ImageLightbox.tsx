@@ -209,5 +209,4 @@ export const ImageLightbox = ({ images, initialIndex, onClose, ref }: ImageLight
       )}
     </motion.div>
   );
-});
-ImageLightbox.displayName = "ImageLightbox";
+};

@@ -20,6 +20,7 @@ export const complaintService = {
   submit: (data: any) => apiClient.post("/api/complaints", data),
   updateStatus: (id: string, status: string) => apiClient.patch(`/api/complaints/${id}/status`, { status }),
   submitProof: (id: string, data: any) => apiClient.post(`/api/complaints/${id}/proof`, data),
+  resolve: (id: string, accepted: boolean, reason?: string) => apiClient.post(`/api/complaints/${id}/resolve`, { accepted, reason }),
   upvote: (id: string) => apiClient.post(`/api/complaints/${id}/upvote`),
   softDelete: (id: string, messageForCitizen: string, reason: string) => 
     apiClient.post(`/api/complaints/${id}/delete`, { messageForCitizen, reason }),

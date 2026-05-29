@@ -17,7 +17,7 @@ export function CommentsTab({ report, currentUser, commentText, setCommentText, 
                 <span className="font-semibold text-[#1A4331] text-xs">{comment.authorName}</span>
                 <span className="text-[10px] text-gray-400">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
               </div>
-              <p className="text-gray-600 leading-relaxed">{comment.text}</p>
+              <p className="text-gray-600 leading-relaxed">{comment.content}</p>
             </div>
           </div>
         ))}

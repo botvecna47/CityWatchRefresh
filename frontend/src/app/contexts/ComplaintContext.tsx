@@ -17,6 +17,7 @@ interface ComplaintContextType {
   addReport: (report: Partial<Report>) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => Promise<void>;
   submitProof: (id: string, imageUrl: string, lat: number, lng: number) => Promise<void>;
+  citizenResolve: (id: string, accepted: boolean, reason?: string) => Promise<void>;
   handleVote: (id: string, currentUserId?: string) => Promise<void>;
   deleteReport: (id: string, spamReportId?: string, resolveSpamReport?: (id: string) => void) => void;
   softDeleteReport: (id: string, messageForCitizen: string, reason: string) => Promise<void>;
@@ -82,6 +83,8 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
         area: r.areaName as Area, status: mapStatus(r.status), authorId: String(r.citizenId), authorName: r.citizenName || "Citizen",
         authorAvatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(r.citizenName || "U")}`, upvotes: r.upvotes || 0,
         downvotes: 0, upvotedCitizenIds: r.upvotedCitizenIds ? [...r.upvotedCitizenIds] : [], category: r.category, comments: [], messages: [],
+        commentCount: r.commentCount || 0,
+        proofImage: r.resolutionImageUrl || undefined,
         createdAt: r.createdAt || new Date().toISOString(), urgency: mapPriority(r.priority), coordinatorId: r.coordinatorId ? String(r.coordinatorId) : undefined,
       }));
       
@@ -91,7 +94,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
           return mapped.map(m => {
             const existing = prev.find(p => p.id === m.id);
             if (existing) {
-              return { ...m, comments: existing.comments, messages: existing.messages };
+              return { ...m, comments: existing.comments, messages: existing.messages, commentCount: m.commentCount };
             }
             return m;
           });
@@ -132,6 +135,15 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   const submitProof = async (id: string, imageUrl: string, lat: number, lng: number) => {
     try { await complaintService.submitProof(id, { imageUrl, latitude: lat, longitude: lng }); toast.success("Resolution proof submitted! Citizen will be notified."); refreshReports(); }
     catch { toast.error("Proof submission failed."); }
+  };
+
+  const citizenResolve = async (id: string, accepted: boolean, reason?: string) => {
+    try { 
+      await complaintService.resolve(id, accepted, reason); 
+      toast.success(accepted ? "Issue marked as closed." : "Issue reopened successfully."); 
+      refreshReports(); 
+    }
+    catch { toast.error("Action failed."); }
   };
 
   const handleVote = async (id: string, currentUserId?: string) => {
@@ -183,10 +195,10 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   const addComment = async (reportId: string, comment: Comment) => {
     setReports(prev => prev.map(r => r.id === reportId ? { ...r, comments: [...(r.comments || []), comment] } : r));
     try {
-      const saved = await complaintService.addComment(reportId, comment.text);
+      const saved = await complaintService.addComment(reportId, comment.content);
       setReports(prev => prev.map(r => {
         if (r.id !== reportId) return r;
-        return { ...r, comments: [...(r.comments || []).filter(c => c.id !== comment.id), { id: String(saved.id), authorId: String(saved.authorId || ""), authorName: saved.authorName || comment.authorName, text: saved.content || comment.text, createdAt: saved.createdAt || comment.createdAt }]};
+        return { ...r, comments: [...(r.comments || []).filter(c => c.id !== comment.id), { id: String(saved.id), authorId: String(saved.authorId || ""), authorName: saved.authorName || comment.authorName, content: saved.content || comment.content, createdAt: saved.createdAt || comment.createdAt }]};
       }));
     } catch (e) {
       console.error("Failed to post comment", e);
@@ -199,7 +211,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
       setReports(prev => prev.map(r => r.id === reportId ? { 
         ...r, 
         comments: Array.isArray(comments) ? comments.map((c: any) => ({
-          id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", text: c.content || "", createdAt: c.createdAt || new Date().toISOString()
+          id: String(c.id), authorId: String(c.authorId || ""), authorName: c.authorName || "Unknown", content: c.content || "", createdAt: c.createdAt || new Date().toISOString()
         })) : [] 
       } : r));
     } catch (e) {
@@ -229,7 +241,7 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, handleVote, deleteReport, softDeleteReport, addComment, fetchComments, sendMessage, fetchMessages }}>
+    <ComplaintContext.Provider value={{ reports, setReports, selectedReportId, setSelectedReportId, areas, categories, loading, setLoading, refreshMasterData, refreshReports, addReport, updateReport, submitProof, citizenResolve, handleVote, deleteReport, softDeleteReport, addComment, fetchComments, sendMessage, fetchMessages }}>
       {children}
     </ComplaintContext.Provider>
   );

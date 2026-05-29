@@ -40,8 +40,8 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
 
   const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resolvingId || !location) { toast.error("Location is required."); return; }
-    if (!proofImageFile) { toast.error("Photo proof is required."); return; }
+    if (!resolvingId) return;
+    if (!proofImageFile) { toast.error("Photo/PDF proof is required."); return; }
     
     setIsSubmitting(true);
     
@@ -60,7 +60,10 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
       const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(fileName);
       const publicUrl = data.publicUrl;
 
-      await submitProof(resolvingId, publicUrl, location.lat, location.lng);
+      const finalLat = location ? location.lat : 0;
+      const finalLng = location ? location.lng : 0;
+
+      await submitProof(resolvingId, publicUrl, finalLat, finalLng);
       
       setResolvingId(null);
       setProofImageFile(null);
@@ -253,7 +256,7 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-2xl font-bold font-serif">Resolution Proof</h3>
             </div>
-            <p className="text-sm text-gray-500 mb-6 font-medium">Provide a live photo and current location to enforce geofence compliance.</p>
+            <p className="text-sm text-gray-500 mb-6 font-medium">Upload an image or PDF document to verify completion. Location is optional.</p>
             
             <form onSubmit={handleResolve} className="space-y-5">
               <div className="border-2 border-dashed border-gray-200 rounded-2xl h-56 flex flex-col items-center justify-center relative hover:bg-gray-50 hover:border-[#2E7D32]/50 transition-all cursor-pointer bg-white group overflow-hidden">
@@ -269,30 +272,27 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                     <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                       <Upload className="w-8 h-8 text-green-600" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-700">Take live photo</span>
-                    <span className="text-xs text-gray-400 mt-1">Geo-tagged visual proof</span>
+                    <span className="text-sm font-semibold text-gray-700">Upload Image or PDF</span>
+                    <span className="text-xs text-gray-400 mt-1">Provide visual proof of resolution</span>
                   </div>
                 )}
-                {IS_MOBILE ? (
-                  <input
-                    type="file"
-                    capture="environment"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        setProofImageFile(e.target.files[0]);
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setProofImageFile(e.target.files[0]);
+                      const fileExt = e.target.files[0].name.split('.').pop()?.toLowerCase();
+                      if (fileExt === 'pdf') {
+                        setProofImagePreview('https://cdn-icons-png.flaticon.com/512/337/337946.png'); // PDF placeholder icon
+                      } else {
                         setProofImagePreview(URL.createObjectURL(e.target.files[0]));
                       }
-                    }}
-                    required
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 rounded-2xl pointer-events-none p-4 text-center">
-                    <Smartphone className="w-10 h-10 text-gray-300 mb-3" />
-                    <span className="text-sm font-bold text-gray-700">Mobile Device Required</span>
-                    <span className="text-xs text-gray-500 mt-1">Live camera capture is required to prevent fraud.</span>
-                  </div>
-                )}
+                    }
+                  }}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -310,7 +310,7 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
               
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 <Button type="button" variant="outline" className="flex-1 rounded-xl h-12" onClick={() => { setResolvingId(null); setProofImageFile(null); setProofImagePreview(null); setLocation(null); }}>Cancel</Button>
-                <Button type="submit" disabled={!proofImageFile || !location || isSubmitting} className="flex-1 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl h-12 shadow-lg shadow-[#1A4331]/20">
+                <Button type="submit" disabled={!proofImageFile || isSubmitting} className="flex-1 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl h-12 shadow-lg shadow-[#1A4331]/20">
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Verifying...</span>
                   ) : (

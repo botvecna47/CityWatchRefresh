@@ -8,7 +8,12 @@ const getAuthHeader = () => {
 export const apiClient = {
   get: async (endpoint: string) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: { ...getAuthHeader() },
+      headers: { 
+        ...getAuthHeader(),
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+      cache: 'no-store',
     });
     if (!res.ok) throw new Error(`GET ${endpoint} failed: ${res.status}`);
     return res.json();

@@ -116,8 +116,10 @@ public class ComplaintController {
     public ResponseEntity<ComplaintResponse> resolve(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable String id,
-            @RequestBody Map<String, Boolean> body) {
-        return ResponseEntity.ok(complaintService.citizenResolve(principal.getUser(), id, body.get("accepted")));
+            @RequestBody Map<String, Object> body) {
+        Boolean accepted = (Boolean) body.get("accepted");
+        String reason = (String) body.get("reason");
+        return ResponseEntity.ok(complaintService.citizenResolve(principal.getUser(), id, accepted != null ? accepted : true, reason));
     }
 
     // ── Citizen Upvote (Citizens only — coordinators and admins cannot vote) ─

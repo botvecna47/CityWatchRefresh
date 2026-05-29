@@ -70,7 +70,7 @@ export function FeedItem({ report, currentUser, handleVoteAction, updateReport }
             {report.description}
           </p>
           
-          {report.image && (
+          {report.image && (!report.proofImage || report.status !== 'Completed') && (
             <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100 relative group">
               <img src={report.image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               {report.additionalImages && report.additionalImages.length > 0 && (
@@ -81,12 +81,29 @@ export function FeedItem({ report, currentUser, handleVoteAction, updateReport }
               )}
             </div>
           )}
+
+          {report.image && report.proofImage && report.status === 'Completed' && (
+            <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100 relative flex group">
+              <div className="w-1/2 h-full relative border-r border-white">
+                <img src={report.image} alt="Before" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 origin-left" />
+                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
+                  BEFORE
+                </div>
+              </div>
+              <div className="w-1/2 h-full relative">
+                <img src={report.proofImage.toLowerCase().endsWith('.pdf') ? 'https://cdn-icons-png.flaticon.com/512/337/337946.png' : report.proofImage} alt="After" className={`w-full h-full ${report.proofImage.toLowerCase().endsWith('.pdf') ? 'object-contain p-4' : 'object-cover group-hover:scale-105'} transition-transform duration-300 origin-right`} />
+                <div className="absolute top-2 right-2 bg-green-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
+                  AFTER (RESOLVED)
+                </div>
+              </div>
+            </div>
+          )}
         </button>
 
         <div className="flex flex-wrap items-center gap-y-2 gap-x-6 mt-auto pt-4 border-t border-gray-100">
           <button onClick={() => navigate(`/report/${report.id}`)} className="flex items-center gap-2 text-gray-500 hover:text-[#1A4331] text-sm font-medium transition-colors">
             <MessageSquare className="w-4 h-4" />
-            {report.comments.length} Comments
+            {report.commentCount !== undefined ? report.commentCount : report.comments.length} Comments
           </button>
           <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
             <MapPin className="w-4 h-4" />
