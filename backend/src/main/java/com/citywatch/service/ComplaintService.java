@@ -54,8 +54,16 @@ public class ComplaintService {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You can submit at most 10 complaints per day.");
         }
 
-        // Auto-assign Area strictly by Live Location
-        Area area = areaService.findNearestArea(req.getLatitude(), req.getLongitude());
+        // Attempt to lookup Area if user explicitly selected one from frontend dropdown
+        Area area = null;
+        if (req.getAreaName() != null && !req.getAreaName().isBlank()) {
+            area = areaService.findByName(req.getAreaName());
+        }
+
+        // Fallback: Auto-assign Area strictly by Live Location if not specified/found
+        if (area == null) {
+            area = areaService.findNearestArea(req.getLatitude(), req.getLongitude());
+        }
 
         com.citywatch.entity.Category category = categoryRepository.findByName(req.getCategory().toUpperCase())
                 .orElseGet(() -> categoryRepository.findByName("OTHER").orElse(null));

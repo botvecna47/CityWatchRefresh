@@ -37,6 +37,7 @@ export function AuthPage() {
   const [cityError, setCityError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   const validateEmail = (val: string) => {
     setEmail(val);
@@ -87,6 +88,7 @@ export function AuthPage() {
     setCityError("");
     setPasswordError("");
     setConfirmPasswordError("");
+    setLoginError("");
 
     // ── SIGNUP STEP 1: Validate form, then call send-otp ──
     if (step === "signup") {
@@ -120,7 +122,13 @@ export function AuthPage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          toast.error(data.error || "Failed to send verification code.");
+          if (res.status === 409) {
+            // Email is already registered — highlight the field and guide user
+            setEmailError("This email is already registered. Please sign in instead.");
+            toast.error("Account already exists. Try signing in.");
+          } else {
+            toast.error(data.error || "Failed to send verification code.");
+          }
           return;
         }
         toast.success("Verification code sent! Check your email (or the server console for testing).");
@@ -211,7 +219,15 @@ export function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Authentication failed.");
+        if (res.status === 401) {
+          // Distinguish between "no account" and "wrong password" — backend returns same 401,
+          // so we show a clear inline error that covers both cases.
+          const msg = data.error || "No account found with this email, or the password is incorrect.";
+          setLoginError(msg);
+          toast.error(msg);
+        } else {
+          toast.error(data.error || "Authentication failed.");
+        }
         return;
       }
 
@@ -415,7 +431,29 @@ export function AuthPage() {
                           onChange={(e) => validateEmail(e.target.value)}
                           className={emailError ? "border-red-500 focus:ring-red-500" : ""}
                         />
-                        {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
+                        {emailError && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {emailError}
+                            {step === "signup" && emailError.includes("already registered") && (
+                              <>
+                                {" "}
+                                <button
+                                  type="button"
+                                  className="underline font-semibold"
+                                  onClick={() => {
+                                    setStep("login");
+                                    setEmailError("");
+                                    setPassword("");
+                                    setName("");
+                                    setCity("");
+                                  }}
+                                >
+                                  Sign in
+                                </button>
+                              </>
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -477,6 +515,29 @@ export function AuthPage() {
                           </button>
                         </div>
                         {confirmPasswordError && <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>}
+                      </div>
+                    )}
+
+                    {step === "login" && loginError && (
+                      <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                        {loginError}
+                        {loginError.toLowerCase().includes("no account") && (
+                          <span>
+                            {" "}
+                            <button
+                              type="button"
+                              className="underline font-semibold"
+                              onClick={() => {
+                                setStep("signup");
+                                setLoginError("");
+                                setPassword("");
+                              }}
+                            >
+                              Create one
+                            </button>
+                            ?
+                          </span>
+                        )}
                       </div>
                     )}
 

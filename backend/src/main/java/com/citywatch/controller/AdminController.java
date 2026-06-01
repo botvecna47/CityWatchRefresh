@@ -73,6 +73,18 @@ public class AdminController {
             u.setStatus(UserStatus.SUSPENDED);
             userRepository.save(u);
 
+            // If a coordinator is banned, release their active complaints back to the pool
+            if (u.getRole() != null && u.getRole().name().equals("COORDINATOR")) {
+                java.util.List<Complaint> activeComplaints = complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(u);
+                for (Complaint c : activeComplaints) {
+                    if (c.getStatus() != com.citywatch.enums.ComplaintStatus.COMPLETED) {
+                        c.setAssignedCoordinator(null);
+                        c.setStatus(com.citywatch.enums.ComplaintStatus.PENDING_REVIEW);
+                        complaintRepository.save(c);
+                    }
+                }
+            }
+
             // Notify the suspended user
             notificationService.create(
                 u,
@@ -160,6 +172,40 @@ public class AdminController {
             );
         });
         return ResponseEntity.ok(Map.of("message", "Report soft-deleted"));
+    }
+
+    @PostMapping("/complaints/{id}/resend-notification")
+    public ResponseEntity<Map<String, String>> resendNotification(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        
+        return complaintRepository.findById(id).map(c -> {
+            if (c.getAssignedCoordinator() == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "No coordinator assigned to this complaint"));
+            }
+            
+            notificationService.create(
+                    c.getAssignedCoordinator(),
+                    "Pending Reopened Issue: " + c.getTitle(),
+                    "Reminder: This issue was reopened by the citizen and requires your attention.\nReason: " + 
+                    (c.getReopenReason() != null ? c.getReopenReason() : "No reason provided") + 
+                    "\n\nPlease review and resolve it as soon as possible.",
+                    NotificationType.COMPLAINT_UPDATE,
+                    c.getId()
+            );
+
+            // Log the action for admin audit trail
+            auditService.logAction(
+                principal.getUser(),
+                "RESEND_NOTIFICATION",
+                "COMPLAINT",
+                c.getId(),
+                "NONE",
+                "SENT"
+            );
+
+            return ResponseEntity.ok(Map.of("message", "Notification sent successfully"));
+        }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/escalations")

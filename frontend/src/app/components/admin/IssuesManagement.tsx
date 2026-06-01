@@ -198,12 +198,35 @@ export function IssuesManagement({ reports, users }: { reports: Report[], users:
                  <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2"><Users className="w-4 h-4" /> Assignment Details</p>
                     {assignedCoordinator ? (
-                       <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                          <img src={assignedCoordinator.avatar} alt="Coordinator" className="w-12 h-12 rounded-full border border-gray-200" />
-                          <div>
-                             <p className="font-bold text-[#1A4331]">{assignedCoordinator.name}</p>
-                             <p className="text-xs text-gray-500 font-medium">Coordinator • {assignedCoordinator.area}</p>
+                       <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                          <div className="flex items-center gap-4">
+                             <img src={assignedCoordinator.avatar} alt="Coordinator" className="w-12 h-12 rounded-full border border-gray-200" />
+                             <div>
+                                <p className="font-bold text-[#1A4331]">{assignedCoordinator.name}</p>
+                                <p className="text-xs text-gray-500 font-medium">Coordinator • {assignedCoordinator.area}</p>
+                             </div>
                           </div>
+                          <Button 
+                             variant="outline" 
+                             size="sm" 
+                             className="text-xs font-bold border-gray-200 text-gray-600 hover:text-[#1A4331] hover:border-[#1A4331]/30"
+                             onClick={async () => {
+                               try {
+                                 const token = localStorage.getItem("token");
+                                 const res = await fetch(`http://localhost:8081/api/admin/complaints/${selectedReport.id}/resend-notification`, {
+                                   method: 'POST',
+                                   headers: { 'Authorization': `Bearer ${token}` }
+                                 });
+                                 if (res.ok) {
+                                   toast.success("Reminder sent successfully!");
+                                 } else {
+                                   toast.error("Failed to send reminder");
+                                 }
+                               } catch(e) {
+                                 toast.error("Error connecting to server");
+                               }
+                             }}
+                          >Resend Reminder</Button>
                        </div>
                     ) : (
                        <p className="text-sm text-gray-500 font-medium italic">No coordinator assigned yet. Task is in queue.</p>

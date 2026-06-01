@@ -25,6 +25,11 @@ public class AreaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Area not found"));
     }
 
+    public Area findByName(String name) {
+        if (name == null || name.isBlank()) return null;
+        return areaRepository.findByName(name).orElse(null);
+    }
+
     public Area findNearestArea(Double lat, Double lng) {
         return areaRepository.findAll().stream()
                 .min((a, b) -> {
