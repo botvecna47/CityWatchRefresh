@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface AreaRepository extends JpaRepository<Area, Long> {
     Optional<Area> findByName(String name);
+    Optional<Area> findByNameIgnoreCase(String name);
 }

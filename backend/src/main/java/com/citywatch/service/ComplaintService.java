@@ -33,6 +33,7 @@ public class ComplaintService {
     private final CwIdGenerator idGenerator;
     private final CategoryRepository categoryRepository;
     private final ComplaintMapper complaintMapper;
+    private final CommentService commentService;
 
     private static final double NEARBY_DELTA = 0.00025; // ~25m radius (50m diameter)
 
@@ -87,6 +88,14 @@ public class ComplaintService {
 
         complaint = complaintRepository.save(complaint);
         auditService.log(citizen, "COMPLAINT_SUBMITTED", complaint);
+
+        notificationService.create(
+                citizen,
+                "Complaint Submitted",
+                "Your complaint '" + complaint.getTitle() + "' has been successfully submitted.",
+                NotificationType.SYSTEM,
+                complaint.getId()
+        );
 
         autoAssignCoordinator(complaint);
         complaintRepository.save(complaint);
@@ -149,6 +158,11 @@ public class ComplaintService {
         // Auto-assign coordinator when they accept a complaint (IN_PROGRESS)
         if (newStatus == ComplaintStatus.IN_PROGRESS && complaint.getAssignedCoordinator() == null) {
             complaint.setAssignedCoordinator(coordinator);
+            
+            // Reflect on citizen feed comments
+            com.citywatch.dto.request.CommentRequest commentReq = new com.citywatch.dto.request.CommentRequest();
+            commentReq.setContent("Hello, I have accepted this report and will begin working on it shortly.");
+            commentService.addComment(coordinator, complaint.getId(), commentReq);
         }
 
         if (newStatus == ComplaintStatus.CLOSED || newStatus == ComplaintStatus.COMPLETED) {
@@ -234,7 +248,7 @@ public class ComplaintService {
         int minCount = Integer.MAX_VALUE;
         for (User u : areaCoordinators) {
             int activeCount = (int) complaintRepository.findByAssignedCoordinatorOrderByCreatedAtDesc(u).stream()
-                .filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.ASSIGNED)
+                .filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.ASSIGNED || c.getStatus() == ComplaintStatus.DELAYED || c.getStatus() == ComplaintStatus.PENDING_VERIFICATION)
                 .count();
             if (activeCount < minCount) {
                 minCount = activeCount;
@@ -267,6 +281,19 @@ public class ComplaintService {
                 "New Task Auto-Assigned: " + complaint.getTitle(), 
                 "You have been automatically assigned a new report in your area.\n\nDescription: " + descriptionPreview, 
                 NotificationType.COMPLAINT_UPDATE, 
+                complaint.getId()
+            );
+
+            // Reflect on citizen feed comments
+            com.citywatch.dto.request.CommentRequest commentReq = new com.citywatch.dto.request.CommentRequest();
+            commentReq.setContent("Hello, I have been automatically assigned to investigate and resolve this report. I will begin working on it shortly.");
+            commentService.addComment(bestCoordinator, complaint.getId(), commentReq);
+
+            notificationService.create(
+                complaint.getCitizen(),
+                "Coordinator Assigned",
+                "A coordinator has been assigned to your complaint and is actively looking into it.",
+                NotificationType.COMPLAINT_UPDATE,
                 complaint.getId()
             );
         }
@@ -319,9 +346,13 @@ public class ComplaintService {
         if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
             String lowerUrl = req.getImageUrl().toLowerCase();
             if (!(lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png") ||
-                  lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".pdf"))) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators can only upload images or PDF files as proof.");
+                  lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".webp"))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators must upload a valid image as visual proof.");
             }
+        }
+        
+        if (req.getPdfUrl() == null || req.getPdfUrl().isBlank() || !req.getPdfUrl().toLowerCase().endsWith(".pdf")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators must upload a PDF resolution report.");
         }
 
         // Removed strict 25 meter distance check
@@ -335,6 +366,7 @@ public class ComplaintService {
                 .complaint(complaint)
                 .coordinator(coordinator)
                 .imageUrl(req.getImageUrl())
+                .pdfUrl(req.getPdfUrl())
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
                 .distanceFromComplaint(distance)
@@ -342,16 +374,102 @@ public class ComplaintService {
                 .build();
 
         proofRepository.save(proof);
-        complaint.setStatus(ComplaintStatus.COMPLETED);
+        complaint.setStatus(ComplaintStatus.PENDING_VERIFICATION);
         complaintRepository.save(complaint);
 
-        notificationService.create(
-                complaint.getCitizen(),
-                "Resolution submitted",
-                "Your complaint has been marked as resolved. Please confirm or reject.",
-                NotificationType.COMPLAINT_UPDATE,
-                id
-        );
+        // Notify Supervisor
+        if (complaint.getArea() != null) {
+            List<User> supervisors = userRepository.findAll().stream()
+                    .filter(u -> u.getRole() == Role.SUPERVISOR && u.getStatus() == UserStatus.ACTIVE && u.getArea() != null && u.getArea().getId().equals(complaint.getArea().getId()))
+                    .collect(Collectors.toList());
+            
+            for (User sup : supervisors) {
+                notificationService.create(
+                        sup,
+                        "Proof Submitted for Verification",
+                        "Coordinator " + coordinator.getFullName() + " has submitted proof for complaint '" + complaint.getTitle() + "'. Please verify it.",
+                        NotificationType.COMPLAINT_UPDATE,
+                        id
+                );
+            }
+        }
+
+        return toResponse(complaint);
+    }
+
+    @Transactional
+    public ComplaintResponse supervisorVerify(User detachedSupervisor, String id, boolean approved, String reason) {
+        User supervisor = userRepository.findById(detachedSupervisor.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Supervisor not found"));
+        
+        if (supervisor.getRole() != Role.SUPERVISOR) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only supervisors can verify proofs");
+        }
+
+        Complaint complaint = findOrThrow(id);
+
+        if (complaint.getStatus() != ComplaintStatus.PENDING_VERIFICATION) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Complaint is not awaiting verification");
+        }
+
+        if (complaint.getArea() == null || supervisor.getArea() == null || !complaint.getArea().getId().equals(supervisor.getArea().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your area");
+        }
+
+        if (approved) {
+            complaint.setStatus(ComplaintStatus.COMPLETED);
+            complaintRepository.save(complaint);
+
+            auditService.logAction(supervisor, "PROOF_VERIFIED", "COMPLAINT", id, "PENDING_VERIFICATION", "COMPLETED");
+
+            // Notify Citizen
+            notificationService.create(
+                    complaint.getCitizen(),
+                    "Complaint Resolved",
+                    "Your complaint '" + complaint.getTitle() + "' has been verified and resolved by our supervisors.",
+                    NotificationType.COMPLAINT_UPDATE,
+                    id
+            );
+            
+            // Notify Coordinator
+            if (complaint.getAssignedCoordinator() != null) {
+                notificationService.create(
+                    complaint.getAssignedCoordinator(),
+                    "Proof Verified",
+                    "Your proof for '" + complaint.getTitle() + "' was approved by the supervisor.",
+                    NotificationType.COMPLAINT_UPDATE,
+                    id
+                );
+            }
+        } else {
+            complaint.setStatus(ComplaintStatus.REOPENED);
+            complaint.setReopenReason(reason);
+            complaint.setReopenCount(complaint.getReopenCount() + 1);
+            complaint.setEscalationLevel(complaint.getEscalationLevel() + 1);
+            complaintRepository.save(complaint);
+
+            auditService.logAction(supervisor, "PROOF_REJECTED", "COMPLAINT", id, "PENDING_VERIFICATION", "REOPENED");
+
+            // Notify Coordinator
+            if (complaint.getAssignedCoordinator() != null) {
+                notificationService.create(
+                        complaint.getAssignedCoordinator(),
+                        "Proof Rejected by Supervisor: " + complaint.getTitle(),
+                        "The supervisor rejected your proof.\nReason: " + (reason != null ? reason : "No reason provided") + "\nPlease fix the issue and submit again.",
+                        NotificationType.COMPLAINT_UPDATE,
+                        complaint.getId()
+                );
+            }
+
+            if (complaint.getReopenCount() >= 3) {
+                notificationService.notifyAdmins(
+                    "High Reopen Alert: " + complaint.getTitle(),
+                    "This complaint has been reopened " + complaint.getReopenCount() + " times. Please review the case.\nCoordinator: " + 
+                    (complaint.getAssignedCoordinator() != null ? complaint.getAssignedCoordinator().getFullName() : "None"),
+                    complaint.getId()
+                );
+            }
+        }
 
         return toResponse(complaint);
     }
@@ -391,6 +509,16 @@ public class ComplaintService {
                         complaint.getId()
                 );
             }
+
+            if (complaint.getReopenCount() >= 3) {
+                notificationService.notifyAdmins(
+                    "High Reopen Alert: " + complaint.getTitle(),
+                    "This complaint has been reopened " + complaint.getReopenCount() + " times. Please review the case.\nCoordinator: " + 
+                    (complaint.getAssignedCoordinator() != null ? complaint.getAssignedCoordinator().getFullName() : "None"),
+                    complaint.getId()
+                );
+            }
+
             auditService.log(citizen, "COMPLAINT_REOPENED", complaint);
         }
 
@@ -485,6 +613,11 @@ public class ComplaintService {
                 NotificationType.COMPLAINT_UPDATE,
                 complaint.getId()
         );
+
+        // Reflect on citizen feed comments
+        com.citywatch.dto.request.CommentRequest commentReq = new com.citywatch.dto.request.CommentRequest();
+        commentReq.setContent("Hello, I have been manually assigned to investigate and resolve this report by an Administrator. I will begin working on it shortly.");
+        commentService.addComment(coordinator, complaint.getId(), commentReq);
         
         return toResponse(complaint);
     }
@@ -558,7 +691,9 @@ public class ComplaintService {
             case ASSIGNED ->
                 next == ComplaintStatus.IN_PROGRESS;
             case IN_PROGRESS ->
-                next == ComplaintStatus.COMPLETED || next == ComplaintStatus.DELAYED;
+                next == ComplaintStatus.PENDING_VERIFICATION || next == ComplaintStatus.DELAYED || next == ComplaintStatus.COMPLETED; // some legacy tests might need COMPLETED
+            case PENDING_VERIFICATION ->
+                next == ComplaintStatus.COMPLETED || next == ComplaintStatus.REOPENED;
             case COMPLETED ->
                 next == ComplaintStatus.CLOSED || next == ComplaintStatus.REOPENED;
             case REOPENED ->

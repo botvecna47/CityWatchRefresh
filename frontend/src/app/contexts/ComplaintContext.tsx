@@ -16,7 +16,7 @@ interface ComplaintContextType {
   refreshReports: (silent?: boolean, page?: number, size?: number, bbox?: string) => Promise<any>;
   addReport: (report: Partial<Report>) => Promise<void>;
   updateReport: (id: string, updates: Partial<Report>) => Promise<void>;
-  submitProof: (id: string, imageUrl: string, lat: number, lng: number) => Promise<void>;
+  submitProof: (id: string, imageUrl: string, pdfUrl: string, lat: number, lng: number) => Promise<void>;
   citizenResolve: (id: string, accepted: boolean, reason?: string) => Promise<void>;
   handleVote: (id: string, currentUserId?: string) => Promise<void>;
   deleteReport: (id: string, spamReportId?: string, resolveSpamReport?: (id: string) => void) => void;
@@ -32,8 +32,10 @@ const ComplaintContext = createContext<ComplaintContextType | undefined>(undefin
 
 const mapStatus = (s: string): Status => {
   switch ((s || "").toUpperCase()) {
-    case "IN_PROGRESS": case "ASSIGNED": return "In Progress";
+    case "IN_PROGRESS": case "ASSIGNED": case "DELAYED": return "In Progress";
+    case "PENDING_VERIFICATION": return "Pending Verification";
     case "COMPLETED": case "CLOSED": return "Completed";
+    case "REOPENED": return "Reopened";
     default: return "Reported";
   }
 };
@@ -41,7 +43,9 @@ const mapStatus = (s: string): Status => {
 const toBackendStatus = (s: Status): string => {
   switch (s) {
     case "In Progress": return "IN_PROGRESS";
+    case "Pending Verification": return "PENDING_VERIFICATION";
     case "Completed": return "COMPLETED";
+    case "Reopened": return "REOPENED";
     default: return "PENDING_REVIEW";
   }
 };
@@ -132,8 +136,8 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
     catch { toast.error("Update failed."); refreshReports(); }
   };
 
-  const submitProof = async (id: string, imageUrl: string, lat: number, lng: number) => {
-    try { await complaintService.submitProof(id, { imageUrl, latitude: lat, longitude: lng }); toast.success("Resolution proof submitted! Citizen will be notified."); refreshReports(); }
+  const submitProof = async (id: string, imageUrl: string, pdfUrl: string, lat: number, lng: number) => {
+    try { await complaintService.submitProof(id, { imageUrl, pdfUrl, latitude: lat, longitude: lng }); toast.success("Resolution proof submitted! Citizen will be notified."); refreshReports(); }
     catch { toast.error("Proof submission failed."); }
   };
 

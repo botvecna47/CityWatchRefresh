@@ -1,5 +1,5 @@
-export type Role = "citizen" | "coordinator" | "admin";
-export type Status = "Reported" | "In Progress" | "Completed";
+export type Role = "citizen" | "coordinator" | "supervisor" | "admin";
+export type Status = "Reported" | "In Progress" | "Pending Verification" | "Completed" | "Reopened";
 export type Area = string;
 
 export interface AreaEntity {
@@ -77,6 +77,7 @@ export interface Report {
   urgency: "Low" | "Medium" | "High";
   coordinatorId?: string;
   proofImage?: string;
+  resolutionPdfUrl?: string;
   resolutionLocation?: { lat: number; lng: number };
   additionalImages?: string[];
 }

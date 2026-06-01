@@ -27,6 +27,10 @@ public class ComplaintMapper {
         String resolutionImage = proofRepository.findByComplaint(c)
                 .map(com.citywatch.entity.Proof::getImageUrl)
                 .orElse(null);
+
+        String resolutionPdf = proofRepository.findByComplaint(c)
+                .map(com.citywatch.entity.Proof::getPdfUrl)
+                .orElse(null);
                 
         return ComplaintResponse.builder()
                 .id(c.getId())
@@ -38,6 +42,7 @@ public class ComplaintMapper {
                 .status(c.getStatus().name())
                 .priority(c.getPriority() != null ? c.getPriority().name() : "LOW")
                 .resolutionImageUrl(resolutionImage)
+                .resolutionPdfUrl(resolutionPdf)
                 .latitude(c.getLatitude())
                 .longitude(c.getLongitude())
                 .intensityScore(c.getIntensityScore())

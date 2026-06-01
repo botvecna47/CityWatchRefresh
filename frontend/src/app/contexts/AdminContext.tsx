@@ -133,7 +133,14 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateApplicationStatus = async (id: string, status: "approved" | "rejected", areaId?: number) => {
-    try { await applicationService.updateStatus(id, status, areaId); setApplications(prev => prev.filter(a => a.id !== id)); toast.success(`Application ${status}.`); }
+    try { 
+      await applicationService.updateStatus(id, status, areaId); 
+      setApplications(prev => prev.filter(a => a.id !== id)); 
+      if (status === "approved") {
+        refreshUsers(); // Refresh the coordinator roster so the new coordinator appears
+      }
+      toast.success(`Application ${status}.`); 
+    }
     catch { toast.error("Failed to update status."); }
   };
 

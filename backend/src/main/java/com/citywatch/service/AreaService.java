@@ -27,7 +27,7 @@ public class AreaService {
 
     public Area findByName(String name) {
         if (name == null || name.isBlank()) return null;
-        return areaRepository.findByName(name).orElse(null);
+        return areaRepository.findByNameIgnoreCase(name).orElse(null);
     }
 
     public Area findNearestArea(Double lat, Double lng) {

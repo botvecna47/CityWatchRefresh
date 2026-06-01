@@ -8,6 +8,7 @@ public enum ComplaintStatus {
     ASSIGNED,
     IN_PROGRESS,
     DELAYED,
+    PENDING_VERIFICATION,
     COMPLETED,
     CLOSED,
     REOPENED,

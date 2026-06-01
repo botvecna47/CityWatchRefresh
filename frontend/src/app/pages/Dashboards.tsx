@@ -2,6 +2,7 @@ import { useAppContext } from "../store";
 import { Skeleton, Card } from "../components/ui";
 import { CitizenDashboard } from "../components/dashboard/CitizenDashboard";
 import { CoordinatorDashboard } from "../components/dashboard/CoordinatorDashboard";
+import { SupervisorDashboard } from "../components/dashboard/SupervisorDashboard";
 
 export function Dashboard() {
   const { currentUser, reports, loading } = useAppContext();
@@ -13,6 +14,7 @@ export function Dashboard() {
     <div className="max-w-4xl mx-auto w-full pt-4 md:pt-8 px-4 pb-16">
       {currentUser.role === "citizen" && <CitizenDashboard reports={reports.filter(r => r.authorId === currentUser.id)} />}
       {currentUser.role === "coordinator" && <CoordinatorDashboard reports={reports} />}
+      {currentUser.role === "supervisor" && <SupervisorDashboard reports={reports} />}
       {currentUser.role === "admin" && <div className="p-8 text-center text-gray-500 font-serif">Admins use the Admin Panel.</div>}
     </div>
   );

@@ -46,13 +46,28 @@ public class SlaScheduler {
             // Skip complaints already in a terminal state — they should never be set to DELAYED
             ComplaintStatus current = complaint.getStatus();
             if (current == ComplaintStatus.COMPLETED || current == ComplaintStatus.CLOSED
-                    || current == ComplaintStatus.REJECTED || current == ComplaintStatus.ESCALATED) {
-                log.info("SLA check: skipping {} — already in terminal state {}", complaint.getId(), current);
+                    || current == ComplaintStatus.REJECTED || current == ComplaintStatus.PENDING_VERIFICATION) {
+                log.info("SLA check: skipping {} — already in terminal or pending verification state {}", complaint.getId(), current);
                 continue;
             }
 
+            int currentLevel = complaint.getEscalationLevel();
+            boolean isFirstBreach = currentLevel == 0;
+            boolean isSecondBreach = false;
+
+            if (currentLevel == 1) {
+                LocalDateTime twoXDeadline = complaint.getSlaDeadline().plusHours(complaint.getCategory().getDefaultSlaHours());
+                if (LocalDateTime.now().isAfter(twoXDeadline)) {
+                    isSecondBreach = true;
+                } else {
+                    continue; // Wait until 2x deadline
+                }
+            } else if (currentLevel >= 2) {
+                continue; // Already fully escalated
+            }
+
             complaint.setStatus(ComplaintStatus.DELAYED);
-            complaint.setEscalationLevel(complaint.getEscalationLevel() + 1);
+            complaint.setEscalationLevel(currentLevel + 1);
 
             Escalation escalation = Escalation.builder()
                     .id(idGenerator.nextEscalationId())
@@ -65,17 +80,26 @@ public class SlaScheduler {
             escalationRepository.save(escalation);
 
             String areaName = (complaint.getArea() != null) ? complaint.getArea().getName() : "Unknown Area";
-            notificationService.notifyAdmins(
-                    "SLA Breach — Complaint #" + complaint.getId(),
-                    "Complaint in " + areaName + " has exceeded its SLA deadline.",
-                    complaint.getId()
-            );
+            
+            if (isSecondBreach) {
+                notificationService.notifyAdmins(
+                        "Issue not resolved in time (2x SLA) — Complaint #" + complaint.getId(),
+                        "Complaint in " + areaName + " has exceeded TWICE its allocated time.",
+                        complaint.getId()
+                );
+            } else {
+                notificationService.notifyAdmins(
+                        "Issue not resolved in time — Complaint #" + complaint.getId(),
+                        "Complaint in " + areaName + " has exceeded its allocated time.",
+                        complaint.getId()
+                );
+            }
 
             if (complaint.getAssignedCoordinator() != null) {
                 notificationService.create(
                         complaint.getAssignedCoordinator(),
-                        "SLA overdue warning",
-                        "Complaint #" + complaint.getId() + " has passed its SLA deadline. Please escalate.",
+                        "Issue not resolved in time",
+                        "Complaint #" + complaint.getId() + " has passed its allocated time. Please resolve it immediately.",
                         NotificationType.SYSTEM,
                         complaint.getId()
                 );

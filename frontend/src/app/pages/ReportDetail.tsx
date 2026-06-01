@@ -36,9 +36,6 @@ export function ReportDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [spamReason, setSpamReason] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  
-  const [isReopening, setIsReopening] = useState(false);
-  const [reopenReason, setReopenReason] = useState("");
 
   const allImages = [
     ...(report?.image ? [report.image] : []),
@@ -175,9 +172,9 @@ export function ReportDetail() {
                         <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 border-red-200 hover:bg-red-50 h-8"><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
                       </div>
                     )}
-                    {isCoordinator && report.status !== 'Completed' && (!report.coordinatorId || report.coordinatorId === currentUser?.id) && (
+                    {isCoordinator && (report.status === 'Reported' || report.status === 'Reopened') && (!report.coordinatorId || report.coordinatorId === currentUser?.id) && (
                       <Button size="sm" onClick={() => updateReport(report.id, { status: "In Progress", coordinatorId: currentUser!.id })} className="bg-[#1A4331] text-white hover:bg-[#112d21]">
-                        {report.status === 'Reported' ? 'Accept & Start' : 'Mark In Progress'}
+                        {report.status === 'Reported' ? 'Accept & Start' : 'Resume Progress'}
                       </Button>
                     )}
                     {isCoordinator && (
@@ -232,60 +229,31 @@ export function ReportDetail() {
                   </MapContainer>
                 </div>
 
-                {report.proofImage && report.status === "Completed" && (
+                {report.proofImage && (report.status === "Completed" || report.status === "Closed") && (
                   <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-sm shadow-sm">
-                    <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2 text-lg font-serif"><CheckCircle2 className="w-6 h-6 text-green-600" /> Resolution Proof</h3>
-                    {report.proofImage.toLowerCase().endsWith('.pdf') ? (
-                      <div className="w-full h-64 md:h-80 flex flex-col items-center justify-center bg-white rounded-sm border border-green-300 shadow-sm mb-4">
-                        <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-24 h-24 mb-4 opacity-80" alt="PDF Proof" />
-                        <a href={report.proofImage} target="_blank" rel="noopener noreferrer" className="text-green-700 font-semibold hover:underline">View PDF Document</a>
-                      </div>
-                    ) : (
-                      <img src={report.proofImage} alt="Proof" className="w-full h-64 md:h-80 object-cover rounded-sm border border-green-300 shadow-sm mb-4" />
-                    )}
+                    <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2 text-lg font-serif"><CheckCircle2 className="w-6 h-6 text-green-600" /> Resolution Proof (Verified by Supervisor)</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {report.proofImage && (
+                        <div className="w-full">
+                          <img src={report.proofImage} alt="Proof" className="w-full h-64 md:h-80 object-cover rounded-sm border border-green-300 shadow-sm" />
+                        </div>
+                      )}
+                      
+                      {report.resolutionPdfUrl && (
+                        <div className="w-full h-64 md:h-80 flex flex-col items-center justify-center bg-white rounded-sm border border-green-300 shadow-sm">
+                          <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-24 h-24 mb-4 opacity-80" alt="PDF Proof" />
+                          <a href={report.resolutionPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-semibold hover:underline bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2">
+                            View Resolution Report (PDF)
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
                     {report.resolutionLocation && (
                       <p className="text-sm text-green-800 flex items-center gap-2 font-medium"><MapPin className="w-4 h-4" /> Resolved at: {report.resolutionLocation.lat.toFixed(4)}, {report.resolutionLocation.lng.toFixed(4)}</p>
                     )}
                     
-                    {currentUser?.id === report.authorId && (
-                      <div className="mt-6 pt-4 border-t border-green-200 flex flex-col gap-3">
-                        <p className="text-sm text-green-900 font-semibold">Are you satisfied with this resolution?</p>
-                        
-                        {isReopening ? (
-                          <div className="flex flex-col gap-3 mt-2 bg-white p-4 rounded-lg border border-red-100 shadow-sm">
-                            <label className="text-sm font-medium text-red-900">Why are you reopening this issue?</label>
-                            <textarea 
-                              className="w-full border border-gray-200 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[80px]"
-                              placeholder="Please explain why the issue is not actually resolved..."
-                              value={reopenReason}
-                              onChange={(e) => setReopenReason(e.target.value)}
-                            />
-                            <div className="flex gap-2 justify-end mt-2">
-                              <Button onClick={() => { setIsReopening(false); setReopenReason(""); }} variant="outline" size="sm" className="text-gray-500">
-                                Cancel
-                              </Button>
-                              <Button 
-                                onClick={() => citizenResolve(report.id, false, reopenReason)} 
-                                disabled={reopenReason.trim().length < 10}
-                                size="sm"
-                                className="bg-red-600 text-white hover:bg-red-700"
-                              >
-                                Submit Reopen
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2 w-full md:w-auto">
-                            <Button onClick={() => setIsReopening(true)} variant="outline" className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50">
-                              No, Reopen Issue
-                            </Button>
-                            <Button onClick={() => citizenResolve(report.id, true)} className="flex-1 md:flex-none bg-green-600 text-white hover:bg-green-700">
-                              Yes, Confirm
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
 

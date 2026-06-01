@@ -61,7 +61,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private void createSequencesIfNotExist() {
         String[] sequences = {
-            "cw_user_c_seq", "cw_user_m_seq", "cw_user_a_seq",
+            "cw_user_c_seq", "cw_user_m_seq", "cw_user_s_seq", "cw_user_a_seq",
             "cw_complaint_seq", "cw_vote_seq", "cw_comment_seq",
             "cw_proof_seq", "cw_escalation_seq", "cw_notification_seq", "cw_audit_seq",
             "cw_application_seq", "cw_spam_seq"
@@ -166,6 +166,16 @@ public class DataSeeder implements CommandLineRunner {
                 .id("MH16M0000004").username("prakash_s").fullName("Prakash Singh")
                 .email("gamerdani322@gmail.com").password(customCoordHash)
                 .role(Role.COORDINATOR).area(vazir).city("Nanded").stateCode("MH").rtoCode("16")
+                .build())
+        );
+        // ── Supervisors ─────────────────────────────────────────────────────
+        String customSupHash = passwordEncoder.encode("Supervisor@123");
+        userRepository.findByEmail("citywatch.india@gmail.com").ifPresentOrElse(
+            u -> { u.setPassword(customSupHash); u.setFullName("CityWatch Supervisor"); u.setUsername("cw_supervisor"); userRepository.save(u); },
+            () -> userRepository.save(User.builder()
+                .id("MH16S0000001").username("cw_supervisor").fullName("CityWatch Supervisor")
+                .email("citywatch.india@gmail.com").password(customSupHash)
+                .role(Role.SUPERVISOR).area(vazir).city("Nanded").stateCode("MH").rtoCode("16")
                 .build())
         );
     }

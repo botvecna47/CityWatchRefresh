@@ -14,10 +14,19 @@ import com.citywatch.repository.ComplaintRepository;
 import com.citywatch.repository.EscalationRepository;
 import com.citywatch.repository.UserRepository;
 import com.citywatch.security.CustomUserDetails;
+import com.citywatch.dto.request.CoordinatorCreateRequest;
+import com.citywatch.entity.Area;
+import com.citywatch.enums.Role;
+import com.citywatch.service.AreaService;
+import com.citywatch.util.CwIdGenerator;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import jakarta.validation.Valid;
 import com.citywatch.service.AuditService;
 import com.citywatch.service.ComplaintService;
 import com.citywatch.service.NotificationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +48,9 @@ public class AdminController {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final AuditLogRepository auditLogRepository;
+    private final AreaService areaService;
+    private final PasswordEncoder passwordEncoder;
+    private final CwIdGenerator idGenerator;
 
     public AdminController(UserRepository userRepository,
                            ComplaintRepository complaintRepository,
@@ -46,7 +58,10 @@ public class AdminController {
                            ComplaintService complaintService,
                            NotificationService notificationService,
                            AuditService auditService,
-                           AuditLogRepository auditLogRepository) {
+                           AuditLogRepository auditLogRepository,
+                           AreaService areaService,
+                           PasswordEncoder passwordEncoder,
+                           CwIdGenerator idGenerator) {
         this.userRepository = userRepository;
         this.complaintRepository = complaintRepository;
         this.escalationRepository = escalationRepository;
@@ -54,6 +69,9 @@ public class AdminController {
         this.notificationService = notificationService;
         this.auditService = auditService;
         this.auditLogRepository = auditLogRepository;
+        this.areaService = areaService;
+        this.passwordEncoder = passwordEncoder;
+        this.idGenerator = idGenerator;
     }
 
     @GetMapping("/users")
@@ -240,6 +258,91 @@ public class AdminController {
             );
         }
         return ResponseEntity.ok(Map.of("message", "10 mock notifications generated successfully"));
+    }
+
+    @PostMapping("/coordinators")
+    public ResponseEntity<Map<String, String>> createCoordinator(
+            @Valid @RequestBody CoordinatorCreateRequest req,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        
+        String emailLower = req.getEmail().toLowerCase();
+        if (userRepository.existsByEmailIgnoreCase(emailLower)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(Map.of("message", "An account with this email already exists."));
+        }
+        
+        Area area = areaService.findByName(req.getAreaName());
+        if (area == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Area not found."));
+        }
+
+        String userId = idGenerator.nextUserId(Role.COORDINATOR, "MH", "26");
+        
+        String baseUsername = req.getFullName().toLowerCase().replaceAll("\\s+", "_");
+        String username = baseUsername;
+        int counter = 1;
+        while (userRepository.existsByUsername(username)) {
+            username = baseUsername + "_" + counter++;
+        }
+
+        User user = User.builder()
+                .id(userId)
+                .username(username)
+                .fullName(req.getFullName().trim())
+                .email(emailLower)
+                .password(passwordEncoder.encode(req.getPassword()))
+                .role(Role.COORDINATOR)
+                .area(area)
+                .build();
+                
+        userRepository.save(user);
+
+        auditService.logAction(
+            principal.getUser(),
+            "CREATE_COORDINATOR",
+            "USER",
+            userId,
+            "NONE",
+            "CREATED"
+        );
+        
+        return ResponseEntity.ok(Map.of("message", "Coordinator created successfully"));
+    }
+
+    @PostMapping("/supervisors")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> createSupervisor(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody CoordinatorCreateRequest req) {
+
+        String emailLower = req.getEmail().trim().toLowerCase();
+        if (userRepository.findByEmail(emailLower).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+        }
+
+        Area area = areaService.findByName(req.getAreaName());
+        if (area == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid area name provided");
+        }
+
+        String userId = idGenerator.nextUserId(Role.SUPERVISOR, "MH", "26");
+        String username = "sup_" + userId.substring(userId.length() - 6);
+
+        User user = User.builder()
+                .id(userId)
+                .username(username)
+                .fullName(req.getFullName().trim())
+                .email(emailLower)
+                .password(passwordEncoder.encode(req.getPassword()))
+                .role(Role.SUPERVISOR)
+                .area(area)
+                .build();
+                
+        userRepository.save(user);
+        auditService.logAction(principal.getUser(), "SUPERVISOR_CREATED", "USER", userId, "NONE", "Created supervisor " + username);
+        
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/audit-logs")

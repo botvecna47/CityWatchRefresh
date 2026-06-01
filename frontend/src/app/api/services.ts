@@ -37,7 +37,9 @@ export const adminService = {
   banUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/ban`),
   unbanUser: (id: string) => apiClient.patch(`/api/admin/users/${id}/unban`),
   broadcast: (title: string, message: string) => apiClient.post("/api/admin/broadcast", { title, message }),
-  seedNotifications: () => apiClient.post("/api/admin/seed-notifications")
+  seedNotifications: () => apiClient.post("/api/admin/seed-notifications"),
+  createCoordinator: (data: any) => apiClient.post("/api/admin/coordinators", data),
+  createSupervisor: (data: any) => apiClient.post("/api/admin/supervisors", data)
 };
 
 export const applicationService = {

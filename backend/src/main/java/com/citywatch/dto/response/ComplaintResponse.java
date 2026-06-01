@@ -23,6 +23,7 @@ public class ComplaintResponse {
     private String status;
     private String priority;
     private String resolutionImageUrl; // Proof of work
+    private String resolutionPdfUrl;
     private Double latitude;
     private Double longitude;
     private Double intensityScore;

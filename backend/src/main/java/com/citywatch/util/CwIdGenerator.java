@@ -51,12 +51,14 @@ public class CwIdGenerator {
         String seqName = switch (role) {
             case CITIZEN     -> "cw_user_c_seq";
             case COORDINATOR -> "cw_user_m_seq";
+            case SUPERVISOR  -> "cw_user_s_seq";
             case ADMIN       -> "cw_user_a_seq";
         };
 
         String typeChar = switch (role) {
             case CITIZEN     -> "C";
             case COORDINATOR -> "M";
+            case SUPERVISOR  -> "S";
             case ADMIN       -> "A";
         };
 

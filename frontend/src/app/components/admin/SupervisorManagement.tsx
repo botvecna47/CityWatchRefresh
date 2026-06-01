@@ -6,7 +6,7 @@ import { Card, Button, Badge } from "../../components/ui";
 import { toast } from "sonner";
 import { adminService } from "../../api/services";
 
-export function CoordinatorManagement({ users, reports }: { users: User[], reports: Report[] }) {
+export function SupervisorManagement({ users, reports }: { users: User[], reports: Report[] }) {
   const { banUser, unbanUser, sendMessage } = useAppContext();
   const [messagingUser, setMessagingUser] = useState<User | null>(null);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string>("");
@@ -16,8 +16,8 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ fullName: "", email: "", password: "", areaName: "" });
 
-  const coordinatorComplaints = messagingUser
-    ? reports.filter(r => r.coordinatorId === messagingUser.id && r.status !== "Completed")
+  const SupervisorComplaints = messagingUser
+    ? reports.filter(r => r.area === messagingUser.area && r.status !== "Completed")
     : [];
 
   const openMessagePanel = (user: User) => {
@@ -58,15 +58,15 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
     }
     setIsAdding(true);
     try {
-      await adminService.createCoordinator(addForm);
-      toast.success("Coordinator created successfully!");
+      await adminService.createSupervisor(addForm);
+      toast.success("Supervisor created successfully!");
       setShowAddModal(false);
       setAddForm({ fullName: "", email: "", password: "", areaName: "" });
       // @ts-ignore
       const { refreshUsers } = useAppContext();
       refreshUsers();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to create coordinator.");
+      toast.error(err?.response?.data?.message || "Failed to create Supervisor.");
     } finally {
       setIsAdding(false);
     }
@@ -76,19 +76,19 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
     <div className="space-y-6 relative">
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div>
-          <h2 className="text-2xl font-bold text-[#1A4331] font-serif mb-1">Coordinator Roster</h2>
+          <h2 className="text-2xl font-bold text-[#1A4331] font-serif mb-1">Supervisor Roster</h2>
           <p className="text-sm text-gray-500 font-medium">Monitor performance and communicate with active field staff.</p>
         </div>
         <Button onClick={() => setShowAddModal(true)} className="bg-[#1A4331] text-white hover:bg-[#2E7D32]">
-          + Add Coordinator
+          + Add Supervisor
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((u, i) => {
-          const coordinatorReports = reports.filter(r => r.coordinatorId === u.id);
-          const active = coordinatorReports.filter(r => r.status === "In Progress").length;
-          const resolved = coordinatorReports.filter(r => r.status === "Completed").length;
+          const SupervisorReports = reports.filter(r => r.area === u.area);
+          const active = SupervisorReports.filter(r => r.status === "In Progress").length;
+          const resolved = SupervisorReports.filter(r => r.status === "Completed").length;
           const avgResolutionTime = resolved > 0 ? `${Math.floor(Math.random() * 24 + 12)}h` : "N/A";
 
           return (
@@ -127,8 +127,8 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
                     variant="outline"
                     className="flex-1 rounded-xl h-10 bg-white border-gray-200 text-gray-600 hover:text-[#1A4331] hover:border-[#1A4331]/30 hover:bg-[#1A4331]/5 font-semibold transition-all"
                     onClick={() => openMessagePanel(u)}
-                    disabled={reports.filter(r => r.coordinatorId === u.id && r.status !== "Completed").length === 0}
-                    title={reports.filter(r => r.coordinatorId === u.id && r.status !== "Completed").length === 0 ? "No active complaints assigned" : "Send a message"}
+                    disabled={reports.filter(r => r.area === u.area && r.status !== "Completed").length === 0}
+                    title={reports.filter(r => r.area === u.area && r.status !== "Completed").length === 0 ? "No active complaints in area" : "Send a message"}
                   >
                     <MessageSquare className="w-4 h-4 mr-2" /> Message
                   </Button>
@@ -149,7 +149,7 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
 
         {users.length === 0 && (
           <div className="col-span-full text-center text-gray-500 font-serif py-16 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            No coordinators found in the system.
+            No Supervisors found in the system.
           </div>
         )}
       </div>
@@ -199,14 +199,14 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
                       required
                     >
                       <option value="">— Select an active assignment —</option>
-                      {coordinatorComplaints.map(c => (
+                      {SupervisorComplaints.map(c => (
                         <option key={c.id} value={c.id}>
                           #{c.id.slice(-6)} · {c.title}
                         </option>
                       ))}
                     </select>
-                    {coordinatorComplaints.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-2 font-medium">This coordinator has no active tasks.</p>
+                    {SupervisorComplaints.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-2 font-medium">This Supervisor has no active tasks.</p>
                     )}
                   </div>
 
@@ -251,7 +251,7 @@ export function CoordinatorManagement({ users, reports }: { users: User[], repor
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#1A4331]/20 z-40 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed top-[10%] left-1/2 -translate-x-1/2 w-full max-w-md bg-white shadow-2xl z-50 rounded-2xl overflow-hidden border border-gray-100 flex flex-col p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#1A4331] font-serif">Add Coordinator</h2>
+                <h2 className="text-2xl font-bold text-[#1A4331] font-serif">Add Supervisor</h2>
                 <button onClick={() => setShowAddModal(false)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
               </div>
               <form onSubmit={handleAddSubmit} className="space-y-4">

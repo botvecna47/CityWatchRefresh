@@ -368,6 +368,7 @@ function Badge({ role }: { role: string }) {
   const colors = {
     citizen: "bg-blue-500 text-white",
     coordinator: "bg-purple-500 text-white",
+    supervisor: "bg-teal-500 text-white",
     admin: "bg-red-500 text-white"
   };
   return (

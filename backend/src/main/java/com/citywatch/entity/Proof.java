@@ -32,8 +32,11 @@ public class Proof {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private User coordinator;
 
-    @Column(name = "image_url", nullable = false, length = 500)
+    @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "pdf_url")
+    private String pdfUrl;
 
     @Column(nullable = false)
     private Double latitude;

@@ -10,6 +10,9 @@ public class ProofRequest {
     @NotBlank(message = "Proof image URL is required")
     private String imageUrl;
 
+    @NotBlank(message = "Resolution PDF report URL is required")
+    private String pdfUrl;
+
     @NotNull
     private Double latitude;
 

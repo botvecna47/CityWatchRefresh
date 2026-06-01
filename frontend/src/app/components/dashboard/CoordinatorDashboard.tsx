@@ -29,45 +29,57 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [proofImageFile, setProofImageFile] = useState<File | null>(null);
   const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [proofPdfFile, setProofPdfFile] = useState<File | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const areaReports = reports.filter(r => r.area === currentUser?.area);
   const available = areaReports.filter(r => !r.coordinatorId && r.status === "Reported");
-  const assigned  = reports.filter(r => r.coordinatorId === currentUser?.id && (r.status === "In Progress" || r.status === "Reported"));
-  const completed = reports.filter(r => r.coordinatorId === currentUser?.id && r.status === "Completed");
+  const assigned  = reports.filter(r => r.coordinatorId === currentUser?.id && (r.status === "In Progress" || r.status === "Reported" || r.status === "Pending Verification" || r.status === "Reopened"));
+  const completed = reports.filter(r => r.coordinatorId === currentUser?.id && (r.status === "Completed" || r.status === "Closed"));
+
+  const areaAssigned = areaReports.filter(r => r.coordinatorId && r.status !== "Completed" && r.status !== "Closed");
+  const areaCompleted = areaReports.filter(r => r.status === "Completed" || r.status === "Closed");
 
   const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resolvingId) return;
-    if (!proofImageFile) { toast.error("Photo/PDF proof is required."); return; }
+    if (!proofImageFile || !proofPdfFile) { toast.error("Both Photo and PDF proofs are required."); return; }
     
     setIsSubmitting(true);
     
     try {
-      const fileExt = proofImageFile.name.split('.').pop();
-      const fileName = `proofs/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+      const imageExt = proofImageFile.name.split('.').pop();
+      const imageName = `proofs/${Date.now()}_img_${Math.random().toString(36).slice(2)}.${imageExt}`;
 
-      const { error: uploadError } = await storageClient.storage
+      const pdfExt = proofPdfFile.name.split('.').pop();
+      const pdfName = `proofs/${Date.now()}_pdf_${Math.random().toString(36).slice(2)}.${pdfExt}`;
+
+      const { error: imageUploadError } = await storageClient.storage
         .from('citywatch-images')
-        .upload(fileName, proofImageFile);
+        .upload(imageName, proofImageFile);
 
-      if (uploadError) {
-        throw new Error('Failed to upload image to storage');
+      const { error: pdfUploadError } = await storageClient.storage
+        .from('citywatch-images')
+        .upload(pdfName, proofPdfFile);
+
+      if (imageUploadError || pdfUploadError) {
+        throw new Error('Failed to upload files to storage');
       }
 
-      const { data } = storageClient.storage.from('citywatch-images').getPublicUrl(fileName);
-      const publicUrl = data.publicUrl;
+      const imageUrl = storageClient.storage.from('citywatch-images').getPublicUrl(imageName).data.publicUrl;
+      const pdfUrl = storageClient.storage.from('citywatch-images').getPublicUrl(pdfName).data.publicUrl;
 
       const finalLat = location ? location.lat : 0;
       const finalLng = location ? location.lng : 0;
 
-      await submitProof(resolvingId, publicUrl, finalLat, finalLng);
+      await submitProof(resolvingId, imageUrl, pdfUrl, finalLat, finalLng);
       
       setResolvingId(null);
       setProofImageFile(null);
       setProofImagePreview(null);
+      setProofPdfFile(null);
       setLocation(null);
     } catch (err) {
       console.error(err);
@@ -104,10 +116,10 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
   const areaData = useMemo(() => {
     return [
       { name: 'New', value: available.length },
-      { name: 'Active', value: assigned.length },
-      { name: 'Completed', value: completed.length },
+      { name: 'Active', value: areaAssigned.length },
+      { name: 'Completed', value: areaCompleted.length },
     ];
-  }, [available.length, assigned.length, completed.length]);
+  }, [available.length, areaAssigned.length, areaCompleted.length]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -148,8 +160,8 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             </div>
             <div className="flex flex-col gap-4 mt-4 sm:mt-0">
               <div className="flex items-center gap-3"><div className="w-3 h-3 bg-red-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">New Queue: {available.length}</span></div>
-              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-amber-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">In Progress: {assigned.length}</span></div>
-              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-green-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">Resolved Today: {completed.length}</span></div>
+              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-amber-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">In Progress: {areaAssigned.length}</span></div>
+              <div className="flex items-center gap-3"><div className="w-3 h-3 bg-green-500 rounded-full" /><span className="text-sm font-semibold text-gray-700">Resolved Today: {areaCompleted.length}</span></div>
             </div>
           </div>
         </Card>
@@ -240,9 +252,13 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                 </p>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                   <Link to={`/report/${r.id}`} className="text-sm text-[#2E7D32] font-semibold hover:text-[#1A4331] transition-colors">View Details</Link>
-                  <Button size="sm" onClick={() => setResolvingId(r.id)} className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-sm rounded-lg">
-                    <CheckCircle2 className="w-4 h-4" /> Resolve Task
-                  </Button>
+                  {r.status === "Pending Verification" ? (
+                    <Badge className="bg-blue-50 text-blue-700 border border-blue-200">Awaiting Supervisor</Badge>
+                  ) : (
+                    <Button size="sm" onClick={() => setResolvingId(r.id)} className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-sm rounded-lg">
+                      <CheckCircle2 className="w-4 h-4" /> Resolve Task
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -256,43 +272,69 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-2xl font-bold font-serif">Resolution Proof</h3>
             </div>
-            <p className="text-sm text-gray-500 mb-6 font-medium">Upload an image or PDF document to verify completion. Location is optional.</p>
+            <p className="text-sm text-gray-500 mb-6 font-medium">Upload BOTH an image and a PDF document to verify completion.</p>
             
             <form onSubmit={handleResolve} className="space-y-5">
-              <div className="border-2 border-dashed border-gray-200 rounded-2xl h-56 flex flex-col items-center justify-center relative hover:bg-gray-50 hover:border-[#2E7D32]/50 transition-all cursor-pointer bg-white group overflow-hidden">
-                {proofImagePreview ? (
-                  <>
-                    <img src={proofImagePreview} alt="Proof" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-white font-medium text-sm flex items-center gap-2"><Upload className="w-4 h-4" /> Change Photo</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="border-2 border-dashed border-gray-200 rounded-2xl h-40 flex flex-col items-center justify-center relative hover:bg-gray-50 hover:border-[#2E7D32]/50 transition-all cursor-pointer bg-white group overflow-hidden">
+                  {proofImagePreview ? (
+                    <>
+                      <img src={proofImagePreview} alt="Proof" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white font-medium text-xs flex items-center gap-1"><Upload className="w-3 h-3" /> Change Photo</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center p-2 text-center">
+                      <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <Upload className="w-6 h-6 text-green-600" />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700">Upload Image</span>
                     </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center p-4">
-                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <Upload className="w-8 h-8 text-green-600" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700">Upload Image or PDF</span>
-                    <span className="text-xs text-gray-400 mt-1">Provide visual proof of resolution</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setProofImageFile(e.target.files[0]);
-                      const fileExt = e.target.files[0].name.split('.').pop()?.toLowerCase();
-                      if (fileExt === 'pdf') {
-                        setProofImagePreview('https://cdn-icons-png.flaticon.com/512/337/337946.png'); // PDF placeholder icon
-                      } else {
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setProofImageFile(e.target.files[0]);
                         setProofImagePreview(URL.createObjectURL(e.target.files[0]));
                       }
-                    }
-                  }}
-                  required
-                />
+                    }}
+                    required
+                  />
+                </div>
+
+                <div className="border-2 border-dashed border-gray-200 rounded-2xl h-40 flex flex-col items-center justify-center relative hover:bg-gray-50 hover:border-blue-500/50 transition-all cursor-pointer bg-white group overflow-hidden">
+                  {proofPdfFile ? (
+                    <div className="flex flex-col items-center p-2 text-center h-full justify-center bg-blue-50/30">
+                      <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-12 h-12 mb-2" alt="PDF" />
+                      <span className="text-xs font-semibold text-blue-700 truncate w-full px-2">{proofPdfFile.name}</span>
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white font-medium text-xs flex items-center gap-1"><Upload className="w-3 h-3" /> Change PDF</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center p-2 text-center">
+                      <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <Upload className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700">Upload PDF Report</span>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setProofPdfFile(e.target.files[0]);
+                      }
+                    }}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -309,8 +351,8 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
               </div>
               
               <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <Button type="button" variant="outline" className="flex-1 rounded-xl h-12" onClick={() => { setResolvingId(null); setProofImageFile(null); setProofImagePreview(null); setLocation(null); }}>Cancel</Button>
-                <Button type="submit" disabled={!proofImageFile || isSubmitting} className="flex-1 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl h-12 shadow-lg shadow-[#1A4331]/20">
+                <Button type="button" variant="outline" className="flex-1 rounded-xl h-12" onClick={() => { setResolvingId(null); setProofImageFile(null); setProofImagePreview(null); setProofPdfFile(null); setLocation(null); }}>Cancel</Button>
+                <Button type="submit" disabled={!proofImageFile || !proofPdfFile || isSubmitting} className="flex-1 bg-[#1A4331] hover:bg-[#2E7D32] text-white rounded-xl h-12 shadow-lg shadow-[#1A4331]/20">
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Verifying...</span>
                   ) : (

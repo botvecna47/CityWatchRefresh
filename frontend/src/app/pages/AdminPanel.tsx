@@ -8,6 +8,7 @@ import { useAdmin } from "../contexts/AdminContext";
 import { AdminOverview } from "../components/admin/AdminOverview";
 import { IssuesManagement } from "../components/admin/IssuesManagement";
 import { CoordinatorManagement } from "../components/admin/CoordinatorManagement";
+import { SupervisorManagement } from "../components/admin/SupervisorManagement";
 import { UserManagement } from "../components/admin/UserManagement";
 import { ApplicationsManagement } from "../components/admin/ApplicationsManagement";
 import { SpamManagement } from "../components/admin/SpamManagement";
@@ -19,6 +20,7 @@ const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "issues", label: "Issues", icon: AlertTriangle },
   { id: "coordinators", label: "Coordinators", icon: Shield },
+  { id: "supervisors", label: "Supervisors", icon: Shield },
   { id: "users", label: "Citizens", icon: Users },
   { id: "applications", label: "Applications", icon: FileText },
   { id: "spam", label: "Spam", icon: Activity },
@@ -141,6 +143,7 @@ export function AdminPanel() {
             {activeTab === "overview" && <AdminOverview reports={adminReports} users={users} />}
             {activeTab === "issues" && <IssuesManagement reports={adminReports} users={users} />}
             {activeTab === "coordinators" && <CoordinatorManagement users={users.filter(u => u.role === "coordinator")} reports={adminReports} />}
+            {activeTab === "supervisors" && <SupervisorManagement users={users.filter(u => u.role === "supervisor")} reports={adminReports} />}
             {activeTab === "users" && <UserManagement users={users.filter(u => u.role === "citizen")} title="Citizen Directory" />}
             {activeTab === "applications" && <ApplicationsManagement />}
             {activeTab === "spam" && <SpamManagement />}
