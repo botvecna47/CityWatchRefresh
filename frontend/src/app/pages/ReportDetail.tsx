@@ -1,11 +1,11 @@
 import { useParams, Link, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { ArrowLeft, ArrowBigUp, MapPin, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowBigUp, MapPin, AlertTriangle, CheckCircle2, Trash2, ShieldCheck } from "lucide-react";
 import { ImageLightbox } from "../components/ImageLightbox";
 import { useAppContext, Comment } from "../store";
-import { Card, Button, Badge, Skeleton, cn } from "../components/ui";
-
+import { Card, Button, Badge, Skeleton, cn, Input } from "../components/ui";
+import { apiClient as api } from "../api/apiClient";
 import { StatusBadge } from "../components/feed/FeedItem";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ export function ReportDetail() {
   const isCitizen = currentUser?.role === 'citizen';
   const isCoordinator = currentUser?.role === 'coordinator';
   const isAdmin = currentUser?.role === 'admin';
+  const isSupervisor = currentUser?.role === 'supervisor';
 
   const report = reports.find(r => r.id === id);
   const hasUpvoted = !!(isCitizen && currentUser && report?.upvotedCitizenIds?.includes(currentUser.id));
@@ -36,6 +37,26 @@ export function ReportDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [spamReason, setSpamReason] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyRejectReason, setVerifyRejectReason] = useState("");
+
+  const handleSupervisorVerify = async (approved: boolean) => {
+    if (!report) return;
+    if (!approved && !verifyRejectReason.trim()) {
+      toast.error("Please provide a reason for rejection.");
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      await api.post(`/api/supervisor/complaints/${report.id}/verify?approved=${approved}&reason=${encodeURIComponent(verifyRejectReason)}`);
+      toast.success(approved ? "Proof verified and completed!" : "Proof rejected and sent back.");
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to verify proof");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const allImages = [
     ...(report?.image ? [report.image] : []),
@@ -229,19 +250,30 @@ export function ReportDetail() {
                   </MapContainer>
                 </div>
 
-                {report.proofImage && (report.status === "Completed" || report.status === "Closed") && (
-                  <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-sm shadow-sm">
-                    <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2 text-lg font-serif"><CheckCircle2 className="w-6 h-6 text-green-600" /> Resolution Proof (Verified by Supervisor)</h3>
+                {(report.status === "Reopened" || report.status === "Completed" || report.status === "Closed") && report.reopenReason && (
+                  <div className={`mb-8 p-6 border rounded-sm shadow-sm ${report.status === "Reopened" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                    <h3 className={`font-bold mb-2 flex items-center gap-2 text-lg font-serif ${report.status === "Reopened" ? "text-red-900" : "text-green-900"}`}>
+                      {report.status === "Reopened" ? <><AlertTriangle className="w-6 h-6 text-red-600" /> Supervisor Rejected / Reopened</> : <><CheckCircle2 className="w-6 h-6 text-green-600" /> Supervisor Remarks</>}
+                    </h3>
+                    <p className={`text-sm font-medium ${report.status === "Reopened" ? "text-red-900" : "text-green-900"}`}>
+                      {report.status === "Reopened" ? "Reason: " : ""}{report.reopenReason}
+                    </p>
+                  </div>
+                )}
+
+                {report.proofImage && (report.status === "Completed" || report.status === "Closed" || report.status === "Pending Verification") && (
+                  <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-sm shadow-sm">
+                    <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2 text-lg font-serif"><CheckCircle2 className="w-6 h-6 text-amber-600" /> Resolution Proof</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       {report.proofImage && (
                         <div className="w-full">
-                          <img src={report.proofImage} alt="Proof" className="w-full h-64 md:h-80 object-cover rounded-sm border border-green-300 shadow-sm" />
+                          <img src={report.proofImage} alt="Proof" className="w-full h-64 md:h-80 object-cover rounded-sm border border-amber-300 shadow-sm" />
                         </div>
                       )}
                       
                       {report.resolutionPdfUrl && (
-                        <div className="w-full h-64 md:h-80 flex flex-col items-center justify-center bg-white rounded-sm border border-green-300 shadow-sm">
+                        <div className="w-full h-64 md:h-80 flex flex-col items-center justify-center bg-white rounded-sm border border-amber-300 shadow-sm">
                           <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-24 h-24 mb-4 opacity-80" alt="PDF Proof" />
                           <a href={report.resolutionPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-semibold hover:underline bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2">
                             View Resolution Report (PDF)
@@ -251,9 +283,28 @@ export function ReportDetail() {
                     </div>
 
                     {report.resolutionLocation && (
-                      <p className="text-sm text-green-800 flex items-center gap-2 font-medium"><MapPin className="w-4 h-4" /> Resolved at: {report.resolutionLocation.lat.toFixed(4)}, {report.resolutionLocation.lng.toFixed(4)}</p>
+                      <p className="text-sm text-amber-800 flex items-center gap-2 font-medium"><MapPin className="w-4 h-4" /> Resolved at: {report.resolutionLocation.lat.toFixed(4)}, {report.resolutionLocation.lng.toFixed(4)}</p>
                     )}
                     
+                    {currentUser?.role === "supervisor" && report.status === "Pending Verification" && (
+                      <div className="mt-6 pt-6 border-t border-amber-200 flex flex-col gap-3">
+                        <p className="text-base text-amber-900 font-semibold">Supervisor Verification Required</p>
+                        <textarea 
+                          className="w-full border border-amber-300 rounded-md p-3 text-sm focus:ring-2 focus:ring-amber-500 min-h-[60px]"
+                          placeholder="Provide a reason if rejecting..."
+                          value={verifyRejectReason}
+                          onChange={(e) => setVerifyRejectReason(e.target.value)}
+                        />
+                        <div className="flex gap-4">
+                          <Button onClick={() => handleSupervisorVerify(false)} disabled={isVerifying} variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50 text-base h-11">
+                            Reject & Reopen
+                          </Button>
+                          <Button onClick={() => handleSupervisorVerify(true)} disabled={isVerifying} className="flex-1 bg-[#1A4331] text-white hover:bg-[#2E7D32] text-base h-11">
+                            Approve & Verify
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

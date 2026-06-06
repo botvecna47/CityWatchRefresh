@@ -7,7 +7,9 @@ export function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     "Reported": "bg-blue-100 text-blue-800 border-blue-200",
     "In Progress": "bg-amber-100 text-amber-800 border-amber-200",
-    "Completed": "bg-green-100 text-green-800 border-green-200"
+    "Completed": "bg-green-100 text-green-800 border-green-200",
+    "Reopened": "bg-red-100 text-red-800 border-red-200",
+    "Pending Verification": "bg-blue-50 text-blue-700 border-blue-200"
   };
 
   return (
@@ -70,6 +72,13 @@ export function FeedItem({ report, currentUser, handleVoteAction, updateReport }
             {report.description}
           </p>
           
+          {report.status === 'Reopened' && report.reopenReason && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-sm">
+              <p className="text-xs font-bold text-red-800 uppercase mb-1">Supervisor Rejected</p>
+              <p className="text-sm text-red-900 line-clamp-2">Reason: {report.reopenReason}</p>
+            </div>
+          )}
+
           {report.image && (!report.proofImage || report.status !== 'Completed') && (
             <div className="w-full h-48 sm:h-64 mb-4 overflow-hidden rounded-sm bg-gray-100 border border-gray-100 relative group">
               <img src={report.image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />

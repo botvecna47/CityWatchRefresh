@@ -83,7 +83,7 @@ public class SlaScheduler {
             
             if (isSecondBreach) {
                 notificationService.notifyAdmins(
-                        "Issue not resolved in time (2x SLA) — Complaint #" + complaint.getId(),
+                        "Issue not resolved in time (Critical) - Complaint #" + complaint.getId(),
                         "Complaint in " + areaName + " has exceeded TWICE its allocated time.",
                         complaint.getId()
                 );

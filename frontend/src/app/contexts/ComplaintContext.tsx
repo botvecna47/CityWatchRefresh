@@ -32,7 +32,7 @@ const ComplaintContext = createContext<ComplaintContextType | undefined>(undefin
 
 const mapStatus = (s: string): Status => {
   switch ((s || "").toUpperCase()) {
-    case "IN_PROGRESS": case "ASSIGNED": case "DELAYED": return "In Progress";
+    case "IN_PROGRESS": case "ASSIGNED": case "DELAYED": case "ESCALATED": return "In Progress";
     case "PENDING_VERIFICATION": return "Pending Verification";
     case "COMPLETED": case "CLOSED": return "Completed";
     case "REOPENED": return "Reopened";
@@ -89,6 +89,8 @@ export const ComplaintProvider = ({ children }: { children: ReactNode }) => {
         downvotes: 0, upvotedCitizenIds: r.upvotedCitizenIds ? [...r.upvotedCitizenIds] : [], category: r.category, comments: [], messages: [],
         commentCount: r.commentCount || 0,
         proofImage: r.resolutionImageUrl || undefined,
+        resolutionPdfUrl: r.resolutionPdfUrl || undefined,
+        reopenReason: r.reopenReason || undefined,
         createdAt: r.createdAt || new Date().toISOString(), urgency: mapPriority(r.priority), coordinatorId: r.coordinatorId ? String(r.coordinatorId) : undefined,
       }));
       

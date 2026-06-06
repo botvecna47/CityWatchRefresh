@@ -38,6 +38,7 @@ public class ComplaintResponse {
     private java.util.Set<String> upvotedCitizenIds; // who has upvoted
     private int escalationLevel;
     private int reopenCount;
+    private String reopenReason;
     private int commentCount;
     private LocalDateTime createdAt;
     private LocalDateTime slaDeadline;

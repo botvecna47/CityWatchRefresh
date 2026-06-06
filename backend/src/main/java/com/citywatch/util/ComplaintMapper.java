@@ -54,6 +54,7 @@ public class ComplaintMapper {
                 .coordinatorName(c.getAssignedCoordinator() != null ? c.getAssignedCoordinator().getFullName() : null)
                 .escalationLevel(c.getEscalationLevel())
                 .reopenCount(c.getReopenCount())
+                .reopenReason(c.getReopenReason())
                 .upvotes(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds().size() : 0)
                 .upvotedCitizenIds(c.getUpvotedCitizenIds() != null ? c.getUpvotedCitizenIds() : new HashSet<>())
                 .commentCount((int) commentRepository.countByComplaintAndIsModeratedFalse(c))

@@ -345,13 +345,13 @@ public class ComplaintService {
         // Validation: Coordinators can upload images or PDFs
         if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
             String lowerUrl = req.getImageUrl().toLowerCase();
-            if (!(lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png") ||
-                  lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".webp"))) {
+            if (!(lowerUrl.contains(".jpg") || lowerUrl.contains(".jpeg") || lowerUrl.contains(".png") ||
+                  lowerUrl.contains(".gif") || lowerUrl.contains(".webp"))) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators must upload a valid image as visual proof.");
             }
         }
         
-        if (req.getPdfUrl() == null || req.getPdfUrl().isBlank() || !req.getPdfUrl().toLowerCase().endsWith(".pdf")) {
+        if (req.getPdfUrl() == null || req.getPdfUrl().isBlank() || !req.getPdfUrl().toLowerCase().contains(".pdf")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordinators must upload a PDF resolution report.");
         }
 
@@ -412,12 +412,15 @@ public class ComplaintService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Complaint is not awaiting verification");
         }
 
-        if (complaint.getArea() == null || supervisor.getArea() == null || !complaint.getArea().getId().equals(supervisor.getArea().getId())) {
+        if (complaint.getArea() != null && supervisor.getArea() != null && !complaint.getArea().getId().equals(supervisor.getArea().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your area");
         }
 
         if (approved) {
             complaint.setStatus(ComplaintStatus.COMPLETED);
+            if (reason != null && !reason.trim().isEmpty()) {
+                complaint.setReopenReason(reason);
+            }
             complaintRepository.save(complaint);
 
             auditService.logAction(supervisor, "PROOF_VERIFIED", "COMPLAINT", id, "PENDING_VERIFICATION", "COMPLETED");
@@ -433,10 +436,14 @@ public class ComplaintService {
             
             // Notify Coordinator
             if (complaint.getAssignedCoordinator() != null) {
+                String msg = "Your proof for '" + complaint.getTitle() + "' was approved by the supervisor.";
+                if (reason != null && !reason.trim().isEmpty()) {
+                    msg += "\nSupervisor Remarks: " + reason;
+                }
                 notificationService.create(
                     complaint.getAssignedCoordinator(),
                     "Proof Verified",
-                    "Your proof for '" + complaint.getTitle() + "' was approved by the supervisor.",
+                    msg,
                     NotificationType.COMPLAINT_UPDATE,
                     id
                 );

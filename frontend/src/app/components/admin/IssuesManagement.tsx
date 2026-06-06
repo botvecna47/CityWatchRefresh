@@ -119,9 +119,9 @@ export function IssuesManagement({ reports, users }: { reports: Report[], users:
                         "bg-green-50 text-green-700 border border-green-200"
                       )}>{r.status}</Badge>
                       {isBreached ? (
-                         <span className="text-[10px] font-bold text-red-600 flex items-center gap-1 uppercase tracking-wide"><AlertCircle className="w-3 h-3" /> SLA Breach ({hoursElapsed}h)</span>
+                         <span className="text-[10px] font-bold text-red-600 flex items-center gap-1 uppercase tracking-wide"><AlertCircle className="w-3 h-3" /> Critical Delay ({hoursElapsed}h)</span>
                       ) : isWarning ? (
-                         <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 uppercase tracking-wide"><Clock className="w-3 h-3" /> SLA Warning</span>
+                         <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 uppercase tracking-wide"><Clock className="w-3 h-3" /> Delay Warning</span>
                       ) : r.status === "Completed" ? (
                          <span className="text-[10px] font-bold text-green-600 flex items-center gap-1 uppercase tracking-wide"><Check className="w-3 h-3" /> Resolved</span>
                       ) : (
@@ -138,11 +138,11 @@ export function IssuesManagement({ reports, users }: { reports: Report[], users:
                         {r.urgency}
                      </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <Button variant="ghost" size="sm" className="h-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
-                      View <MoreVertical className="w-4 h-4 ml-1 text-gray-400" />
-                    </Button>
-                  </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button variant="ghost" size="sm" className="h-9 rounded-xl text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 font-semibold border border-gray-200">
+                        View <MoreVertical className="w-4 h-4 ml-1 text-gray-400" />
+                      </Button>
+                    </td>
                 </tr>
               )
             })}

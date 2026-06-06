@@ -119,7 +119,7 @@ export function AdminOverview({ reports: paginatedReports, users }: { reports: R
 
     return Array.from(areaMap.entries()).map(([name, stats]) => ({
       name,
-      "SLA Breached": stats.breached,
+      "Unresolved (Critical)": stats.breached,
       "At Risk": stats.atRisk,
       "On Track": stats.onTrack,
     }));
@@ -206,7 +206,7 @@ export function AdminOverview({ reports: paginatedReports, users }: { reports: R
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="On Track" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} barSize={24} />
                 <Bar dataKey="At Risk" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="SLA Breached" stackId="a" fill="#ef4444" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="Unresolved (Critical)" stackId="a" fill="#ef4444" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

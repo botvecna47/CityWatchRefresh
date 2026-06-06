@@ -247,10 +247,20 @@ export function CoordinatorDashboard({ reports }: { reports: Report[] }) {
                   <h3 className="font-bold text-[#1A4331] text-lg font-serif truncate pr-4">{r.title}</h3>
                   <Badge className="bg-red-50 text-red-700 border border-red-100 shadow-sm">{r.urgency}</Badge>
                 </div>
-                <p className="text-sm text-gray-500 mb-5 flex items-center gap-2 font-medium">
+                <p className="text-sm text-gray-500 mb-4 flex items-center gap-2 font-medium">
                   <Clock className="w-4 h-4 text-gray-400" /> Elapsed: {r.createdAt ? `${formatDistanceToNow(new Date(r.createdAt))} • ${format(new Date(r.createdAt), "dd MMM yy, HH:mm")}` : "Unknown"}
                 </p>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                {(r.status === "Reopened" || r.status === "Completed" || r.status === "Closed") && r.reopenReason && (
+                  <div className={`mb-4 p-3 border rounded-lg ${r.status === "Reopened" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${r.status === "Reopened" ? "text-red-800" : "text-green-800"}`}>
+                      {r.status === "Reopened" ? <><AlertTriangle className="w-3 h-3"/> Rejected / Reopened</> : <><CheckCircle2 className="w-3 h-3"/> Supervisor Remarks</>}
+                    </p>
+                    <p className={`text-sm font-medium ${r.status === "Reopened" ? "text-red-900" : "text-green-900"}`}>
+                      {r.status === "Reopened" ? "Reason: " : ""}{r.reopenReason}
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-between items-center mt-2 pt-4 border-t border-gray-100">
                   <Link to={`/report/${r.id}`} className="text-sm text-[#2E7D32] font-semibold hover:text-[#1A4331] transition-colors">View Details</Link>
                   {r.status === "Pending Verification" ? (
                     <Badge className="bg-blue-50 text-blue-700 border border-blue-200">Awaiting Supervisor</Badge>

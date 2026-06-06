@@ -13,8 +13,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUserState] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  const setCurrentUser = (user: User | null) => {
+    setCurrentUserState(user);
+    if (!user) {
+      localStorage.removeItem("token");
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");

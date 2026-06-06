@@ -23,7 +23,7 @@ export function SupervisorDashboard({ reports }: { reports: Report[] }) {
 
     setIsSubmitting(true);
     try {
-      await api.post(`/supervisor/complaints/${selectedReport.id}/verify?approved=${approved}&reason=${encodeURIComponent(rejectReason)}`);
+      await api.post(`/api/supervisor/complaints/${selectedReport.id}/verify?approved=${approved}&reason=${encodeURIComponent(rejectReason)}`);
       toast.success(approved ? "Proof verified and completed!" : "Proof rejected and sent back.");
       setSelectedReport(null);
       setRejectReason("");

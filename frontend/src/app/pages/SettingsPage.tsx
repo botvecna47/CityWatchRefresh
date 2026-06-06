@@ -30,12 +30,19 @@ export function SettingsPage() {
     toast.success("Preferences saved.");
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPw || !newPw || !confirmPw) { toast.error("Please fill all password fields."); return; }
     if (newPw !== confirmPw) { toast.error("New passwords do not match."); return; }
     if (newPw.length < 6) { toast.error("Password must be at least 6 characters."); return; }
-    toast.success("Password updated successfully.");
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    
+    try {
+      const { apiClient } = await import("../api/apiClient");
+      await apiClient.post("/api/settings/me/password", { currentPw, newPw });
+      toast.success("Password updated successfully.");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update password");
+    }
   };
 
   if (!currentUser) return null;

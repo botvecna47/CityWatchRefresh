@@ -80,6 +80,7 @@ export interface Report {
   resolutionPdfUrl?: string;
   resolutionLocation?: { lat: number; lng: number };
   additionalImages?: string[];
+  reopenReason?: string;
 }
 
 export interface CoordinatorApplication {

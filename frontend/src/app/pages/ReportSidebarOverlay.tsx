@@ -6,6 +6,7 @@ import { useAppContext, Comment } from "../store";
 import { Button, Textarea, Badge, cn } from "../components/ui";
 import { StatusBadge } from "../components/feed/FeedItem";
 import { toast } from "sonner";
+import { apiClient as api } from "../api/apiClient";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -31,6 +32,26 @@ export function ReportSidebarOverlay() {
   const [messageText, setMessageText] = useState("");
   const [isReopening, setIsReopening] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyRejectReason, setVerifyRejectReason] = useState("");
+
+  const handleSupervisorVerify = async (approved: boolean) => {
+    if (!report) return;
+    if (!approved && !verifyRejectReason.trim()) {
+      toast.error("Please provide a reason for rejection.");
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      await api.post(`/api/supervisor/complaints/${report.id}/verify?approved=${approved}&reason=${encodeURIComponent(verifyRejectReason)}`);
+      toast.success(approved ? "Proof verified and completed!" : "Proof rejected and sent back.");
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to verify proof");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -192,6 +213,17 @@ export function ReportSidebarOverlay() {
               <div className="absolute bottom-1 right-1 bg-white/80 text-[9px] text-gray-500 px-1 rounded z-[1000] pointer-events-none">&copy; OSM</div>
             </div>
 
+            {(report.status === "Reopened" || report.status === "Completed" || report.status === "Closed") && report.reopenReason && (
+              <div className={`p-3 border rounded-sm ${report.status === "Reopened" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                <p className={`text-xs font-bold uppercase mb-1 flex items-center gap-1 ${report.status === "Reopened" ? "text-red-800" : "text-green-800"}`}>
+                  {report.status === "Reopened" ? <><AlertTriangle className="w-3 h-3"/> Supervisor Rejected</> : <><CheckCircle2 className="w-3 h-3"/> Supervisor Remarks</>}
+                </p>
+                <p className={`text-sm font-medium ${report.status === "Reopened" ? "text-red-900" : "text-green-900"}`}>
+                  {report.status === "Reopened" ? "Reason: " : ""}{report.reopenReason}
+                </p>
+              </div>
+            )}
+
             <button
               onClick={() => { setSelectedReportId(null); navigate(`/report/${report.id}`); }}
               className="w-full flex items-center justify-center gap-2 text-sm text-[#1A4331] border border-[#1A4331]/20 hover:bg-[#1A4331]/5 rounded-sm py-2 transition-colors font-medium"
@@ -212,55 +244,42 @@ export function ReportSidebarOverlay() {
               </div>
             )}
 
-            {report.proofImage && report.status === "Completed" && (
-              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-sm">
-                <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-600" /> Resolution Proof</h4>
-                {report.proofImage.toLowerCase().endsWith('.pdf') ? (
-                  <div className="w-full h-32 sm:h-40 flex flex-col items-center justify-center bg-white rounded-sm border border-green-200">
-                    <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" className="w-12 h-12 mb-2 opacity-80" alt="PDF Proof" />
-                    <a href={report.proofImage} target="_blank" rel="noopener noreferrer" className="text-green-700 text-sm font-semibold hover:underline">View PDF</a>
-                  </div>
-                ) : (
-                  <img src={report.proofImage} alt="Proof" className="w-full h-32 sm:h-40 object-cover rounded-sm border border-green-200" />
-                )}
+            {report.proofImage && (report.status === "Completed" || report.status === "Pending Verification") && (
+              <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-sm">
+                <h4 className="font-bold text-amber-900 mb-3 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-amber-600" /> Resolution Proof</h4>
                 
-                {currentUser?.id === report.authorId && (
-                  <div className="mt-4 pt-4 border-t border-green-200 flex flex-col gap-3">
-                    <p className="text-sm text-green-900 font-semibold">Are you satisfied with this resolution?</p>
-                    
-                    {isReopening ? (
-                      <div className="flex flex-col gap-3 mt-1 bg-white p-3 rounded-lg border border-red-100 shadow-sm">
-                        <label className="text-xs font-medium text-red-900">Why are you reopening this issue?</label>
-                        <textarea 
-                          className="w-full border border-gray-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[60px]"
-                          placeholder="Please explain why the issue is not actually resolved..."
-                          value={reopenReason}
-                          onChange={(e) => setReopenReason(e.target.value)}
-                        />
-                        <div className="flex gap-2 justify-end mt-1">
-                          <Button onClick={() => { setIsReopening(false); setReopenReason(""); }} variant="outline" size="sm" className="text-gray-500 h-8 text-xs">
-                            Cancel
-                          </Button>
-                          <Button 
-                            onClick={() => { citizenResolve(report.id, false, reopenReason); setIsReopening(false); setReopenReason(""); }} 
-                            disabled={reopenReason.trim().length < 10}
-                            size="sm"
-                            className="bg-red-600 text-white hover:bg-red-700 h-8 text-xs"
-                          >
-                            Submit Reopen
-                          </Button>
-                        </div>
+                <div className="grid grid-cols-1 gap-4 mb-4">
+                  <div className="w-full">
+                    <h5 className="text-xs font-bold text-amber-700 uppercase mb-2">Visual Proof</h5>
+                    <img src={report.proofImage} alt="Proof" className="w-full h-32 sm:h-48 object-cover rounded-sm border border-amber-200" />
+                  </div>
+                  {report.resolutionPdfUrl && (
+                    <div className="w-full">
+                      <h5 className="text-xs font-bold text-amber-700 uppercase mb-2">Resolution PDF</h5>
+                      <div className="w-full h-32 sm:h-48 bg-white rounded-sm border border-amber-200 overflow-hidden">
+                        <iframe src={report.resolutionPdfUrl} className="w-full h-full" title="PDF Proof" />
                       </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button onClick={() => setIsReopening(true)} variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50 text-xs h-9">
-                          No, Reopen
-                        </Button>
-                        <Button onClick={() => citizenResolve(report.id, true)} className="flex-1 bg-green-600 text-white hover:bg-green-700 text-xs h-9">
-                          Yes, Confirm
-                        </Button>
-                      </div>
-                    )}
+                    </div>
+                  )}
+                </div>
+
+                {currentUser?.role === "supervisor" && report.status === "Pending Verification" && (
+                  <div className="mt-4 pt-4 border-t border-amber-200 flex flex-col gap-3">
+                    <p className="text-sm text-amber-900 font-semibold">Supervisor Verification Required</p>
+                    <textarea 
+                      className="w-full border border-gray-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-amber-500 min-h-[40px]"
+                      placeholder="Rejection reason (if rejecting)..."
+                      value={verifyRejectReason}
+                      onChange={(e) => setVerifyRejectReason(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={() => handleSupervisorVerify(false)} disabled={isVerifying} variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50 text-xs h-9">
+                        Reject
+                      </Button>
+                      <Button onClick={() => handleSupervisorVerify(true)} disabled={isVerifying} className="flex-1 bg-green-600 text-white hover:bg-green-700 text-xs h-9">
+                        Approve
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
